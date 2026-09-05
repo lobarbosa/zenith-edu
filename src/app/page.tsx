@@ -1,5 +1,7 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { LogoutButton } from "@/components/logout-button";
+import { Button } from "@/components/ui/button";
 
 export default async function HomePage() {
   const supabase = await createClient();
@@ -20,7 +22,12 @@ export default async function HomePage() {
           <p className="text-sm text-muted-foreground">{user?.email}</p>
         </div>
 
-        <LogoutButton />
+        <div className="flex flex-col items-center gap-3">
+          <Button asChild>
+            <Link href="/diagnostico">Iniciar Executive Diagnostic</Link>
+          </Button>
+          <LogoutButton />
+        </div>
       </div>
     </main>
   );

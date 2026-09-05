@@ -34,8 +34,12 @@ export async function updateSession(request: NextRequest) {
   const isPublicPath = PUBLIC_PATHS.some((path) =>
     request.nextUrl.pathname.startsWith(path)
   );
+  const isApiPath = request.nextUrl.pathname.startsWith("/api/");
 
-  if (!user && !isPublicPath) {
+  // Rotas de API respondem 401 por si mesmas — redirecionar quebraria fetch()
+  // se a sessão expirar no meio de uma chamada (o browser segue o redirect e
+  // recebe o HTML de /login como se fosse a resposta).
+  if (!user && !isPublicPath && !isApiPath) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
