@@ -40,3 +40,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# python (scripts vendorizados em .claude/skills/)
+__pycache__/
+*.pyc
