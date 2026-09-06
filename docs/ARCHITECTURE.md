@@ -283,13 +283,28 @@ em três lugares independentes, de propósito:
 3. `/api/mentor/validate` — a mesma checagem, de novo, porque é uma rota
    de escrita e não depende da página ter sido carregada primeiro.
 
-`/mentor` lista `executive_profiles` com `status = 'rascunho_agente'` via
-`createAdminClient()` (`src/lib/supabase/admin.ts`) — o único lugar do
-projeto que usa a `service_role` key, porque é o único caso real de
-"preciso ler dados que não são meus": o mentor lendo perfis de
-mentorados. Cada perfil é validado contra `ExecutiveProfileSchema`
-(`safeParse`) antes de renderizar — um registro que não bate com o schema
-aparece com aviso em vez de ser exibido às cegas.
+`/mentor` abre com **Meus mentorados** — todos os `mentees`, cada um com
+a sessão de diagnóstico e o perfil executivo mais recentes (duas queries
+únicas em `diagnostic_sessions`/`executive_profiles` ordenadas por data
+decrescente; `.find()` por `mentee_id` pega a mais recente de cada, sem
+N+1 nem `distinct on`). Estado por mentorado é derivado, não uma coluna:
+perfil `validado` → "Perfil validado"; sessão `concluida` sem perfil
+validado → "Aguardando validação"; sessão `em_andamento` → bloco atual;
+sem sessão → "Diagnóstico não iniciado" (`mentee-roster.tsx`). "Founding
+Cohort" é rótulo fixo, não uma tabela `cohorts` — `SPEC-SOFTWARE.md` §6
+já projeta essa tabela para Fase 1, quando houver de fato uma segunda
+turma; construir isso agora seria antecipar fase por uma métrica que hoje
+tem valor único, mesma lógica que já vale para mentor/admin serem a
+mesma pessoa (`SPEC-SOFTWARE.md` §3).
+
+Abaixo, a lista de `executive_profiles` com `status = 'rascunho_agente'`
+para validação — ambas as seções usam `createAdminClient()`
+(`src/lib/supabase/admin.ts`), o único lugar do projeto que usa a
+`service_role` key, porque é o único caso real de "preciso ler dados que
+não são meus": o mentor lendo dados de mentorados. Cada perfil é validado
+contra `ExecutiveProfileSchema` (`safeParse`) antes de renderizar — um
+registro que não bate com o schema aparece com aviso em vez de ser
+exibido às cegas.
 
 `POST /api/mentor/validate` promove `rascunho_agente` → `validado`
 (filtro `.eq("status", "rascunho_agente")` na própria query evita
@@ -350,6 +365,9 @@ botão "Sair") uma vez só, e cada página ganhou `flex-1` no lugar de
 | Token novo no tema (`--warning` / `--warning-soft`) | Único jeito de sinalizar "isto é confidencial, uso exclusivo do mentor" sem reaproveitar `destructive` (que já significa erro) nem inventar cor solta fora do sistema de tokens. |
 | `/`, `/diagnostico`, `/mentor` movidos para o route group `(app)` | Header compartilhado (voltar à home, sair) sem duplicar markup em três arquivos nem forçar `/login` a carregar algo que não precisa. |
 | Skill de terceiros `ui-ux-pro-max` vendorizada no projeto, não só consultada uma vez | Fica disponível pra qualquer sessão futura sem re-clonar; é dado/script local (MIT, sem rede) revisado antes de trazer. |
+| Token novo no tema (`--good` / `--good-soft`) | "Perfil validado" precisava de uma cor de sucesso — não existia nenhuma além de `warning`/`destructive`. |
+| "Meus mentorados" mostra "Founding Cohort" fixo, não uma tabela `cohorts` de verdade | `SPEC-SOFTWARE.md` §6 já projeta `cohorts` pra Fase 1 (quando houver segunda turma de fato); construir a tabela agora pra um valor que hoje é sempre o mesmo seria antecipar fase — mesma lógica que já vale pra mentor e admin serem a mesma pessoa. |
+| Status do mentorado (`mentee-roster.tsx`) é derivado de `diagnostic_sessions`/`executive_profiles`, não uma coluna própria | Nada de estado duplicado pra manter sincronizado — "concluído" é só ler `profile.status === 'validado'`, sempre correto por construção. |
 
 ---
 

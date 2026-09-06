@@ -5,6 +5,7 @@ import { isMentor } from "@/lib/mentor";
 import { ExecutiveProfileSchema } from "@/lib/agents/executive-profile-schema";
 import { ProfileDetail } from "./profile-detail";
 import { ValidateButton } from "./validate-button";
+import { MenteeRoster, type RosterEntry } from "./mentee-roster";
 
 export default async function MentorPage() {
   const supabase = await createClient();
@@ -19,24 +20,51 @@ export default async function MentorPage() {
   }
 
   const admin = createAdminClient();
-  const { data: pendentes, error } = await admin
-    .from("executive_profiles")
-    .select("id, version, perfil, created_at, mentees(email)")
-    .eq("status", "rascunho_agente")
-    .order("created_at", { ascending: true });
+
+  const [{ data: pendentes, error }, { data: mentees }, { data: sessions }, { data: profiles }] =
+    await Promise.all([
+      admin
+        .from("executive_profiles")
+        .select("id, version, perfil, created_at, mentees(email)")
+        .eq("status", "rascunho_agente")
+        .order("created_at", { ascending: true }),
+      admin.from("mentees").select("id, email").order("created_at", { ascending: true }),
+      admin
+        .from("diagnostic_sessions")
+        .select("mentee_id, status, current_block, started_at")
+        .order("started_at", { ascending: false }),
+      admin
+        .from("executive_profiles")
+        .select("mentee_id, status, version, created_at")
+        .order("created_at", { ascending: false }),
+    ]);
 
   if (error) {
     throw new Error("Falha ao carregar perfis pendentes.");
   }
 
+  // sessions e profiles vêm ordenados do mais recente pro mais antigo — o
+  // primeiro find() por mentee_id já pega a versão/sessão mais atual.
+  const roster: RosterEntry[] = (mentees ?? []).map((mentee) => ({
+    mentee,
+    session: sessions?.find((s) => s.mentee_id === mentee.id) ?? null,
+    profile: profiles?.find((p) => p.mentee_id === mentee.id) ?? null,
+  }));
+
   return (
-    <main className="mx-auto max-w-2xl px-6 py-10">
+    <main className="mx-auto max-w-3xl px-6 py-10">
       <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
         Mentor
       </p>
       <h1 className="mb-8 text-2xl font-semibold tracking-tight text-foreground">
-        Perfis aguardando validação
+        Meus mentorados
       </h1>
+
+      <MenteeRoster roster={roster} />
+
+      <h2 className="mb-6 mt-12 text-lg font-semibold tracking-tight text-foreground">
+        Perfis aguardando validação
+      </h2>
 
       {pendentes.length === 0 && (
         <p className="text-sm text-muted-foreground">Nenhum perfil pendente no momento.</p>
