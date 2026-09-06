@@ -19,7 +19,7 @@ Fase 1+.
 
 **Todas as 5 entregas da Fase 0 estão feitas em código.** Nenhuma foi
 testada ainda contra Supabase e Anthropic reais — só contra placeholders,
-para validar build e tipos (ver §9).
+para validar build e tipos (ver §8).
 
 | Entrega | Status |
 |---|---|
@@ -425,7 +425,7 @@ A Fase 0 está com as 5 entregas escritas. O que falta agora não é mais
    avaliação migrar as execuções que fizerem sentido para o formato de
    Skills, para alinhar com a prática recomendada de organização de
    agentes.
-3. **Validação ponta a ponta pendente**: nenhuma das Entregas 1-4 rodou
-   ainda contra um Supabase e uma `ANTHROPIC_API_KEY` reais — só contra
-   placeholders, para validar build/tipos. Falta confirmar login real,
-   streaming real, e a síntese do perfil rodando contra a API de verdade.
+
+Checklist completo do que está pendente — incluindo o que só um humano pode
+fazer (credenciais, contas, decisões de produto) — em
+`docs/HUMAN-CHECKLIST.md`.
