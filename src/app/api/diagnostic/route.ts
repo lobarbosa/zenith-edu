@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { DIAGNOSTIC_SYSTEM_PROMPT } from "@/lib/agents/diagnostic-prompt";
 import { DIAGNOSTIC_KICKOFF_MESSAGE, DIAGNOSTIC_META_MARKER } from "@/lib/agents/diagnostic-kickoff";
 import { classifyDiagnosticProgress } from "@/lib/agents/diagnostic-block-classifier";
+import { synthesizeExecutiveProfile } from "@/lib/agents/executive-profile";
 import { costUsd } from "@/lib/agents/pricing";
 
 const anthropic = new Anthropic();
@@ -29,7 +30,7 @@ export async function POST(request: Request) {
   // RLS garante que só retorna a sessão se pertencer ao usuário autenticado.
   const { data: session } = await supabase
     .from("diagnostic_sessions")
-    .select("id, status, current_block")
+    .select("id, status, current_block, mentee_id")
     .eq("id", sessionId)
     .single();
 
@@ -42,6 +43,7 @@ export async function POST(request: Request) {
   }
 
   const currentBlock = session.current_block;
+  const menteeId = session.mentee_id;
 
   const rawMessage = typeof body.message === "string" ? body.message.trim() : "";
   const hasMessage = rawMessage.length > 0 && rawMessage.length <= MAX_MESSAGE_LENGTH;
@@ -127,6 +129,10 @@ export async function POST(request: Request) {
           custo_usd: Number(current?.custo_usd ?? 0) + conversationCost + classification.custoUsd,
         })
         .eq("id", sessionId);
+
+      if (classification.concluido) {
+        await synthesizeExecutiveProfile(supabase, { id: sessionId, mentee_id: menteeId });
+      }
 
       const meta = JSON.stringify({ bloco: classification.bloco, concluido: classification.concluido });
       controller.enqueue(encoder.encode(`${DIAGNOSTIC_META_MARKER}${meta}`));
