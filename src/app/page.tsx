@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { isMentor } from "@/lib/mentor";
 import { LogoutButton } from "@/components/logout-button";
 import { Button } from "@/components/ui/button";
 
@@ -8,6 +9,8 @@ export default async function HomePage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  const mentor = isMentor(user?.email);
 
   return (
     <main className="flex min-h-screen items-center justify-center px-6">
@@ -23,9 +26,15 @@ export default async function HomePage() {
         </div>
 
         <div className="flex flex-col items-center gap-3">
-          <Button asChild>
-            <Link href="/diagnostico">Iniciar Executive Diagnostic</Link>
-          </Button>
+          {mentor ? (
+            <Button asChild>
+              <Link href="/mentor">Ir para o Mentor</Link>
+            </Button>
+          ) : (
+            <Button asChild>
+              <Link href="/diagnostico">Iniciar Executive Diagnostic</Link>
+            </Button>
+          )}
           <LogoutButton />
         </div>
       </div>

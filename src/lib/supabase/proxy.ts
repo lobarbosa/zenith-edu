@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { isMentor } from "@/lib/mentor";
 
 const PUBLIC_PATHS = ["/login", "/auth/callback"];
 
@@ -46,6 +47,15 @@ export async function updateSession(request: NextRequest) {
   }
 
   if (user && request.nextUrl.pathname === "/login") {
+    const url = request.nextUrl.clone();
+    url.pathname = "/";
+    return NextResponse.redirect(url);
+  }
+
+  // Checagem otimista de UX — cada rota de /mentor/* e /api/mentor/*
+  // reconfirma isMentor() por conta própria antes de usar o client admin.
+  const isMentorPagePath = !isApiPath && request.nextUrl.pathname.startsWith("/mentor");
+  if (user && isMentorPagePath && !isMentor(user.email)) {
     const url = request.nextUrl.clone();
     url.pathname = "/";
     return NextResponse.redirect(url);

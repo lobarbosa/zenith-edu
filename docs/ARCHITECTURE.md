@@ -17,13 +17,17 @@ conduzindo o Executive Diagnostic, síntese do Perfil Executivo e validação
 pelo mentor. Nenhum copiloto, orquestrador, RAG ou Mentor Console — isso é
 Fase 1+.
 
+**Todas as 5 entregas da Fase 0 estão feitas em código.** Nenhuma foi
+testada ainda contra Supabase e Anthropic reais — só contra placeholders,
+para validar build e tipos (ver §9).
+
 | Entrega | Status |
 |---|---|
 | 1. Auth por magic link | ✅ feita |
 | 2. `/diagnostico` — conversa em 8 blocos com streaming | ✅ feita |
 | 3. Persistência de mensagens e controle de bloco | ✅ feita |
 | 4. Síntese do Perfil Executivo em JSON | ✅ feita |
-| 5. `/mentor` — leitura e validação do perfil | ⬜ próxima |
+| 5. `/mentor` — leitura e validação do perfil | ✅ feita |
 
 ---
 
@@ -262,6 +266,42 @@ browser); a mensagem de kickoff e o marcador de metadados, que são
 inofensivos, ficam separados em `diagnostic-kickoff.ts` justamente para
 serem seguros de importar do lado do cliente.
 
+### 5.5 `/mentor` — leitura e validação (Entrega 5)
+
+`MENTOR_EMAILS` (variável de ambiente, lista separada por vírgula) é a
+única fonte de verdade sobre quem é mentor — sem tabela, sem coluna
+`papel`. `src/lib/mentor.ts` (`isMentor(email)`) é a função única chamada
+em três lugares independentes, de propósito:
+
+1. `proxy.ts` — redireciona `/mentor/*` para `/` se não for mentor. Isso é
+   só uma camada de UX (o próprio `proxy.ts` já documentava essa ressalva
+   desde a Entrega 1: "otimista", não a autorização real — middleware pode
+   não rodar em todo caminho de execução).
+2. `/mentor/page.tsx` — a checagem que efetivamente decide se
+   `createAdminClient()` (service role, bypassa RLS) é usado. Sem essa
+   checagem local, um bug no `proxy.ts` viraria acesso cross-mentorado.
+3. `/api/mentor/validate` — a mesma checagem, de novo, porque é uma rota
+   de escrita e não depende da página ter sido carregada primeiro.
+
+`/mentor` lista `executive_profiles` com `status = 'rascunho_agente'` via
+`createAdminClient()` (`src/lib/supabase/admin.ts`) — o único lugar do
+projeto que usa a `service_role` key, porque é o único caso real de
+"preciso ler dados que não são meus": o mentor lendo perfis de
+mentorados. Cada perfil é validado contra `ExecutiveProfileSchema`
+(`safeParse`) antes de renderizar — um registro que não bate com o schema
+aparece com aviso em vez de ser exibido às cegas.
+
+`POST /api/mentor/validate` promove `rascunho_agente` → `validado`
+(filtro `.eq("status", "rascunho_agente")` na própria query evita
+revalidar um duplo clique). Nenhuma outra transição de status existe
+ainda — não há "rejeitar" ou "pedir nova versão" nesta fase.
+
+A home (`/`) agora é sensível a papel: mentor vê "Ir para o Mentor",
+mentorado vê "Iniciar Executive Diagnostic". `ensureMentee` continua
+rodando para qualquer login (inclusive o do mentor) — criar uma linha em
+`mentees` não usada para o mentor é um efeito colateral inofensivo,
+não vale complicar `/auth/callback` para evitá-lo agora.
+
 ---
 
 ## 6. Decisões técnicas registradas
@@ -278,6 +318,8 @@ serem seguros de importar do lado do cliente.
 | Saída do perfil via `messages.parse` + `zodOutputFormat` (Zod), não texto livre + `JSON.parse` | "Exatamente três gaps" e o resto do schema são regra dura da spec — melhor a API impor a forma na geração do que validar depois e torcer. Único ponto do projeto que usa uma lib de validação; adicionada por isso, não por hábito. |
 | Síntese do perfil dispara de dentro de `/api/diagnostic`, não só pela rota `/api/profile` | Sem fila/job em background na Fase 0 — se o gatilho fosse só o cliente chamar `/api/profile` depois do `router.refresh()`, uma aba fechada no momento certo deixaria o perfil sem ser gerado. O servidor garante que roda uma vez, no mesmo request que fecha a sessão. |
 | Insert em `executive_profiles` sem `service_role`, com policy travando `status = 'rascunho_agente'` | O conteúdo do perfil nunca vem de input do cliente (sempre do Opus); o único risco é auto-validação via REST direta, que a policy já impede. `service_role` fica reservado para quando for genuinamente necessário — leitura cross-mentorado do mentor, na Entrega 5. |
+| `isMentor()` checado em três lugares (`proxy.ts`, página, rota) em vez de confiar só no middleware | `proxy`/middleware é checagem otimista por natureza — a autorização real tem que estar em cada lugar que decide usar a `service_role` key. |
+| Token novo no tema (`--warning` / `--warning-soft`) | Único jeito de sinalizar "isto é confidencial, uso exclusivo do mentor" sem reaproveitar `destructive` (que já significa erro) nem inventar cor solta fora do sistema de tokens. |
 
 ---
 
@@ -297,11 +339,22 @@ serem seguros de importar do lado do cliente.
 
 ## 8. Próximos passos
 
-1. **Entrega 5 — `/mentor`**: leitura dos perfis pendentes e ação de
-   validação (`rascunho_agente` → `validado`), atrás da allowlist de
-   e-mail via `service_role`. Precisa de `SUPABASE_SERVICE_ROLE_KEY`
-   configurada de verdade para testar ponta a ponta.
-2. **Em aberto, fora da ordem das entregas**: revisão da organização dos
+A Fase 0 está com as 5 entregas escritas. O que falta agora não é mais
+"próxima entrega" na ordem da spec — é validar e corrigir:
+
+1. **Validação ponta a ponta com credenciais reais** (bloqueia tudo
+   abaixo): Supabase real com as três migrations aplicadas, `MENTOR_EMAILS`
+   com pelo menos um e-mail de teste, `ANTHROPIC_API_KEY` real. Rodar o
+   fluxo inteiro uma vez: login → 8 blocos → perfil sintetizado →
+   `/mentor` → validar. Cada camada foi validada isoladamente (tipos,
+   build, RLS lida na policy, uma tela por vez com dado fake) mas nunca
+   de ponta a ponta contra o Supabase e a Anthropic de verdade.
+2. **Correções do que "ficou pra trás"** — a se levantar durante essa
+   validação e junto com o usuário: por exemplo, `ensureMentee` criando
+   linha de mentee também para o mentor (§5.5), ausência de forma de
+   "rejeitar" um perfil (só existe validar), e o que mais aparecer
+   rodando de verdade.
+3. **Em aberto, fora da ordem das entregas**: revisão da organização dos
    agentes — hoje cada peça (prompt, classificador, precificação, síntese
    de perfil) é um módulo TypeScript comum sob `src/lib/agents/`; está em
    avaliação migrar as execuções que fizerem sentido para o formato de

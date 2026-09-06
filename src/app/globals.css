@@ -30,6 +30,9 @@
   --destructive: #b91c1c;
   --destructive-foreground: #ffffff;
 
+  --warning: #8a5a00;
+  --warning-soft: #faf1de;
+
   --border: #e4e4e7;
   --input: #e4e4e7;
   --ring: #16264d;
@@ -52,6 +55,8 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
