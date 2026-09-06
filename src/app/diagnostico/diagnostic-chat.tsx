@@ -162,6 +162,7 @@ export function DiagnosticChat({
           disabled={isStreaming}
           rows={2}
           placeholder="Responda aqui..."
+          aria-label="Sua resposta ao Executive Diagnostic"
           className="flex-1 resize-none rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/50 disabled:opacity-50"
         />
         <Button type="submit" disabled={isStreaming || !input.trim()}>
