@@ -302,6 +302,34 @@ rodando para qualquer login (inclusive o do mentor) — criar uma linha em
 `mentees` não usada para o mentor é um efeito colateral inofensivo,
 não vale complicar `/auth/callback` para evitá-lo agora.
 
+### 5.6 Revisão de UI/UX e layout compartilhado
+
+Desktop apenas — decisão explícita; regras de touch/mobile da skill
+`ui-ux-pro-max` (ver `.claude/skills/ui-ux-pro-max/`, vendorizada no
+projeto) não se aplicam aqui.
+
+Achados reais da revisão, com o que foi feito:
+
+| Achado | Ação |
+|---|---|
+| Textarea de resposta do diagnóstico sem nome acessível (só placeholder) | `aria-label`, sem label visível — mantém a estética do chat |
+| `/diagnostico` e `/mentor` buscam dado em server component sem UI de carregamento | `loading.tsx` em cada um |
+| `/diagnostico` e `/mentor` não tinham nenhuma forma de voltar à home ou sair (só editando a URL) | Route group `(app)` com layout compartilhado (`(app)/layout.tsx` + `(app)/app-header.tsx`) — ver abaixo |
+| Contraste de cor (paleta inteira) | Calculado (WCAG), todos os pares passam AA (>= 4.5:1) — nada a mudar |
+| Paleta navy vs. "profissional B2B/executivo" | Confirma alinhamento — nada a mudar |
+| Server/Client Component split | Já seguia a prática — nada a mudar |
+| Streaming token a token | Já é o padrão certo pra UI de IA — nada a mudar |
+| Empty state de `/mentor` | Já tinha mensagem, não silêncio — nada a mudar |
+| Resumo de erro no topo do formulário | Não se aplica — nossos formulários são de campo único, não multi-campo |
+
+`/`, `/diagnostico` e `/mentor` viraram um route group `(app)` —
+`src/app/(app)/`. Parênteses no nome da pasta não entram na URL (Next.js
+App Router), só agrupam rotas que compartilham layout; `/login`,
+`/auth/callback` e `/api/*` ficam de fora, sem esse header. O layout
+(`(app)/layout.tsx`) renderiza `<AppHeader />` (marca + link pra "/" +
+botão "Sair") uma vez só, e cada página ganhou `flex-1` no lugar de
+`min-h-screen` pra não duplicar altura de viewport dentro do layout.
+
 ---
 
 ## 6. Decisões técnicas registradas
@@ -320,6 +348,8 @@ não vale complicar `/auth/callback` para evitá-lo agora.
 | Insert em `executive_profiles` sem `service_role`, com policy travando `status = 'rascunho_agente'` | O conteúdo do perfil nunca vem de input do cliente (sempre do Opus); o único risco é auto-validação via REST direta, que a policy já impede. `service_role` fica reservado para quando for genuinamente necessário — leitura cross-mentorado do mentor, na Entrega 5. |
 | `isMentor()` checado em três lugares (`proxy.ts`, página, rota) em vez de confiar só no middleware | `proxy`/middleware é checagem otimista por natureza — a autorização real tem que estar em cada lugar que decide usar a `service_role` key. |
 | Token novo no tema (`--warning` / `--warning-soft`) | Único jeito de sinalizar "isto é confidencial, uso exclusivo do mentor" sem reaproveitar `destructive` (que já significa erro) nem inventar cor solta fora do sistema de tokens. |
+| `/`, `/diagnostico`, `/mentor` movidos para o route group `(app)` | Header compartilhado (voltar à home, sair) sem duplicar markup em três arquivos nem forçar `/login` a carregar algo que não precisa. |
+| Skill de terceiros `ui-ux-pro-max` vendorizada no projeto, não só consultada uma vez | Fica disponível pra qualquer sessão futura sem re-clonar; é dado/script local (MIT, sem rede) revisado antes de trazer. |
 
 ---
 

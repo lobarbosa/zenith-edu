@@ -1,6 +1,6 @@
 export function DiagnosticComplete() {
   return (
-    <main className="flex min-h-screen items-center justify-center px-6">
+    <main className="flex flex-1 items-center justify-center px-6">
       <div className="w-full max-w-sm space-y-3 text-center">
         <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
           Executive Diagnostic
