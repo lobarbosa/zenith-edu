@@ -1,19 +1,25 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { DIAGNOSTIC_KICKOFF_MESSAGE } from "@/lib/agents/diagnostic-kickoff";
+import {
+  DIAGNOSTIC_KICKOFF_MESSAGE,
+  DIAGNOSTIC_META_MARKER,
+} from "@/lib/agents/diagnostic-kickoff";
 
 type Message = { role: "user" | "assistant"; content: string };
+type DiagnosticMeta = { bloco: number; concluido: boolean };
 
 async function streamReply(
-  history: Message[],
+  sessionId: string,
+  message: string | null,
   onDelta: (chunk: string) => void
 ) {
   const response = await fetch("/api/diagnostic", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ messages: history }),
+    body: JSON.stringify({ sessionId, message }),
   });
 
   if (!response.ok || !response.body) {
@@ -22,16 +28,35 @@ async function streamReply(
 
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
+  let full = "";
 
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
-    onDelta(decoder.decode(value, { stream: true }));
+    full += decoder.decode(value, { stream: true });
+    const markerIndex = full.indexOf(DIAGNOSTIC_META_MARKER);
+    onDelta(markerIndex === -1 ? full : full.slice(0, markerIndex));
+  }
+
+  const markerIndex = full.indexOf(DIAGNOSTIC_META_MARKER);
+  if (markerIndex === -1) return null;
+
+  try {
+    return JSON.parse(full.slice(markerIndex + DIAGNOSTIC_META_MARKER.length)) as DiagnosticMeta;
+  } catch {
+    return null;
   }
 }
 
-export function DiagnosticChat() {
-  const [messages, setMessages] = useState<Message[]>([]);
+export function DiagnosticChat({
+  sessionId,
+  initialMessages,
+}: {
+  sessionId: string;
+  initialMessages: Message[];
+}) {
+  const router = useRouter();
+  const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState(false);
@@ -43,26 +68,34 @@ export function DiagnosticChat() {
   }, [messages]);
 
   useEffect(() => {
-    if (started.current) return;
+    if (started.current || initialMessages.length > 0) return;
     started.current = true;
-    void runTurn([{ role: "user", content: DIAGNOSTIC_KICKOFF_MESSAGE }]);
+    void runTurn(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function runTurn(history: Message[]) {
+  async function runTurn(userText: string | null) {
     setIsStreaming(true);
     setError(false);
-    setMessages([...history, { role: "assistant", content: "" }]);
+
+    setMessages((current) => [
+      ...current,
+      ...(userText ? [{ role: "user" as const, content: userText }] : []),
+      { role: "assistant" as const, content: "" },
+    ]);
 
     try {
-      let full = "";
-      await streamReply(history, (chunk) => {
-        full += chunk;
+      const meta = await streamReply(sessionId, userText, (text) => {
         setMessages((current) => {
           const next = [...current];
-          next[next.length - 1] = { role: "assistant", content: full };
+          next[next.length - 1] = { role: "assistant", content: text };
           return next;
         });
       });
+
+      if (meta?.concluido) {
+        router.refresh();
+      }
     } catch {
       setError(true);
     } finally {
@@ -73,14 +106,13 @@ export function DiagnosticChat() {
   function submitMessage() {
     const trimmed = input.trim();
     if (!trimmed || isStreaming) return;
-
-    const history: Message[] = [
-      ...messages,
-      { role: "user", content: trimmed },
-    ];
     setInput("");
-    void runTurn(history);
+    void runTurn(trimmed);
   }
+
+  const visibleMessages = messages.filter(
+    (message) => message.content !== DIAGNOSTIC_KICKOFF_MESSAGE
+  );
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col px-6">
@@ -91,19 +123,16 @@ export function DiagnosticChat() {
       </header>
 
       <div className="flex-1 space-y-8 pb-8">
-        {messages
-          .map((message, index) => ({ message, index }))
-          .filter(({ message }) => message.content !== DIAGNOSTIC_KICKOFF_MESSAGE)
-          .map(({ message, index }) => (
-            <div key={index} className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground">
-                {message.role === "user" ? "Você" : "Agente"}
-              </p>
-              <p className="whitespace-pre-wrap text-base leading-relaxed text-foreground">
-                {message.content || (isStreaming && index === messages.length - 1 ? "..." : "")}
-              </p>
-            </div>
-          ))}
+        {visibleMessages.map((message, index) => (
+          <div key={index} className="space-y-1">
+            <p className="text-xs font-medium text-muted-foreground">
+              {message.role === "user" ? "Você" : "Agente"}
+            </p>
+            <p className="whitespace-pre-wrap text-base leading-relaxed text-foreground">
+              {message.content || (isStreaming && index === visibleMessages.length - 1 ? "..." : "")}
+            </p>
+          </div>
+        ))}
 
         {error && (
           <p className="text-sm text-destructive">
