@@ -317,6 +317,21 @@ rodando para qualquer login (inclusive o do mentor) — criar uma linha em
 `mentees` não usada para o mentor é um efeito colateral inofensivo,
 não vale complicar `/auth/callback` para evitá-lo agora.
 
+Clicar no nome de um mentorado na lista leva a `/mentor/[menteeId]` — a
+visão 360° daquele mentorado: dados de cadastro, sessão de diagnóstico
+completa (métricas de iniciado/concluído/tokens/custo e a transcrição
+inteira via `transcript.tsx`) e o histórico completo de
+`executive_profiles` daquele mentorado — não só a versão pendente, todas
+as versões, cada uma com seu `status`. `menteeStatus()` (antes vivendo
+dentro de `mentee-roster.tsx`) foi extraída para `mentee-status.ts` para
+ser compartilhada entre a lista e o detalhe sem duplicar a lógica de
+derivação de estado. A mesma checagem `isMentor()` de `/mentor` se repete
+aqui, independente — é rota nova, então é checagem nova, mesma razão do
+padrão descrito acima. `params` é `Promise<{ menteeId: string }>` (Next.js
+16) e a página usa o helper de tipo global `PageProps<'/mentor/[menteeId]'>`
+(mesma convenção de `LayoutProps<"/">` já usada em `layout.tsx` raiz) em
+vez de tipar `params` manualmente.
+
 ### 5.6 Revisão de UI/UX e layout compartilhado
 
 Desktop apenas — decisão explícita; regras de touch/mobile da skill
@@ -368,6 +383,8 @@ botão "Sair") uma vez só, e cada página ganhou `flex-1` no lugar de
 | Token novo no tema (`--good` / `--good-soft`) | "Perfil validado" precisava de uma cor de sucesso — não existia nenhuma além de `warning`/`destructive`. |
 | "Meus mentorados" mostra "Founding Cohort" fixo, não uma tabela `cohorts` de verdade | `SPEC-SOFTWARE.md` §6 já projeta `cohorts` pra Fase 1 (quando houver segunda turma de fato); construir a tabela agora pra um valor que hoje é sempre o mesmo seria antecipar fase — mesma lógica que já vale pra mentor e admin serem a mesma pessoa. |
 | Status do mentorado (`mentee-roster.tsx`) é derivado de `diagnostic_sessions`/`executive_profiles`, não uma coluna própria | Nada de estado duplicado pra manter sincronizado — "concluído" é só ler `profile.status === 'validado'`, sempre correto por construção. |
+| `/mentor/[menteeId]` mostra todas as versões de `executive_profiles`, não só a pendente | "Visão 360°" pedida explicitamente inclui o histórico — a lista em `/mentor` já filtra por `rascunho_agente` pra fila de validação, o detalhe é o lugar certo pra ver tudo. |
+| `menteeStatus()` extraída de `mentee-roster.tsx` para `mentee-status.ts` | Lista e detalhe precisavam da mesma derivação de estado — duplicar a função criaria duas fontes de verdade pra divergir. |
 
 ---
 

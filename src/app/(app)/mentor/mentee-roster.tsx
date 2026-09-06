@@ -1,33 +1,12 @@
+import Link from "next/link";
 import { StatusPill } from "@/components/status-pill";
-
-type Session = {
-  status: "em_andamento" | "concluida";
-  current_block: number;
-} | null;
-
-type Profile = {
-  status: "rascunho_agente" | "validado";
-  version: number;
-} | null;
+import { menteeStatus, type Session, type Profile } from "./mentee-status";
 
 export type RosterEntry = {
   mentee: { id: string; email: string };
   session: Session;
   profile: Profile;
 };
-
-function menteeStatus(session: Session, profile: Profile) {
-  if (profile?.status === "validado") {
-    return { label: "Perfil validado", tone: "good" as const };
-  }
-  if (session?.status === "concluida") {
-    return { label: "Aguardando validação", tone: "warning" as const };
-  }
-  if (session?.status === "em_andamento") {
-    return { label: `Diagnóstico em andamento — bloco ${session.current_block} de 8`, tone: "neutral" as const };
-  }
-  return { label: "Diagnóstico não iniciado", tone: "neutral" as const };
-}
 
 export function MenteeRoster({ roster }: { roster: RosterEntry[] }) {
   if (roster.length === 0) {
@@ -39,9 +18,10 @@ export function MenteeRoster({ roster }: { roster: RosterEntry[] }) {
       {roster.map(({ mentee, session, profile }) => {
         const status = menteeStatus(session, profile);
         return (
-          <div
+          <Link
             key={mentee.id}
-            className="flex items-center justify-between gap-4 border-b border-border py-3 last:border-b-0"
+            href={`/mentor/${mentee.id}`}
+            className="flex items-center justify-between gap-4 border-b border-border py-3 outline-none last:border-b-0 hover:bg-secondary/50 focus-visible:ring-2 focus-visible:ring-ring/50"
           >
             <div>
               <p className="text-sm font-medium text-foreground">{mentee.email}</p>
@@ -53,7 +33,7 @@ export function MenteeRoster({ roster }: { roster: RosterEntry[] }) {
               )}
               <StatusPill tone={status.tone}>{status.label}</StatusPill>
             </div>
-          </div>
+          </Link>
         );
       })}
     </div>
