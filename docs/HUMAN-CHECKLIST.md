@@ -1,7 +1,21 @@
 # Checklist de construção humana
 
-Levantado numa revisão completa do projeto, atualizado depois da
-validação de ponta a ponta contra Supabase e Anthropic reais.
+Levantado numa revisão completa do projeto, atualizado depois do início
+da Fase 1 (infraestrutura do corpus de conhecimento).
+
+## 0. Fase 1 — bloqueante pra corpus virar realidade
+
+- [ ] **Rodar `supabase/migrations/0004_fase1_schema.sql`** no SQL Editor
+      do Supabase, na sequência das três primeiras (mesmo editor de antes).
+- [ ] **`VOYAGE_API_KEY`** — criar conta em https://dash.voyageai.com,
+      gerar a chave e adicionar em `.env.local` (local) e nas Environment
+      Variables da Vercel (produção). Usada só em `/api/knowledge/ingest`.
+- [ ] **Conteúdo real dos 10 playbooks/frameworks/transcrições/casos/
+      bibliografia** — é o IP do programa, ninguém além de você consegue
+      escrever isso. Sem ele, `POST /api/knowledge/ingest` funciona mas o
+      corpus fica vazio, e os copilotos (quando existirem) responderiam
+      genérico — exatamente o risco que a spec aponta como o mais alto da
+      Fase 1.
 
 ## 1. Bloqueante — resolvido ✅
 

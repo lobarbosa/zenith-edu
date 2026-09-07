@@ -12,10 +12,9 @@ está certo e este documento está desatualizado — corrija-o.
 
 ## 1. Visão geral
 
-Estamos na **Fase 0** (ver `CLAUDE.md`): autenticação, o Diagnostic Agent
-conduzindo o Executive Diagnostic, síntese do Perfil Executivo e validação
-pelo mentor. Nenhum copiloto, orquestrador, RAG ou Mentor Console — isso é
-Fase 1+.
+**Fase 0** (ver `CLAUDE.md`) está completa e validada: autenticação, o
+Diagnostic Agent conduzindo o Executive Diagnostic, síntese do Perfil
+Executivo e validação pelo mentor.
 
 **As 5 entregas da Fase 0 estão feitas em código e validadas de ponta a
 ponta contra Supabase e Anthropic reais** (login → 8 blocos do
@@ -29,6 +28,18 @@ encontrou e corrigiu um bug real — ver §6.
 | 3. Persistência de mensagens e controle de bloco | ✅ feita e validada ao vivo |
 | 4. Síntese do Perfil Executivo em JSON | ✅ feita e validada ao vivo |
 | 5. `/mentor` — leitura e validação do perfil | ✅ feita e validada ao vivo |
+
+**Fase 1** (`SPEC-SOFTWARE.md` §15: corpus ingerido → orquestrador → Career
+Copilot → artefatos de FIND → `/jornada`) começou. Primeira entrega —
+infraestrutura do corpus — está em código; o resto da lista ainda não.
+
+| Entrega (ordem da spec) | Status |
+|---|---|
+| Schema Fase 1 completo (`0004_fase1_schema.sql`) + `/api/knowledge/ingest` | ✅ feita, aguardando migration rodar e `VOYAGE_API_KEY` |
+| Orquestrador (roteador + gate de etapa liberada) | não iniciado |
+| Career Copilot | não iniciado |
+| Artefatos de FIND (`career_map`, `competency_map`, `next_chair_map`) | não iniciado |
+| `/jornada` | não iniciado |
 
 ---
 
@@ -372,7 +383,7 @@ botão "Sair") uma vez só, e cada página ganhou `flex-1` no lugar de
 | `/api/*` responde 401 em vez de redirecionar | Redirect quebraria `fetch()` de streaming se a sessão expirar no meio de uma chamada. |
 | Controle de bloco via classificador Haiku separado, não via o próprio Diagnostic Agent | O prompt do agente (fonte de verdade) não deveria ser alterado para emitir metadados estruturados só por conveniência de engenharia — mais barato e mais seguro rodar uma leitura auxiliar depois. |
 | shadcn/ui configurado manualmente | `ui.shadcn.com` (usado pelo CLI oficial) não está acessível no ambiente de desenvolvimento; o resultado é equivalente. |
-| Sem `agent_runs` genérica ainda | Essa tabela (Fase 1) cobre todos os agentes e cohorts; para a Fase 0, bastam colunas de custo direto em `diagnostic_sessions`. |
+| `agent_runs` existe desde a migration Fase 1 (`0004`) mas nada escreve nela ainda | Tabela criada junto do resto do schema Fase 1 porque várias FKs dependiam de existir de uma vez; o wrapper de chamada que grava nela é trabalho do orquestrador, ainda não construído. |
 | Acesso do mentor via `service_role` + allowlist de e-mail, sem tabela de papel | Decisão explícita para não antecipar "papéis, permissões granulares", que o `CLAUDE.md` exclui da Fase 0. |
 | Saída do perfil via `messages.parse` + `zodOutputFormat` (Zod), não texto livre + `JSON.parse` | "Exatamente três gaps" e o resto do schema são regra dura da spec — melhor a API impor a forma na geração do que validar depois e torcer. Único ponto do projeto que usa uma lib de validação; adicionada por isso, não por hábito. |
 | Síntese do perfil dispara de dentro de `/api/diagnostic`, não só pela rota `/api/profile` | Sem fila/job em background na Fase 0 — se o gatilho fosse só o cliente chamar `/api/profile` depois do `router.refresh()`, uma aba fechada no momento certo deixaria o perfil sem ser gerado. O servidor garante que roda uma vez, no mesmo request que fecha a sessão. |
@@ -387,6 +398,13 @@ botão "Sair") uma vez só, e cada página ganhou `flex-1` no lugar de
 | `/mentor/[menteeId]` mostra todas as versões de `executive_profiles`, não só a pendente | "Visão 360°" pedida explicitamente inclui o histórico — a lista em `/mentor` já filtra por `rascunho_agente` pra fila de validação, o detalhe é o lugar certo pra ver tudo. |
 | `menteeStatus()` extraída de `mentee-roster.tsx` para `mentee-status.ts` | Lista e detalhe precisavam da mesma derivação de estado — duplicar a função criaria duas fontes de verdade pra divergir. |
 | Classificador de bloco extrai o JSON do texto com regex antes do `parse`, em vez de fazer `JSON.parse` direto | Na validação ao vivo, o Haiku às vezes envolve a resposta em ` ```json ` apesar do prompt pedir JSON puro — o parse falhava em silêncio (catch genérico) e a sessão travava para sempre no bloco 1. Achado rodando o fluxo completo contra a Anthropic real pela primeira vez. |
+| Migration `0004_fase1_schema.sql` traz o schema Fase 1 inteiro de uma vez (`cohorts` até `agent_runs`), não tabela por tabela | As FKs entre elas (`conversations` → `messages`, `artifacts` → `conversations`, etc.) fariam qualquer ordem parcial precisar de migrations de remendo depois. A entrega em si continua sendo só uma peça ("infraestrutura do corpus") — orquestrador, copilotos e UI vêm em entregas separadas, na ordem do `SPEC-SOFTWARE.md` §15. |
+| `messages.block` só teve o `not null` removido, sem tocar no `check` | `block between 1 and 8` já é satisfeito por `NULL` em SQL (lógica de três valores — a expressão avalia `NULL`, não `false`), então a constraint existente já aceitava mensagem de conversa com copiloto sem `block`. Mudar o check seria trabalho redundante. |
+| `knowledge_documents`/`knowledge_chunks` sem nenhuma RLS policy (nem para o mentorado, nem para o mentor) | É o corpus (IP do produto) — só a rota de ingestão e o RAG (ambos futuros, rodando com `service_role` no servidor) tocam essas tabelas. `SPEC-SOFTWARE.md` §6: "nunca retornado bruto ao cliente." Nenhum caminho client-side deveria conseguir ler, então nenhuma policy é a trava mais simples. |
+| `mentor_flags` sem policy de select para ninguém além de `service_role` | `SPEC-AGENTS.md` §13 é explícito: sinal "nunca é devolvido ao mentorado, nem insinuado". Sem policy é mais forte que uma policy que tenta filtrar por papel — não existe tabela de papel ainda pra confiar nisso. |
+| Embedding via Voyage AI (`voyage-3-lite`), chamado com `fetch()` puro, sem SDK novo no `package.json` | Peça nova de stack, perguntada e confirmada antes de escrever código (`CLAUDE.md` proíbe trocar/introduzir peça sem perguntar). `voyage-3-lite` gera 1024 dimensões nativas, batendo exato com `vector(1024)` da spec. Sem SDK porque a API é uma chamada REST simples — adicionar dependência só pra isso seria peso sem necessidade. |
+| Chunking aproxima token por palavra (`~0,75 palavra/token`), sem tokenizer no projeto | `SPEC-SOFTWARE.md` §9 pede "~800 tokens, sobreposição de ~100"; sem uma lib de tokenização (que também seria peça nova de stack), a aproximação por contagem de palavra é suficiente pro tamanho de chunk ser consistente — precisão exata de token não muda o resultado da busca por similaridade. |
+| `/api/knowledge/ingest` reusa `isMentor()` em vez de checar a coluna `papel` nova | `SPEC-SOFTWARE.md` §3: "mentor e admin são a mesma pessoa nas primeiras turmas... separar na UI só quando houver segunda pessoa." A coluna `papel` existe no schema (spec pede isso desde já), mas nada a lê ainda — seria antecipar separação de papel que a própria spec manda não antecipar. |
 
 ---
 
@@ -431,6 +449,35 @@ agentes — hoje cada peça (prompt, classificador, precificação, síntese
 de perfil) é um módulo TypeScript comum sob `src/lib/agents/`; está em
 avaliação migrar as execuções que fizerem sentido para o formato de
 Skills, para alinhar com a prática recomendada de organização de agentes.
+
+**Deploy**: PR #1 foi mergeado em `main`; deploy na Vercel + domínio
+próprio em andamento, conduzido pelo usuário (fora do escopo desta sessão
+de código — ver checklist de configuração externa).
+
+**Fase 1 começou** (`SPEC-SOFTWARE.md` §15, ordem: corpus → orquestrador →
+Career Copilot → artefatos FIND → `/jornada`). Primeira entrega —
+infraestrutura do corpus — está em código:
+
+- `supabase/migrations/0004_fase1_schema.sql`: schema Fase 1 completo
+  (`cohorts`, `journey_state`, `conversations`, `attachments`, `artifacts`,
+  `knowledge_documents`, `knowledge_chunks`, `mentor_flags`,
+  `mentor_notes`, `agent_runs`), extensão `pgvector`, RLS em tudo.
+- `POST /api/knowledge/ingest`: recebe um documento (título, tipo, pilar,
+  conteúdo), faz chunking (`src/lib/knowledge/chunking.ts`) e embedding via
+  Voyage AI (`src/lib/knowledge/embeddings.ts`), persiste em
+  `knowledge_documents`/`knowledge_chunks`. Protegido por `isMentor()`.
+
+**Falta pra essa entrega virar corpus de verdade**: a migration ainda não
+rodou no Supabase (é a próxima na fila do checklist de execução externa,
+depois do deploy), `VOYAGE_API_KEY` ainda não existe em `.env.local`/Vercel,
+e o conteúdo real dos 10 playbooks/frameworks/transcrições/casos/
+bibliografia ainda não foi escrito — isso é IP do programa, não algo que a
+sessão de código pode gerar. Sem isso, `POST /api/knowledge/ingest`
+funciona mas o corpus fica vazio.
+
+**Ainda não iniciado**: orquestrador (roteador Haiku + gate de etapa
+liberada), Career Copilot, artefatos de FIND, `/jornada`. Cada um é a
+próxima entrega, na ordem — não adiantar.
 
 Checklist completo do que está pendente — incluindo o que só um humano pode
 fazer (credenciais, contas, decisões de produto) — em
