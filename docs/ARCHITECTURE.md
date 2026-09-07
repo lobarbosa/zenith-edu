@@ -77,7 +77,8 @@ está **completa e validada ao vivo**.
 | `POST /api/mentor/advance` | ✅ feita e validada ao vivo |
 | Business Copilot (`/api/chat`) + `business_map` | ✅ feita e validada ao vivo |
 | Value Copilot + `value_creation_map` | ✅ feita e validada ao vivo |
-| Anexos (`POST /api/attachments`) + `/biblioteca` | não iniciado |
+| `/biblioteca` | ✅ feita e validada ao vivo |
+| Anexos (`POST /api/attachments`) | não iniciado |
 
 Validado ao vivo: mentee de teste conversou com o Career Copilot (regressão
 — continua funcionando), mentor avançou a etapa pra UNDERSTAND pela nova
@@ -190,6 +191,24 @@ bug novo encontrado — esperado, dado que o caminho é o mesmo código
 genérico já corrigido na entrega do Business Copilot, agora com um
 terceiro valor passando pelos mesmos mapas. `tsc`, `lint` e `build` passam
 limpos.
+
+**`/biblioteca`** — a spec (`SPEC-SOFTWARE.md` §5, tabela de rotas) descreve
+isso como "Playbooks e frameworks", diferente do que o nome sugeria à
+primeira vista: não é a tela de upload de anexo, é onde o mentorado lê o
+corpus já ingerido (os 10 playbooks). `/biblioteca` lista os documentos com
+`visibilidade = 'turma'`; `/biblioteca/[id]` mostra o conteúdo completo.
+
+| Decisão | Motivo |
+|---|---|
+| Filtra por `etapas` do documento sobrepondo `etapas_liberadas` da jornada (`.overlaps()`) | Não é regra explícita da spec pra esta tela, mas seguir o mesmo princípio já aplicado em todo o resto do sistema (RAG filtra por etapa liberada, `/jornada` só mostra artefato da etapa atual, território bloqueado vira ponte) — mostrar playbook de etapa futura anteciparia fase pro mentorado |
+| Nenhuma policy de RLS nova em `knowledge_documents` | Mantém a postura de segurança já registrada em `0004_fase1_schema.sql`: mentorado nunca acessa a tabela direto, nem client-side; as duas páginas são server components com `service_role`, filtrando visibilidade e etapa na própria query — inclusive o detalhe reconfirma os dois filtros de novo, não confia no `id` da URL sozinho |
+
+Validado ao vivo: mentorado de teste (etapa default FIND) via `/biblioteca`
+mostrando os playbooks de CAREER e nenhum de BUSINESS; abriu o detalhe de
+um deles e o conteúdo real do arquivo apareceu; tentou acessar direto pela
+URL o id de um playbook de etapa ainda bloqueada (UNDERSTAND) e recebeu
+404 — confirma que o filtro roda nas duas rotas, não só na listagem.
+`tsc`, `lint` e `build` passam limpos.
 
 ---
 

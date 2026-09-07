@@ -66,12 +66,18 @@ export default async function JornadaPage() {
 
       <EtapaStepper etapaAtual={journey.etapa_atual} etapasLiberadas={journey.etapas_liberadas} />
 
-      <div className="mt-5">
+      <div className="mt-5 flex flex-wrap gap-x-6 gap-y-2">
         <Link
           href="/copiloto"
           className="text-sm font-medium text-primary outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/50 rounded-sm"
         >
           Conversar com o copiloto →
+        </Link>
+        <Link
+          href="/biblioteca"
+          className="text-sm font-medium text-primary outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/50 rounded-sm"
+        >
+          Biblioteca →
         </Link>
       </div>
 
