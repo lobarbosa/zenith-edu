@@ -1,0 +1,113 @@
+T-SHAPED EXECUTIVE™
+PLAYBOOK DE COMUNICAÇÃO EXECUTIVA
+Pilar: Communication & Positioning  |  The Next Chair Method™
+Founding Cohort  ·  Material de uso exclusivo e confidencial
+
+
+Sumário
+1. O que muda ao falar com quem decide
+2. O que os dados revelam sobre comunicação e fracasso organizacional
+3. Calibrando por audiência
+4. Frameworks centrais
+5. Comunicação escrita executiva
+6. Lidando com perguntas difíceis em tempo real
+7. Exercício — reescreva uma comunicação recente
+8. Referências para aprofundar
+9. Checklist de aplicação
+1. O que muda ao falar com quem decide
+Quem decide carreira, orçamento e prioridade não tem tempo nem interesse em acompanhar o raciocínio técnico completo. Comunicação executiva não é simplificação — é reordenação: a conclusão vem primeiro, o raciocínio vem depois, e só se for pedido.
+A maioria dos profissionais técnicos aprendeu a comunicar em ambiente acadêmico ou de engenharia, onde a credibilidade se constrói mostrando todo o caminho até a conclusão. Em ambiente executivo, esse mesmo comportamento é lido como insegurança, falta de clareza ou incapacidade de priorizar — mesmo quando o raciocínio é impecável.
+Bottom Line Up First (BLUF): diga o que você precisa que a pessoa saiba ou decida na primeira frase.
+Isso vale para e-mail, mensagem, slide e fala. Se a primeira frase pode ser cortada sem perda de informação crítica, ela está no lugar errado.
+2. O que os dados revelam sobre comunicação e fracasso organizacional
+O que os dados mostram
+Fonte
+Comunicação deficiente é fator contribuinte em 56% dos projetos que falham — e organizações de alta performance entregam suas comunicações no prazo certo em quase 80% das vezes, contra pouco mais de 40% nas de baixa performance
+Project Management Institute, Pulse of the Profession
+Para cada US$ 1 bilhão investido em projetos, cerca de US$ 135 milhões estão em risco — e 56% desse valor em risco é atribuído diretamente a comunicações ineficazes
+PMI, The High Cost of Low Performance
+Comunicações eficazes com todos os stakeholders são apontadas por 55% dos gestores de projeto como o fator mais crítico de sucesso — mais citado que orçamento ou cronograma
+PMI Pulse of the Profession
+Executivos associam comunicação a cerca de 28% do que compõe "executive presence", o segundo pilar mais citado depois de gravitas
+Center for Talent Innovation
+PROVOCAÇÃO
+Se 56% dos projetos falham por comunicação, quantas das suas próprias iniciativas travadas você atribuiu a "prioridade" ou "recurso" quando, na origem, o problema era como e quando você comunicou?
+3. Calibrando por audiência
+Audiência
+O que ela quer ouvir
+O que evitar
+Par técnico
+Como foi feito, trade-offs, detalhes de implementação
+Nada — aqui o detalhe é bem-vindo
+Liderança direta
+O que decidir, o impacto, o risco de não agir
+Processo interno, ferramentas, jargão técnico
+Board / cliente executivo
+Resultado, número, próximo passo em uma frase
+Contexto histórico não solicitado, hedging
+O erro mais caro nessa tabela não é usar o registro errado com o par técnico — é usar o registro de par técnico com o board. Isso acontece quando a pessoa confia tanto na qualidade da solução que assume que o detalhe vai impressionar. Ele não impressiona: cansa, e a atenção da audiência executiva já está, em média, dividida entre múltiplas prioridades concorrentes na mesma reunião.
+4. Frameworks centrais
+4.1 Para recomendar: Leitura → Recomendação → Risco de não agir
+Etapa
+Conteúdo
+Leitura
+Diagnóstico objetivo, apoiado em dado — uma ou duas frases
+Recomendação
+O que fazer, direto, sem "talvez" ou "poderíamos considerar"
+Risco de não agir
+Custo concreto da inação — é o argumento que decide
+4.2 Para justificar uma decisão passada: Contexto → Decisão → Número
+Etapa
+Conteúdo
+Contexto
+Restrições no momento da decisão, sem retrospectiva injusta
+Decisão
+O que foi decidido, em uma frase
+Número
+Resultado mensurável, mesmo quando o resultado foi um aprendizado caro
+Ambos derivam de um princípio consolidado há mais de 40 anos na consultoria de estratégia: a Pirâmide de Minto, desenvolvida por Barbara Minto na McKinsey. A lógica é simples de enunciar e difícil de praticar sob pressão — comece pela resposta, agrupe os argumentos que a sustentam, e desça ao detalhe apenas quando solicitado.
+5. Comunicação escrita executiva
+Todo e-mail, memo ou mensagem para quem decide segue a mesma ordem: conclusão, contexto mínimo necessário, pedido explícito (o que você precisa da pessoa e até quando).
+Elemento
+Regra
+Assunto
+Nomeia o assunto e, quando cabe, a ação esperada
+Primeira frase
+A conclusão ou o pedido — nunca a saudação seguida de contexto
+Corpo
+No máximo 3 blocos curtos; tabelas substituem parágrafos longos
+Fechamento
+Pedido explícito: decisão, aprovação ou prazo de resposta
+PROVOCAÇÃO
+Releia o último e-mail que você mandou para alguém dois níveis acima de você. Se a primeira frase fosse apagada, a pessoa perderia alguma decisão ou pedido — ou só uma cortesia?
+6. Lidando com perguntas difíceis em tempo real
+Responda à pergunta feita antes de adicionar contexto — contexto não solicitado soa como fuga
+Se não souber a resposta, diga isso em uma frase e informe quando terá — nunca improvise número
+Separe fato de opinião explicitamente: "o dado mostra X; minha leitura é Y"
+Uma objeção não é um ataque à sua competência — trate como pedido de mais evidência
+7. Exercício — reescreva uma comunicação recente
+Pegue um e-mail ou mensagem que você enviou à liderança nas últimas duas semanas e reescreva usando BLUF e o framework de recomendação.
+Versão original (resumo)
+Versão reescrita (BLUF)
+
+
+
+
+8. Referências para aprofundar
+Autor / Obra
+Por que ler agora
+Barbara Minto — The Pyramid Principle
+A referência original de comunicação lógica orientada a conclusão-primeiro
+Chip e Dan Heath — Made to Stick
+Por que algumas ideias sobrevivem à comunicação executiva e outras se perdem
+Nancy Duarte — Resonate
+Estrutura narrativa aplicada a apresentações de alto stakes
+Chris Voss — Never Split the Difference
+Táticas de comunicação sob pressão, aplicáveis a objeções em tempo real
+9. Checklist de aplicação
+A primeira frase da minha comunicação carrega a conclusão ou o pedido
+Calibrei o conteúdo para a audiência específica, não para mim
+Toda recomendação inclui o risco de não agir
+Todo relato de decisão passada termina em número, não em descrição de esforço
+Meus e-mails para liderança têm no máximo 3 blocos e um pedido explícito
+Eu respondo à pergunta feita antes de adicionar contexto

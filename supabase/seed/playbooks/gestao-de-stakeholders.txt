@@ -1,0 +1,107 @@
+T-SHAPED EXECUTIVE™
+PLAYBOOK DE GESTÃO DE STAKEHOLDERS
+Pilar: People & Relationships  |  The Next Chair Method™
+Founding Cohort  ·  Material de uso exclusivo e confidencial
+
+
+Sumário
+1. Nem todo stakeholder merece o mesmo esforço
+2. O que os dados revelam sobre stakeholders e fracasso de projetos
+3. A matriz poder x interesse
+4. Cadência de comunicação por quadrante
+5. Gerenciando expectativa, não só informação
+6. Erros comuns
+7. Exercício — mapeie os stakeholders de uma iniciativa atual
+8. Referências para aprofundar
+9. Checklist de aplicação
+1. Nem todo stakeholder merece o mesmo esforço
+Gerenciar stakeholders não é agradar a todos — é identificar quem tem poder de decisão e quem tem interesse real no resultado, e calibrar esforço de comunicação de acordo. Tratar todos com a mesma cadência desperdiça tempo com quem não decide e negligencia quem decide.
+2. O que os dados revelam sobre stakeholders e fracasso de projetos
+O que os dados mostram
+Fonte
+Comunicação deficiente é fator contribuinte em 56% dos projetos que falham no atingimento de escopo, prazo ou orçamento originais
+Project Management Institute, Pulse of the Profession
+Para cada US$ 1 bilhão investido em projetos, cerca de US$ 135 milhões estão em risco, e mais da metade desse valor decorre de comunicação e engajamento de stakeholders ineficazes
+PMI, The High Cost of Low Performance
+Organizações de alta performance entregam suas comunicações a stakeholders no prazo certo em quase 80% das vezes, contra pouco mais de 40% nas organizações de baixa performance
+PMI Pulse of the Profession
+Nove em cada dez CEOs concordam que comunicação é crítica para o sucesso de iniciativas estratégicas — mas menos da metade trata isso como parte ativa do planejamento
+Forbes Insights, Strategic Initiatives Study
+PROVOCAÇÃO
+Se comunicação com stakeholders decide mais da metade dos projetos que fracassam, por que ela costuma ser a última linha do cronograma, e não a primeira?
+3. A matriz poder x interesse
+O modelo abaixo é conhecido academicamente como Grade de Mendelow, formalizada por Aubrey Mendelow e amplamente adotada em gestão de projetos e teoria de stakeholders (na linha do trabalho seminal de R. Edward Freeman sobre stakeholder theory).
+Quadrante
+Perfil
+Estratégia
+Alto poder, alto interesse
+Decide e acompanha de perto
+Envolvimento direto e frequente — gerenciar de perto
+Alto poder, baixo interesse
+Decide, mas não acompanha detalhe
+Manter satisfeito com resumos objetivos, sem sobrecarregar
+Baixo poder, alto interesse
+Não decide, mas é afetado e engajado
+Manter informado — pode influenciar quem decide
+Baixo poder, baixo interesse
+Não decide, pouco afetado
+Monitorar com esforço mínimo
+4. Cadência de comunicação por quadrante
+Quadrante
+Cadência recomendada
+Alto poder, alto interesse
+Contato direto recorrente — semanal ou por marco crítico
+Alto poder, baixo interesse
+Resumo executivo pontual, em marcos relevantes
+Baixo poder, alto interesse
+Atualização regular, canal mais informal
+Baixo poder, baixo interesse
+Comunicação em lote, sem cadência dedicada
+5. Gerenciando expectativa, não só informação
+Alinhe o que "sucesso" significa para cada stakeholder-chave antes de começar, não depois de um desvio
+Comunique risco cedo — stakeholder de alto poder prefere má notícia antecipada a boa notícia atrasada
+Nunca deixe um stakeholder de alto poder ser surpreendido em uma reunião maior — pré-alinhe antes
+PROVOCAÇÃO
+Pense na última vez que um stakeholder importante reagiu mal a uma notícia. A informação estava errada — ou ele simplesmente não deveria ter sido pego de surpresa?
+6. Erros comuns
+Erro
+Correção
+Tratar todos os stakeholders com a mesma cadência
+Calibrar por quadrante da matriz
+Só comunicar quando algo dá errado
+Comunicar status mesmo quando está tudo dentro do esperado
+Confundir stakeholder engajado com stakeholder que decide
+Checar poder real de decisão, não apenas volume de interesse
+7. Exercício — mapeie os stakeholders de uma iniciativa atual
+Stakeholder
+Poder
+Interesse
+Cadência definida
+
+
+
+
+
+
+
+
+
+
+
+
+8. Referências para aprofundar
+Autor / Obra
+Por que ler agora
+R. Edward Freeman — Strategic Management: A Stakeholder Approach
+A obra fundadora da teoria de stakeholders usada como base da matriz deste playbook
+PMI — Pulse of the Profession (edições anuais)
+A série de pesquisa mais citada sobre por que projetos falham, com foco recorrente em comunicação
+David Maister, Charles Green e Robert Galford — The Trusted Advisor
+Como construir confiança com stakeholders de alto poder além da entrega técnica
+Kerry Patterson et al. — Crucial Conversations
+Como conduzir conversas de alto risco emocional com stakeholders discordantes
+9. Checklist de aplicação
+Tenho a matriz poder x interesse preenchida para minhas iniciativas ativas
+Defini cadência específica para os stakeholders de alto poder
+Alinhei o que "sucesso" significa com os principais stakeholders antes de qualquer desvio
+Nenhum stakeholder de alto poder foi surpreendido por informação em reunião ampla nos últimos 3 meses

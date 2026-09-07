@@ -18,12 +18,12 @@ quebram ao carregar — não é um bug, é essa dependência.
 - [ ] **`VOYAGE_API_KEY`** — criar conta em https://dash.voyageai.com,
       gerar a chave e adicionar em `.env.local` (local) e nas Environment
       Variables da Vercel (produção). Usada só em `/api/knowledge/ingest`.
-- [ ] **Conteúdo real dos 10 playbooks/frameworks/transcrições/casos/
-      bibliografia** — é o IP do programa, ninguém além de você consegue
-      escrever isso. Sem ele, `POST /api/knowledge/ingest` funciona mas o
-      corpus fica vazio, e os copilotos (quando existirem) responderiam
-      genérico — exatamente o risco que a spec aponta como o mais alto da
-      Fase 1.
+- [x] **Conteúdo real dos 10 playbooks** — entregue. Os 10 estão em
+      `supabase/seed/playbooks/`, extraídos e mapeados pra pilar/etapa
+      (`manifest.json`). Falta só a ingestão em si (script ainda não
+      escrito — é construído e testado junto das migrations, não antes).
+      Frameworks/transcrições/casos/bibliografia continuam em aberto pra
+      quando fizer sentido — os 10 playbooks já cobrem o mínimo da spec.
 
 ## 1. Bloqueante — resolvido ✅
 

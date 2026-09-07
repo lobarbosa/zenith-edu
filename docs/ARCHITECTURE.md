@@ -487,12 +487,16 @@ infraestrutura do corpus — está em código:
   `knowledge_documents`/`knowledge_chunks`. Protegido por `isMentor()`.
 
 **Falta pra essa entrega virar corpus de verdade**: a migration ainda não
-rodou no Supabase (é a próxima na fila do checklist de execução externa,
-depois do deploy), `VOYAGE_API_KEY` ainda não existe em `.env.local`/Vercel,
-e o conteúdo real dos 10 playbooks/frameworks/transcrições/casos/
-bibliografia ainda não foi escrito — isso é IP do programa, não algo que a
-sessão de código pode gerar. Sem isso, `POST /api/knowledge/ingest`
-funciona mas o corpus fica vazio.
+rodou no Supabase, `VOYAGE_API_KEY` ainda não existe em `.env.local`/Vercel.
+O conteúdo, que dependia só do usuário, chegou: os 10 playbooks completos
+da spec estão extraídos e mapeados por pilar/etapa em
+`supabase/seed/playbooks/` (`manifest.json`). Uma divergência entre o
+cabeçalho de 2 documentos (Networking, Gestão de Stakeholders — "People &
+Relationships") e o `SPEC-AGENTS.md` §1 (que os atribui ao Executive
+Copilot) foi decidida pelo usuário: seguir a spec — ver
+`supabase/seed/playbooks/README.md`. Falta só escrever e testar o script
+de ingestão, junto com a migration rodando (não antes — mesma disciplina
+do resto do projeto).
 
 **Orquestrador + Career Copilot (`POST /api/chat`)**: roteador Haiku, gate
 de etapa liberada com ponte gerada pelo próprio copiloto (em vez de

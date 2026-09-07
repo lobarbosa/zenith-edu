@@ -1,0 +1,105 @@
+T-SHAPED EXECUTIVE™
+PLAYBOOK DE GERAÇÃO DE VALOR
+Pilar: Value Creation  |  The Next Chair Method™
+Founding Cohort  ·  Material de uso exclusivo e confidencial
+
+
+Sumário
+1. Valor não é esforço
+2. O que os dados revelam sobre a lacuna entre esforço e valor percebido
+3. O Value Creation Map — cinco dimensões
+4. Traduzindo atividade em valor
+5. Medindo antes de comunicar
+6. Erros comuns
+7. Exercício — audite seu último trimestre
+8. Referências para aprofundar
+9. Checklist de aplicação
+1. Valor não é esforço
+Horas trabalhadas, complexidade técnica e dedicação não são, por si, valor — valor é o efeito mensurável que seu trabalho produz no resultado de negócio. Dois profissionais podem trabalhar o mesmo tanto e gerar valor muito diferente.
+Sua capacidade de gerar valor determinará até onde você pode chegar — não sua profundidade técnica isoladamente.
+A confusão entre esforço e valor é reforçada pela própria cultura técnica: horas extras, complexidade da solução e volume de entregas viram, por hábito, a métrica implícita de contribuição. Nenhuma delas aparece em um P&L. O que aparece é receita protegida ou gerada, custo evitado, risco mitigado e velocidade ganha.
+2. O que os dados revelam sobre a lacuna entre esforço e valor percebido
+O que os dados mostram
+Fonte
+95% dos funcionários não entendem a estratégia da própria empresa, e 90% não entendem as métricas de negócio mais importantes que ela acompanha
+Acumen Learning
+Treinamento estruturado em soft skills e comunicação de valor gerou ROI de 250% em menos de um ano após a conclusão
+Namrata Kala, MIT Sloan
+70% a 90% dos profissionais de áreas técnicas e financeiras são considerados, por seus próprios pares e gestores, carentes de acumen de negócio suficiente para conectar seu trabalho a resultado
+Elements Akademia; i4cp
+PROVOCAÇÃO
+Se 90% das pessoas ao seu redor não sabem traduzir o próprio trabalho em métrica de negócio, e você aprender a fazer isso de forma consistente — quanto disso, sozinho, já te coloca à frente da maioria dos seus pares?
+3. O Value Creation Map — cinco dimensões
+Dimensão
+Pergunta
+Exemplo de evidência
+Economia
+Isso reduziu custo ou desperdício?
+Redução de horas, de retrabalho, de licenças
+Receita
+Isso ajudou a gerar ou proteger receita?
+Upsell, retenção de cliente, novo contrato
+Risco
+Isso evitou um problema caro de acontecer?
+Falha evitada, conformidade, contingência
+Velocidade
+Isso fez algo acontecer mais rápido?
+Redução de prazo de entrega ou decisão
+Capacidade
+Isso aumentou o que o time consegue fazer?
+Processo, ferramenta ou pessoa que multiplica resultado
+Todo trabalho relevante se encaixa em ao menos uma dimensão. Se não encaixar em nenhuma, vale perguntar por que aquele trabalho está sendo priorizado — essa é, na prática, uma das perguntas mais incômodas e mais úteis que um profissional técnico pode aprender a fazer sobre a própria agenda.
+4. Traduzindo atividade em valor
+Linguagem de atividade
+Linguagem de valor
+Implementei uma automação no processo de onboarding
+Reduzi o tempo de onboarding de 5 para 2 dias, liberando 3 dias de capacidade por cliente
+Corrigi um problema recorrente de integração
+Evitei uma perda estimada de R$ X/mês em retrabalho e SLA
+Fiz a migração do sistema X para o Y
+Reduzi o custo de licenciamento em Y% ao ano
+PROVOCAÇÃO
+Pegue a última linha do seu currículo ou do seu último relatório de status. Ela está na coluna da esquerda ou da direita?
+5. Medindo antes de comunicar
+Defina a métrica antes de iniciar o trabalho, não depois — evita justificativa retroativa
+Prefira uma métrica imperfeita e consistente a nenhuma métrica
+Quando não houver número exato, use uma estimativa conservadora e diga que é estimativa
+Registre o baseline (antes) — sem ele não existe comparação possível
+6. Erros comuns
+Erro
+Correção
+Medir esforço (horas, linhas de código, tickets)
+Medir efeito (economia, receita, risco evitado, tempo)
+Só comunicar valor quando perguntado
+Ter cadência própria de comunicação de resultado
+Valor genérico ("melhorei o processo")
+Valor específico e verificável, com número
+7. Exercício — audite seu último trimestre
+Entrega
+Dimensão de valor
+Número / estimativa
+
+
+
+
+
+
+
+
+
+8. Referências para aprofundar
+Autor / Obra
+Por que ler agora
+John Doerr — Measure What Matters
+A referência central sobre OKRs e como conectar trabalho individual a resultado mensurável
+A.G. Lafley e Roger Martin — Playing to Win
+Como pensar em geração de valor no nível de estratégia, não só de tarefa
+Ron Baker — Implementing Value Pricing
+Uma virada de perspectiva: valor percebido pelo cliente, não hora trabalhada, como unidade de troca
+Jim Collins — Good to Great
+O conceito de "flywheel" aplicado a como pequenas ações compostas geram valor desproporcional
+9. Checklist de aplicação
+Consigo nomear, para cada entrega relevante do trimestre, a dimensão de valor que ela gerou
+Tenho ao menos um número (mesmo que estimado) para cada entrega relevante
+Defino a métrica antes de começar o trabalho, não depois
+Comunico valor por iniciativa própria, com cadência definida
