@@ -64,7 +64,11 @@ export async function classifyDiagnosticProgress(
     });
 
     const textBlock = response.content.find((block) => block.type === "text");
-    const parsed = textBlock && "text" in textBlock ? JSON.parse(textBlock.text) : null;
+    // O prompt pede JSON puro, mas o modelo às vezes envolve a resposta
+    // num code fence (```json ... ```) mesmo assim — extrai o objeto antes
+    // de fazer o parse em vez de confiar que o texto já vem limpo.
+    const jsonMatch = textBlock && "text" in textBlock ? textBlock.text.match(/\{[\s\S]*\}/) : null;
+    const parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
 
     const bloco = Number(parsed?.bloco);
     const concluido = Boolean(parsed?.concluido);
