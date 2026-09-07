@@ -4,11 +4,26 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isMentor } from "@/lib/mentor";
 import { ExecutiveProfileSchema } from "@/lib/agents/executive-profile-schema";
+import { ARTIFACT_TIPOS, ARTIFACT_LABELS, type ArtifactTipo } from "@/lib/agents/artifact-schemas";
 import { StatusPill } from "@/components/status-pill";
-import { menteeStatus } from "../mentee-status";
+import { ArtifactDetail } from "@/components/artifact-detail";
+import { menteeStatus } from "@/lib/mentee-status";
 import { ProfileDetail } from "../profile-detail";
 import { ValidateButton } from "../validate-button";
 import { Transcript } from "../transcript";
+
+type ArtifactRow = {
+  id: string;
+  tipo: ArtifactTipo;
+  versao: number;
+  status: "rascunho_agente" | "validado_mentor";
+  conteudo: unknown;
+  criado_em: string;
+  validado_em: string | null;
+};
+
+const ARTIFACT_STATUS_LABEL = { rascunho_agente: "Rascunho do agente", validado_mentor: "Validado" };
+const ARTIFACT_STATUS_TONE = { rascunho_agente: "warning", validado_mentor: "good" } as const;
 
 const STATUS_LABEL = { rascunho_agente: "Rascunho do agente", validado: "Validado" };
 const STATUS_TONE = { rascunho_agente: "warning", validado: "good" } as const;
@@ -71,6 +86,19 @@ export default async function MenteeDetailPage(props: PageProps<"/mentor/[mentee
     .select("id, version, status, perfil, created_at, validated_at")
     .eq("mentee_id", menteeId)
     .order("version", { ascending: false });
+
+  const { data: artifactRows } = await admin
+    .from("artifacts")
+    .select("id, tipo, versao, status, conteudo, criado_em, validado_em")
+    .eq("mentee_id", menteeId)
+    .order("versao", { ascending: false });
+
+  const artifactsByTipo = new Map<ArtifactTipo, ArtifactRow[]>();
+  for (const item of (artifactRows ?? []) as ArtifactRow[]) {
+    const list = artifactsByTipo.get(item.tipo) ?? [];
+    list.push(item);
+    artifactsByTipo.set(item.tipo, list);
+  }
 
   const latestProfile = profiles?.[0]
     ? { status: profiles[0].status, version: profiles[0].version }
@@ -177,6 +205,43 @@ export default async function MenteeDetailPage(props: PageProps<"/mentor/[mentee
             })}
           </div>
         )}
+      </section>
+
+      <section className="mt-12">
+        <h2 className="mb-4 text-lg font-semibold tracking-tight text-foreground">Artefatos</h2>
+        <div className="space-y-10">
+          {ARTIFACT_TIPOS.map((tipo) => {
+            const versions = artifactsByTipo.get(tipo) ?? [];
+            return (
+              <div key={tipo}>
+                <p className="mb-4 text-sm font-semibold text-foreground">{ARTIFACT_LABELS[tipo]}</p>
+                {versions.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Ainda não gerado.</p>
+                ) : (
+                  <div className="space-y-8">
+                    {versions.map((item) => (
+                      <div
+                        key={item.id}
+                        className="space-y-4 border-t border-border pt-6 first:border-t-0 first:pt-0"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm text-foreground">versão {item.versao}</p>
+                            <StatusPill tone={ARTIFACT_STATUS_TONE[item.status]}>
+                              {ARTIFACT_STATUS_LABEL[item.status]}
+                            </StatusPill>
+                          </div>
+                          {item.status === "rascunho_agente" && <ValidateButton artifactId={item.id} />}
+                        </div>
+                        <ArtifactDetail tipo={tipo} conteudo={item.conteudo} />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </section>
     </main>
   );

@@ -12,6 +12,8 @@ export const ETAPA_MES: Record<string, number> = {
   MOVE: 6,
 };
 
+export const ETAPA_ORDER = ["FIND", "UNDERSTAND", "CREATE", "LEAD", "INFLUENCE", "MOVE"] as const;
+
 const AGENT_ETAPAS: Record<AgentKey, string[]> = {
   career: ["FIND"],
   business: ["UNDERSTAND"],

@@ -35,10 +35,18 @@ infraestrutura do corpus — está em código; o resto da lista ainda não.
 
 | Entrega (ordem da spec) | Status |
 |---|---|
-| Schema Fase 1 completo (`0004_fase1_schema.sql`) + `/api/knowledge/ingest` | ✅ feita, aguardando migration rodar e `VOYAGE_API_KEY` |
-| Orquestrador (roteador + gate de etapa liberada) + Career Copilot (`/api/chat`) | ✅ feita em código, **não testada ao vivo** — sem UI ainda, sem migration rodada |
-| Artefatos de FIND (`career_map`, `competency_map`, `next_chair_map`) | não iniciado |
-| `/jornada` | não iniciado |
+| Schema Fase 1 completo (`0004_fase1_schema.sql`, `0005_knowledge_search.sql`) + `/api/knowledge/ingest` | ✅ feita, aguardando migrations rodarem e `VOYAGE_API_KEY` |
+| Orquestrador (roteador + gate de etapa liberada) + Career Copilot (`/api/chat`) | ✅ feita em código |
+| Geração de artefato (`POST /api/artifact`) + validação pelo mentor | ✅ feita em código |
+| `/copiloto`, `/jornada`, fila de validação em `/mentor` e `/mentor/[menteeId]` | ✅ feitas em código |
+
+**Nenhuma dessas quatro linhas foi validada ao vivo ainda** — confirmado
+rodando uma query real contra o Supabase do projeto: `journey_state` (e as
+demais tabelas Fase 1) ainda não existem no banco, então `/copiloto`,
+`/jornada` e a fila de artefatos em `/mentor` quebram até as migrations
+`0004` e `0005` rodarem (`docs/HUMAN-CHECKLIST.md` §0). `tsc`, `lint` e
+`build` passam limpos; a validação de ponta a ponta (mesmo padrão da
+Fase 0) é o passo seguinte assim que o banco estiver migrado.
 
 ---
 
@@ -411,6 +419,11 @@ botão "Sair") uma vez só, e cada página ganhou `flex-1` no lugar de
 | Prompt de detecção de sinais (`signals.ts`) é texto novo, não transcrito literal da spec | `SPEC-AGENTS.md` §13 descreve os gatilhos (contradição, resistência, risco, avanço, fora de escopo) qualitativamente, sem prompt pronto — diferente dos prompts de agente, que são "fonte de verdade" travada. Escrito como um classificador Haiku leve, mesmo padrão de custo/confiabilidade do roteador e do classificador de bloco. |
 | `agent_runs` grava 3 linhas por turno (`router`, `career`, `signals`) | "Todo run de agente grava em `agent_runs`" (`SPEC-SOFTWARE.md` §7, regra 10) — são 3 chamadas de modelo reais por turno de copiloto, cada uma seu próprio custo/latência a auditar no Mentor Console (Fase 4) depois. |
 | `journey_state` é criado (bootstrap FIND/mês 1) via `service_role` na primeira mensagem ao copiloto | Não é "avançar etapa" (ação exclusiva do mentor) — é o estado inicial da jornada passar a existir. Sem policy de insert pro mentorado nessa tabela (0004), então precisa rodar como admin, mesma lógica de qualquer outra escrita cross-policy já usada em `/api/mentor/*`. |
+| `/api/mentor/validate` resolve a linha de `mentees` do próprio mentor antes de validar artefato | `artifacts.validado_por` referencia `mentees(id)` (literal do `SPEC-SOFTWARE.md` §6), diferente de `executive_profiles.validated_by`, que referencia `auth.users(id)` (schema da Fase 0, escrito antes da spec de Fase 1 existir). Gravar `user.id` direto ali quebraria a FK — pego achando isso antes de rodar contra o banco real, não em produção. |
+| `POST /api/artifact` recusa gerar nova versão enquanto uma já está em `rascunho_agente` | Evita empilhar rascunho em cima de rascunho (e gastar Opus à toa) enquanto o mentor ainda não se pronunciou sobre o anterior. Reabre depois que o mentor validar — artefato é versionado exatamente pra permitir pedir de novo depois. |
+| `Field` extraído de `profile-detail.tsx` para `src/components/field.tsx` | Os três detalhes de artefato (`artifact-detail.tsx`) precisavam do mesmo padrão rótulo+conteúdo — duplicar criaria duas fontes de verdade de estilo pra divergir, mesma lógica já aplicada a `menteeStatus()` na Fase 0. |
+| `mentee-status.ts` movido de `mentor/` para `src/lib/` | A home (`/`) agora também precisa decidir o que mostrar pelo status do mentorado (perfil validado → Jornada, etc.) — importar de dentro da pasta de rotas do mentor pra uma página fora dela era o cheiro errado. |
+| Fila de validação em `/mentor` é uma lista só, ordenada por `created_at`, não agrupada por tipo | Mentor bate o olho numa única lista cronológica em vez de abrir 4 seções — o rótulo do tipo já vem no cabeçalho de cada item. Mesma lógica de "muito espaço negativo, hierarquia clara" da direção visual: uma lista lida de cima a baixo é mais executiva que abas. |
 
 ---
 
@@ -481,20 +494,45 @@ bibliografia ainda não foi escrito — isso é IP do programa, não algo que a
 sessão de código pode gerar. Sem isso, `POST /api/knowledge/ingest`
 funciona mas o corpus fica vazio.
 
-**Orquestrador + Career Copilot (`POST /api/chat`)** também estão em
-código: roteador Haiku, gate de etapa liberada com ponte gerada pelo
-próprio copiloto (em vez de mensagem fixa), contexto de perfil/artefatos/
-RAG injetado, detecção de sinais pro mentor, log em `agent_runs`. Passou
-por `tsc`/`lint`/`build`, mas **diferente da Fase 0, isso não foi validado
-ao vivo** — depende da migration `0004`/`0005` rodarem (a segunda cria a
-função de busca por similaridade `match_knowledge_chunks`) e não existe
-nenhuma tela ainda pra chamar a rota; só dá pra exercitar via chamada
-HTTP direta. Validação de ponta a ponta é o próximo passo natural antes
-de seguir pra artefatos de FIND.
+**Orquestrador + Career Copilot (`POST /api/chat`)**: roteador Haiku, gate
+de etapa liberada com ponte gerada pelo próprio copiloto (em vez de
+mensagem fixa), contexto de perfil/artefatos/RAG injetado, detecção de
+sinais pro mentor, log em `agent_runs`.
 
-**Ainda não iniciado**: artefatos de FIND (`career_map`, `competency_map`,
-`next_chair_map`), `/jornada`. Próximas entregas, na ordem — não
-adiantar.
+**Geração de artefato (`POST /api/artifact`) + validação pelo mentor**:
+Opus com saída estruturada (Zod) pros três artefatos de FIND
+(`career_map`, `competency_map`, `next_chair_map`), até 2 novas tentativas
+em falha de schema, versionado, nasce `rascunho_agente`
+(`src/lib/agents/artifact-generation.ts`). `/api/mentor/validate` ganhou
+um segundo caminho (`artifactId`, além do `profileId` original) —
+`artifacts.validado_por` referencia `mentees(id)`, não `auth.users(id)`
+como `executive_profiles.validated_by`, então a rota resolve a própria
+linha de mentee do mentor antes de gravar.
+
+**Telas**: `/copiloto` (chat único, mesma UI do `/diagnostico` adaptada,
+assinatura discreta de qual copiloto respondeu), `/jornada` (stepper das
+6 etapas, status e geração de cada artefato de FIND), fila de validação
+heterogênea em `/mentor` (perfil + 3 tipos de artefato, mais antigo
+primeiro) e seção "Artefatos" em `/mentor/[menteeId]` (todas as versões,
+mesmo padrão já usado pra perfil). A home (`/`) agora decide o CTA do
+mentorado pelo status real (perfil validado → Jornada; diagnóstico
+concluído aguardando devolutiva → sem botão; senão → continuar/iniciar
+diagnóstico) em vez de mandar sempre pra `/diagnostico`.
+
+Passou por `tsc`/`lint`/`build`. **Diferente da Fase 0, nada disso foi
+validado ao vivo** — confirmado consultando o Supabase real do projeto:
+as tabelas Fase 1 ainda não existem (`journey_state` etc.), então
+`/copiloto`, `/jornada` e a fila de artefatos quebram até as migrations
+`0004` e `0005` rodarem. Validação de ponta a ponta (mesmo padrão da
+Fase 0: mentee conversa → gera os 3 artefatos → mentor valida) é o
+próximo passo assim que o banco estiver migrado e a `VOYAGE_API_KEY`
+existir.
+
+Com isso, a Fase 1 está **completa em código** — falta só rodar as
+migrations, a chave da Voyage e validar ao vivo (`docs/HUMAN-CHECKLIST.md`
+§0). O conteúdo real dos playbooks (IP do programa) segue como o único
+item que só o usuário resolve; sem ele o corpus RAG fica vazio e o Career
+Copilot responde mais genérico, mas o restante do fluxo funciona.
 
 Checklist completo do que está pendente — incluindo o que só um humano pode
 fazer (credenciais, contas, decisões de produto) — em

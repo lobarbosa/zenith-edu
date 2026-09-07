@@ -1,13 +1,5 @@
 import type { ExecutiveProfile } from "@/lib/agents/executive-profile-schema";
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="space-y-1 border-t border-border pt-3 first:border-t-0 first:pt-0">
-      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
-      <div className="text-sm text-foreground">{children}</div>
-    </div>
-  );
-}
+import { Field } from "@/components/field";
 
 export function ProfileDetail({ perfil }: { perfil: ExecutiveProfile }) {
   return (

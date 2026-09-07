@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { StatusPill } from "@/components/status-pill";
-import { menteeStatus, type Session, type Profile } from "./mentee-status";
+import { menteeStatus, type Session, type Profile } from "@/lib/mentee-status";
 
 export type RosterEntry = {
   mentee: { id: string; email: string };

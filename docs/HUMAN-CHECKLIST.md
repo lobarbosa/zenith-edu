@@ -1,9 +1,15 @@
 # Checklist de construção humana
 
-Levantado numa revisão completa do projeto, atualizado depois do início
-da Fase 1 (infraestrutura do corpus de conhecimento).
+Levantado numa revisão completa do projeto, atualizado depois da Fase 1
+ficar completa em código (corpus, orquestrador, Career Copilot, geração
+de artefato, `/copiloto`, `/jornada`, fila de validação em `/mentor`).
 
-## 0. Fase 1 — bloqueante pra corpus e copiloto virarem realidade
+## 0. Fase 1 — bloqueante pra tudo isso virar realidade
+
+Confirmado consultando o Supabase real do projeto: as tabelas Fase 1
+(`journey_state`, `artifacts` etc.) ainda não existem no banco. Até rodar
+a migration, `/copiloto`, `/jornada` e a fila de artefatos em `/mentor`
+quebram ao carregar — não é um bug, é essa dependência.
 
 - [ ] **Rodar `supabase/migrations/0004_fase1_schema.sql` e
       `0005_knowledge_search.sql`**, nessa ordem, no SQL Editor do Supabase

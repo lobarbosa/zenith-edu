@@ -4,7 +4,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 
-export function ValidateButton({ profileId }: { profileId: string }) {
+type ValidateButtonProps = { profileId: string; artifactId?: never } | { profileId?: never; artifactId: string };
+
+export function ValidateButton({ profileId, artifactId }: ValidateButtonProps) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(false);
@@ -16,7 +18,7 @@ export function ValidateButton({ profileId }: { profileId: string }) {
     const response = await fetch("/api/mentor/validate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ profileId }),
+      body: JSON.stringify(profileId ? { profileId } : { artifactId }),
     });
 
     if (response.ok) {
