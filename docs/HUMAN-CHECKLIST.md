@@ -73,29 +73,26 @@ precisa fazer nada além disso.
       Inofensivo hoje — confirmar que continua assim quando houver mais
       de um mentor.
 
-## 1c. Bloqueante — deploy na Vercel quebrado em produção
+## 1c. Bloqueante — deploy na Vercel — resolvido ✅
 
-- [ ] **`Error: Your project's URL and Key are required to create a Supabase client!`**
-      em produção. As variáveis `NEXT_PUBLIC_*` são embutidas no bundle
-      no momento do *build*, não lidas em runtime — se foram adicionadas
-      nas Environment Variables da Vercel depois do primeiro build, o
-      build antigo continua sem elas até um redeploy novo. Confirme as 6
-      variáveis em Project Settings → Environment Variables (mesmos
-      nomes e valores do `.env.local`: `NEXT_PUBLIC_SUPABASE_URL`,
-      `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`,
-      `ANTHROPIC_API_KEY`, `MENTOR_EMAILS`, `VOYAGE_API_KEY`), escopo
-      Production marcado, e depois force um **redeploy** (Deployments →
-      "..." no último → Redeploy) — só salvar a variável não corrige um
-      build já feito.
-- [ ] **Créditos da `ANTHROPIC_API_KEY` esgotados** — achado no meio da
+- [x] **`Error: Your project's URL and Key are required to create a Supabase client!`**
+      em produção — causa era as 6 Environment Variables não estarem
+      configuradas na Vercel (as `NEXT_PUBLIC_*` precisam do tipo "Config",
+      não "Secret", pra não travar no formulário). Usuário criou as 6 e
+      redeployou — confirmado funcionando.
+- [x] **Créditos da `ANTHROPIC_API_KEY` esgotados** — achado no meio da
       revalidação do limite de plano de ação fechado (ver
-      `docs/ARCHITECTURE.md`, seção "Auditoria pelo LLM Council"). Sem
-      créditos, `/api/chat`, `/api/diagnostic` e `/api/artifact` falham
-      com 400/500 (e o erro em produção seria pior que em dev — sem o
-      fix de `finalizeTurn` que fiz nesta janela, virava exceção não
-      tratada). Repor em https://console.anthropic.com/settings/billing,
-      depois pedir pra eu revalidar ao vivo o teste adversarial que
-      ficou incompleto.
+      `docs/ARCHITECTURE.md`, seção "Auditoria pelo LLM Council").
+      Repostos pelo usuário; revalidei ao vivo o mesmo ataque que tinha
+      violado o limite antes e a correção segurou (ver mesma seção do
+      `ARCHITECTURE.md`).
+
+**Ainda não confirmado**: o clique real num magic link — o item que o
+LLM Council apontou como o de maior risco não testado (toda validação até
+aqui usou sessão mintada via admin API, nunca o e-mail de verdade). Com o
+deploy funcionando, agora dá pra fechar isso: acesse a URL da Vercel,
+`/login`, digite um e-mail seu de verdade, abra a caixa de entrada e
+clique no link. Confirme que cai direto na home, logado.
 
 ## 3. Não bloqueia agora, fica registrado
 - [ ] **Texto de `/privacidade` não passou por revisão jurídica.** Segue
