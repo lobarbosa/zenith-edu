@@ -322,7 +322,16 @@ export async function POST(request: Request) {
     } catch (error) {
       console.error("chat finalizeTurn falhou", error);
     } finally {
-      controller.close();
+      // Se a chamada à Anthropic falhar (ex.: créditos esgotados, rate
+      // limit), o listener "error" do stream já chama controller.error(),
+      // que fecha o controller — fechar de novo aqui lança "Controller is
+      // already closed" como unhandled rejection. Fechar é inofensivo
+      // quando já fechado; só a exceção precisa ser engolida.
+      try {
+        controller.close();
+      } catch {
+        // já fechado por controller.error() no listener "error" do stream
+      }
     }
   }
 

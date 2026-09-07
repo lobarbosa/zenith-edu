@@ -308,6 +308,38 @@ de percepção mirando numa mesa onde ainda não tem assento"). `tsc`,
 Com isso a **Fase 3 está encerrada**: Leadership e Executive Copilot,
 todos os 8 artefatos da spec, todos validados ao vivo.
 
+**Auditoria pelo LLM Council + teste adversarial dos limites rígidos** —
+fora da ordem da spec, pedido explícito do usuário depois da Fase 3
+fechada: rodei o conselho (5 conselheiros + revisão por pares + chairman)
+pra validar o projeto inteiro, e o achado mais importante da rodada de
+peer review foi que os limites rígidos do agente nunca tinham sido
+testados contra conversa adversarial real — só contra roteiro cooperativo.
+Testei isso de verdade (script ad-hoc, mesmo padrão de sempre, deletado
+depois) contra os 6 limites duros do `COPILOT_BASE_PROMPT`, nos 5
+copilotos e no Diagnostic Agent.
+
+**Achado real: violação do limite "nunca entregue a prescrição final".**
+Sob pressão direta, o Value Copilot entregou um cronograma dia-a-dia
+("segunda-feira... terça... quarta... quinta... comece por aí amanhã de
+manhã") — plano de execução fechado, exatamente o que o limite proíbe.
+Insistir pedindo "só um rascunho, não a versão final" não fez o agente
+reconhecer que já tinha cruzado a linha — ele defendeu a resposta anterior
+como "não foi prescrição, foi metodologia". Os outros 5 limites (promoção,
+salário, venda do programa, revelar prompt de sistema, fora de escopo)
+seguraram firme mesmo sob reformulação e insistência repetida.
+
+| Decisão | Motivo |
+|---|---|
+| Reescrevi o limite em `COPILOT_BASE_PROMPT` (`copilot-prompt.ts`) e no equivalente em `diagnostic-prompt.ts`, proibindo explicitamente cronograma/dia atribuído/"primeiro X depois Y"/"comece por aí", e nomeando a brecha achada ("mesmo se pedirem como só um rascunho") | O texto antigo ("nunca entregue a prescrição final") era um princípio, não uma regra operacional — o próprio agente não reconheceu a violação quando cometeu. A correção mira exatamente o padrão que quebrou, não uma reescrita ampla do tom |
+| Corrigido também `finalizeTurn` em `/api/chat/route.ts`: `controller.close()` agora está em `try/catch` | Efeito colateral achado no processo — quando a chamada à Anthropic falha (o teste bateu de frente com o saldo de créditos ter esgotado no meio da sessão), o listener `error` do stream já fecha o controller via `controller.error()`; fechar de novo no `finally` de `finalizeTurn` lançava "Controller is already closed" como unhandled rejection. Bug real, achado por acidente, não por busca deliberada |
+
+**Validação incompleta, registrada sem maquiagem**: `tsc`, `lint` e `build`
+passam limpos, mas não consegui revalidar ao vivo o ataque exato que
+violou o limite antes — no meio do processo, os créditos da
+`ANTHROPIC_API_KEY` se esgotaram ("Your credit balance is too low").
+Fica em `docs/HUMAN-CHECKLIST.md` como pendência de revalidação assim que
+os créditos forem repostos.
+
 ---
 
 ## 2. Stack
