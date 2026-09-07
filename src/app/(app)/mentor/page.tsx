@@ -67,6 +67,10 @@ export default async function MentorPage() {
   ]);
 
   if (profilesError || artifactsError) {
+    console.error("Falha ao carregar pendências de validação:", {
+      profilesError,
+      artifactsError,
+    });
     throw new Error("Falha ao carregar pendências de validação.");
   }
 
