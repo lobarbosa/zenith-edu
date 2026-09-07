@@ -17,17 +17,18 @@ conduzindo o Executive Diagnostic, síntese do Perfil Executivo e validação
 pelo mentor. Nenhum copiloto, orquestrador, RAG ou Mentor Console — isso é
 Fase 1+.
 
-**Todas as 5 entregas da Fase 0 estão feitas em código.** Nenhuma foi
-testada ainda contra Supabase e Anthropic reais — só contra placeholders,
-para validar build e tipos (ver §8).
+**As 5 entregas da Fase 0 estão feitas em código e validadas de ponta a
+ponta contra Supabase e Anthropic reais** (login → 8 blocos do
+diagnóstico → síntese do perfil → validação do mentor). Essa validação
+encontrou e corrigiu um bug real — ver §6.
 
 | Entrega | Status |
 |---|---|
-| 1. Auth por magic link | ✅ feita |
-| 2. `/diagnostico` — conversa em 8 blocos com streaming | ✅ feita |
-| 3. Persistência de mensagens e controle de bloco | ✅ feita |
-| 4. Síntese do Perfil Executivo em JSON | ✅ feita |
-| 5. `/mentor` — leitura e validação do perfil | ✅ feita |
+| 1. Auth por magic link | ✅ feita e validada ao vivo |
+| 2. `/diagnostico` — conversa em 8 blocos com streaming | ✅ feita e validada ao vivo |
+| 3. Persistência de mensagens e controle de bloco | ✅ feita e validada ao vivo |
+| 4. Síntese do Perfil Executivo em JSON | ✅ feita e validada ao vivo |
+| 5. `/mentor` — leitura e validação do perfil | ✅ feita e validada ao vivo |
 
 ---
 
@@ -385,6 +386,7 @@ botão "Sair") uma vez só, e cada página ganhou `flex-1` no lugar de
 | Status do mentorado (`mentee-roster.tsx`) é derivado de `diagnostic_sessions`/`executive_profiles`, não uma coluna própria | Nada de estado duplicado pra manter sincronizado — "concluído" é só ler `profile.status === 'validado'`, sempre correto por construção. |
 | `/mentor/[menteeId]` mostra todas as versões de `executive_profiles`, não só a pendente | "Visão 360°" pedida explicitamente inclui o histórico — a lista em `/mentor` já filtra por `rascunho_agente` pra fila de validação, o detalhe é o lugar certo pra ver tudo. |
 | `menteeStatus()` extraída de `mentee-roster.tsx` para `mentee-status.ts` | Lista e detalhe precisavam da mesma derivação de estado — duplicar a função criaria duas fontes de verdade pra divergir. |
+| Classificador de bloco extrai o JSON do texto com regex antes do `parse`, em vez de fazer `JSON.parse` direto | Na validação ao vivo, o Haiku às vezes envolve a resposta em ` ```json ` apesar do prompt pedir JSON puro — o parse falhava em silêncio (catch genérico) e a sessão travava para sempre no bloco 1. Achado rodando o fluxo completo contra a Anthropic real pela primeira vez. |
 
 ---
 
@@ -404,27 +406,31 @@ botão "Sair") uma vez só, e cada página ganhou `flex-1` no lugar de
 
 ## 8. Próximos passos
 
-A Fase 0 está com as 5 entregas escritas. O que falta agora não é mais
-"próxima entrega" na ordem da spec — é validar e corrigir:
+A Fase 0 está com as 5 entregas escritas **e validadas de ponta a ponta**
+contra Supabase e Anthropic reais (login por magic link → 8 blocos do
+diagnóstico → perfil sintetizado pelo Opus → `/mentor` → roster → detalhe
+→ validar). Essa validação:
 
-1. **Validação ponta a ponta com credenciais reais** (bloqueia tudo
-   abaixo): Supabase real com as três migrations aplicadas, `MENTOR_EMAILS`
-   com pelo menos um e-mail de teste, `ANTHROPIC_API_KEY` real. Rodar o
-   fluxo inteiro uma vez: login → 8 blocos → perfil sintetizado →
-   `/mentor` → validar. Cada camada foi validada isoladamente (tipos,
-   build, RLS lida na policy, uma tela por vez com dado fake) mas nunca
-   de ponta a ponta contra o Supabase e a Anthropic de verdade.
-2. **Correções do que "ficou pra trás"** — a se levantar durante essa
-   validação e junto com o usuário: por exemplo, `ensureMentee` criando
-   linha de mentee também para o mentor (§5.5), ausência de forma de
-   "rejeitar" um perfil (só existe validar), e o que mais aparecer
-   rodando de verdade.
-3. **Em aberto, fora da ordem das entregas**: revisão da organização dos
-   agentes — hoje cada peça (prompt, classificador, precificação, síntese
-   de perfil) é um módulo TypeScript comum sob `src/lib/agents/`; está em
-   avaliação migrar as execuções que fizerem sentido para o formato de
-   Skills, para alinhar com a prática recomendada de organização de
-   agentes.
+- Confirmou que os três IDs de modelo (`claude-sonnet-5`, `claude-haiku-4-5`,
+  `claude-opus-5`) existem e respondem na conta usada.
+- Confirmou custo real medido e registrado por sessão (ex.: um diagnóstico
+  completo de 8 blocos ficou em ~US$ 0,20).
+- Encontrou e corrigiu um bug real (§6): o classificador de bloco travava
+  a sessão no bloco 1 para sempre quando o Haiku envolvia o JSON em
+  ` ```json `.
+- **Não cobriu** literalmente a troca de código em `/auth/callback` via
+  clique real no magic link — PKCE exige que o mesmo navegador que abriu
+  o link tenha iniciado o fluxo, e a validação rodou com uma sessão
+  mintada diretamente (mesmo mecanismo de cookie do `@supabase/ssr`, sem
+  atalho de schema), não com acesso à caixa de entrada real. Revisado por
+  código e pela configuração de Redirect URLs, mas vale um clique real
+  de confirmação quando for prático.
+
+Em aberto, fora da ordem das entregas: revisão da organização dos
+agentes — hoje cada peça (prompt, classificador, precificação, síntese
+de perfil) é um módulo TypeScript comum sob `src/lib/agents/`; está em
+avaliação migrar as execuções que fizerem sentido para o formato de
+Skills, para alinhar com a prática recomendada de organização de agentes.
 
 Checklist completo do que está pendente — incluindo o que só um humano pode
 fazer (credenciais, contas, decisões de produto) — em
