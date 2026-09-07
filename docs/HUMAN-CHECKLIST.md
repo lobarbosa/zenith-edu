@@ -87,10 +87,17 @@ precisa fazer nada além disso.
       violado o limite antes e a correção segurou (ver mesma seção do
       `ARCHITECTURE.md`).
 
+- [x] **Redirect URL de produção faltando na allowlist do Supabase** —
+      `https://zenith-edu-kappa.vercel.app/auth/callback` (e `/**`) não
+      estavam em Authentication → URL Configuration → Redirect URLs, então
+      o magic link cairia em `localhost:3000` em vez da URL da Vercel.
+      Confirmado adicionado — allowlist agora tem as 4 URLs corretas
+      (localhost, domínio próprio, domínio Vercel e wildcard da Vercel).
+
 **Ainda não confirmado**: o clique real num magic link — o item que o
 LLM Council apontou como o de maior risco não testado (toda validação até
 aqui usou sessão mintada via admin API, nunca o e-mail de verdade). Com o
-deploy funcionando, agora dá pra fechar isso: acesse a URL da Vercel,
+redirect corrigido, agora dá pra fechar isso: acesse a URL da Vercel,
 `/login`, digite um e-mail seu de verdade, abra a caixa de entrada e
 clique no link. Confirme que cai direto na home, logado.
 
