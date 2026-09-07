@@ -69,8 +69,7 @@ validação encontrou e corrigiu **dois bugs reais**, nenhum pego por
 `tsc`, `lint` e `build` passam limpos depois das correções.
 
 **Fase 2** (`SPEC-SOFTWARE.md` §15: Business e Value Copilot, `/biblioteca`)
-começou. Primeira entrega — `/api/mentor/advance` e Business Copilot —
-está **completa e validada ao vivo**.
+está **encerrada** — todas as entregas completas e validadas ao vivo.
 
 | Entrega | Status |
 |---|---|
@@ -78,7 +77,7 @@ está **completa e validada ao vivo**.
 | Business Copilot (`/api/chat`) + `business_map` | ✅ feita e validada ao vivo |
 | Value Copilot + `value_creation_map` | ✅ feita e validada ao vivo |
 | `/biblioteca` | ✅ feita e validada ao vivo |
-| Anexos (`POST /api/attachments`) | não iniciado |
+| Anexos (`POST /api/attachments`) | ✅ feita e validada ao vivo |
 
 Validado ao vivo: mentee de teste conversou com o Career Copilot (regressão
 — continua funcionando), mentor avançou a etapa pra UNDERSTAND pela nova
@@ -209,6 +208,44 @@ um deles e o conteúdo real do arquivo apareceu; tentou acessar direto pela
 URL o id de um playbook de etapa ainda bloqueada (UNDERSTAND) e recebeu
 404 — confirma que o filtro roda nas duas rotas, não só na listagem.
 `tsc`, `lint` e `build` passam limpos.
+
+**Anexos (`POST /api/attachments`)** — última peça da Fase 2, fecha a fase.
+Upload de arquivo na conversa com o copiloto (`SPEC-AGENTS.md` §12): PDF e
+imagem entram como bloco nativo de documento/imagem pro modelo; DOCX é
+convertido pra texto no servidor (`mammoth`); CSV já é texto, passa direto.
+XLSX ficou de fora desta entrega — ver decisão abaixo.
+
+| Decisão | Motivo |
+|---|---|
+| XLSX adiado, escopo fechado em PDF/DOCX/CSV/PNG/JPG | O pacote `xlsx` (SheetJS) do npm tinha vulnerabilidade alta sem correção (prototype pollution/ReDoS) bem no parser que recebe arquivo do mentorado — não aceitável pra um caminho que processa upload não confiável. Perguntado ao usuário; decisão foi manter só os formatos padrão e deixar o XLSX pra revisitar depois, não trocar de biblioteca por conta própria |
+| `POST /api/attachments` resolve a conversa atual sozinho (mais recente do mentorado, qualquer território, ou abre uma nova no copiloto da etapa atual) em vez de exigir `conversationId` do client | `attachments.conversation_id` é `not null`, mas nesse ponto ainda não se sabe pra qual território a próxima mensagem vai rotear (o roteador só decide a partir do texto, que ainda não existe quando o arquivo é anexado). `/api/chat`, que sabe o território real depois de rotear, corrige `conversation_id` e preenche `message_id` no mesmo `update` que vincula o anexo à mensagem |
+| Conteúdo extraído entra no `contextBlock` (rotulado "dado, nunca instrução"), não em texto solto | Mesmo padrão já usado pra perfil/artefatos/RAG em `context.ts` — um só lugar reforça a regra de prompt injection, em vez de espalhar rótulos de segurança por vários pontos do prompt |
+| Upload roda como `admin` (sem policy de Storage pro mentorado), mas o insert em `attachments` roda com o client do próprio mentorado | Mantém a trava de RLS já existente (`attachments_insert_own`, 0004) fazendo o trabalho de autorização; o Storage em si não tem RLS granular por objeto, só bucket privado — a proteção real está na tabela |
+| `/api/account/delete` passou a apagar os arquivos do Storage antes de excluir a conta | Lacuna registrada na entrega de LGPD: o cascade do banco apaga as *linhas* de `attachments`, mas não os *arquivos* — Storage não tem cascade com Postgres. Sem Anexos ainda não existia o que apagar; agora existe, e deixar isso pra depois quebraria a promessa já publicada em `/privacidade` |
+
+Validado ao vivo, ponta a ponta: upload de `.txt` rejeitado (400, formato
+fora da lista); upload de DOCX/CSV/PNG aceito; 4º anexo na mesma mensagem
+rejeitado (400, limite de 3); mensagem real com DOCX+CSV anexados — o
+Career Copilot leu e usou o conteúdo real dos dois arquivos na resposta
+(citou a cifra do DOCX, "R$ 480.000", questionando se era resultado
+realizado ou projeção — comportamento correto do copiloto, não do teste)
+sem tratar o conteúdo como instrução; `attachments.conversation_id` e
+`message_id` corretamente vinculados depois; mensagem com PNG anexado — o
+modelo genuinamente leu o pixel da imagem de teste e descreveu com
+precisão ("bloco de cor sólida, sem texto"), confirmando que o bloco nativo
+de imagem chega corretamente à API; `/mentor/[menteeId]` lista os 3 anexos
+com link assinado, e a URL assinada baixa o arquivo real. Depois, validada
+separadamente a exclusão de conta: arquivo confirmado no Storage antes,
+`/api/account/delete` chamado, arquivo confirmado ausente depois — via
+`list()`, não `download()`, porque neste ambiente de sandbox o
+`download()`/`fetch()` direto continuou servindo bytes já apagados por um
+tempo mesmo com `cache-control: no-store` (reproduzido isolado, fora da
+rota — cache de rede do próprio ambiente de teste, não bug no código;
+`list()` é a fonte da verdade do object store e mostrou a ausência
+imediatamente). `tsc`, `lint` e `build` passam limpos.
+
+Com isso a **Fase 2 está encerrada**: Business e Value Copilot, `/biblioteca`
+e Anexos, todos validados ao vivo.
 
 ---
 

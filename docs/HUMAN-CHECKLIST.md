@@ -84,6 +84,15 @@ precisa fazer nada além disso.
       retenção, canal de exclusão) e os requisitos do `SPEC-SOFTWARE.md`
       §12, mas eu não sou advogado — antes do primeiro acesso externo de
       verdade, vale um advogado revisar o texto.
+- [ ] **XLSX não é aceito em Anexos.** Adiado por vulnerabilidade sem
+      correção no pacote npm mais óbvio (`xlsx`/SheetJS) — decisão sua,
+      registrada em `docs/ARCHITECTURE.md`. Quando quiser retomar, as
+      opções levantadas foram `exceljs` (mantido, mas pesado) ou o build
+      corrigido do próprio SheetJS via `cdn.sheetjs.com` (leve, mas fora
+      do registro npm).
+- [x] **Bucket `attachments` no Storage** — criado por mim, privado, com
+      limite de 15 MB e allowlist de mime-type já configurados no próprio
+      bucket (redundante com a validação em código, de propósito).
 
 ---
 

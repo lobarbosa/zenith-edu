@@ -9,11 +9,18 @@ import { StatusPill } from "@/components/status-pill";
 import { ArtifactDetail } from "@/components/artifact-detail";
 import { menteeStatus } from "@/lib/mentee-status";
 import { ensureJourneyState, ETAPA_ORDER } from "@/lib/agents/journey";
+import { ATTACHMENTS_BUCKET } from "@/lib/attachments/limits";
 import { EtapaStepper } from "../../jornada/etapa-stepper";
 import { ProfileDetail } from "../profile-detail";
 import { ReviewActions } from "../review-actions";
 import { Transcript } from "../transcript";
 import { AdvanceButton } from "./advance-button";
+
+function formatBytes(value: number) {
+  if (value < 1024) return `${value} B`;
+  if (value < 1024 * 1024) return `${(value / 1024).toFixed(0)} KB`;
+  return `${(value / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 type ArtifactRow = {
   id: string;
@@ -108,6 +115,24 @@ export default async function MenteeDetailPage(props: PageProps<"/mentor/[mentee
     .select("id, tipo, versao, status, conteudo, criado_em, validado_em, motivo_rejeicao")
     .eq("mentee_id", menteeId)
     .order("versao", { ascending: false });
+
+  // Anexos: privados ao mentorado, o mentor enxerga ao revisar aqui
+  // (SPEC-AGENTS.md §12, "Visibilidade"). URL assinada gerada agora — o
+  // bucket é privado, nunca URL pública.
+  const { data: attachmentRows } = await admin
+    .from("attachments")
+    .select("id, nome_arquivo, tipo_mime, tamanho_bytes, storage_path, criado_em")
+    .eq("mentee_id", menteeId)
+    .order("criado_em", { ascending: false });
+
+  const attachments = await Promise.all(
+    (attachmentRows ?? []).map(async (row) => {
+      const { data: signed } = await admin.storage
+        .from(ATTACHMENTS_BUCKET)
+        .createSignedUrl(row.storage_path, 3600);
+      return { ...row, signedUrl: signed?.signedUrl ?? null };
+    })
+  );
 
   const artifactsByTipo = new Map<ArtifactTipo, ArtifactRow[]>();
   for (const item of (artifactRows ?? []) as ArtifactRow[]) {
@@ -279,6 +304,36 @@ export default async function MenteeDetailPage(props: PageProps<"/mentor/[mentee
             );
           })}
         </div>
+      </section>
+
+      <section className="mt-12">
+        <h2 className="mb-4 text-lg font-semibold tracking-tight text-foreground">Anexos</h2>
+        {attachments.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Nenhum arquivo enviado ainda.</p>
+        ) : (
+          <ul className="divide-y divide-border">
+            {attachments.map((attachment) => (
+              <li key={attachment.id} className="flex items-center justify-between gap-4 py-3">
+                <div>
+                  <p className="text-sm text-foreground">{attachment.nome_arquivo}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {formatBytes(attachment.tamanho_bytes)} · {formatDate(attachment.criado_em)}
+                  </p>
+                </div>
+                {attachment.signedUrl && (
+                  <a
+                    href={attachment.signedUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-sm font-medium text-primary outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/50 rounded-sm"
+                  >
+                    Abrir
+                  </a>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
     </main>
   );

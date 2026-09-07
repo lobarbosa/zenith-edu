@@ -23,6 +23,8 @@ import { searchKnowledge } from "@/lib/knowledge/retrieval";
 import { detectSignals } from "@/lib/agents/signals";
 import { costUsd } from "@/lib/agents/pricing";
 import { CHAT_META_MARKER } from "@/lib/agents/chat-meta";
+import { extractAttachment, type NativeBlock } from "@/lib/attachments/extract";
+import { ATTACHMENTS_BUCKET, MAX_FILES_PER_MESSAGE } from "@/lib/attachments/limits";
 
 const anthropic = new Anthropic();
 const CONVERSATION_MODEL = "claude-sonnet-5";
@@ -53,9 +55,15 @@ export async function POST(request: Request) {
 
   const body = await request.json().catch(() => null);
   const rawMessage = typeof body?.message === "string" ? body.message.trim() : "";
+  const attachmentIds = Array.isArray(body?.attachmentIds)
+    ? body.attachmentIds.filter((id: unknown): id is string => typeof id === "string")
+    : [];
 
   if (!rawMessage || rawMessage.length > MAX_MESSAGE_LENGTH) {
     return new Response("Mensagem inválida.", { status: 400 });
+  }
+  if (attachmentIds.length > MAX_FILES_PER_MESSAGE) {
+    return new Response(`No máximo ${MAX_FILES_PER_MESSAGE} anexos por mensagem.`, { status: 400 });
   }
 
   const mentee = await ensureMentee(supabase, user);
@@ -119,11 +127,54 @@ export async function POST(request: Request) {
     searchKnowledge(admin, rawMessage, AGENT_PILAR[effectiveAgent], journey.etapas_liberadas),
   ]);
 
+  // Anexos: linhas restritas ao próprio mentorado via RLS (client anon), os
+  // bytes vêm do bucket privado via admin (sem policy de Storage pro
+  // mentorado). Formato/tamanho já foram validados no upload
+  // (POST /api/attachments) — aqui só extrai.
+  const attachmentRows =
+    attachmentIds.length > 0
+      ? (
+          await supabase
+            .from("attachments")
+            .select("id, tipo_mime, storage_path, nome_arquivo")
+            .in("id", attachmentIds)
+            .eq("mentee_id", mentee.id)
+        ).data ?? []
+      : [];
+
+  if (attachmentIds.length > 0 && attachmentRows.length !== attachmentIds.length) {
+    return new Response("Um ou mais anexos não foram encontrados.", { status: 400 });
+  }
+
+  const nativeBlocks: NativeBlock[] = [];
+  const anexosTexto: string[] = [];
+
+  for (const row of attachmentRows) {
+    const { data: fileData, error: downloadError } = await admin.storage
+      .from(ATTACHMENTS_BUCKET)
+      .download(row.storage_path);
+
+    if (downloadError || !fileData) {
+      console.error("chat: falha ao baixar anexo", row.id, downloadError);
+      continue;
+    }
+
+    const bytes = Buffer.from(await fileData.arrayBuffer());
+    const extracted = await extractAttachment(row.tipo_mime, bytes);
+
+    if (extracted.kind === "native") {
+      nativeBlocks.push(extracted.block);
+    } else {
+      anexosTexto.push(`Arquivo "${row.nome_arquivo}":\n${extracted.text}`);
+    }
+  }
+
   const perfilResumo = summarizePerfil(profileResult.data?.perfil ?? null);
   const contextBlock = buildContextBlock(
     perfilResumo,
     summarizeArtifacts(artifactsResult.data ?? []),
-    ragTrechos
+    ragTrechos,
+    anexosTexto
   );
 
   if (contextBlock) {
@@ -156,20 +207,45 @@ export async function POST(request: Request) {
     conversationId = created.id;
   }
 
-  const { error: insertUserError } = await supabase.from("messages").insert({
-    conversation_id: conversationId,
-    role: "user",
-    content: rawMessage,
-    agent_key: effectiveAgent,
-  });
+  const { data: insertedUserMessage, error: insertUserError } = await supabase
+    .from("messages")
+    .insert({
+      conversation_id: conversationId,
+      role: "user",
+      content: rawMessage,
+      agent_key: effectiveAgent,
+    })
+    .select("id")
+    .single();
 
-  if (insertUserError) {
+  if (insertUserError || !insertedUserMessage) {
     return new Response("Falha ao salvar a mensagem.", { status: 500 });
+  }
+
+  if (attachmentRows.length > 0) {
+    // O anexo pode ter sido enviado antes de o roteador decidir o
+    // território desta mensagem (POST /api/attachments não sabe rotear —
+    // ver comentário lá). Corrige conversation_id pro valor real aqui, ao
+    // mesmo tempo que vincula message_id. Roda como admin: não há policy
+    // de update pro mentorado em attachments (só select/insert).
+    await admin
+      .from("attachments")
+      .update({ conversation_id: conversationId, message_id: insertedUserMessage.id })
+      .in(
+        "id",
+        attachmentRows.map((row) => row.id)
+      );
   }
 
   const conversationMessages = [
     ...history.map((m) => ({ role: m.role, content: m.content })),
-    { role: "user" as const, content: rawMessage },
+    {
+      role: "user" as const,
+      content:
+        nativeBlocks.length > 0
+          ? [{ type: "text" as const, text: rawMessage }, ...nativeBlocks]
+          : rawMessage,
+    },
   ];
 
   const stream = anthropic.messages.stream({
