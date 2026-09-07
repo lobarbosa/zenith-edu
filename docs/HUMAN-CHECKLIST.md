@@ -1,8 +1,9 @@
 # Checklist de construção humana
 
-Levantado numa revisão completa do projeto, atualizado depois do corpus
-da Fase 1 ficar real: migrations rodadas, Voyage funcionando, 10
-playbooks ingeridos e busca por similaridade testada ao vivo.
+Levantado numa revisão completa do projeto, atualizado depois da Fase 1
+inteira ficar validada ao vivo: migrations, corpus, conversa com o
+Career Copilot, geração de artefato e validação pelo mentor, tudo
+rodado de ponta a ponta contra Supabase e Anthropic reais.
 
 ## 0. Fase 1 — resolvido ✅
 
@@ -11,7 +12,7 @@ playbooks ingeridos e busca por similaridade testada ao vivo.
 - [x] **`VOYAGE_API_KEY`** criada e testada. No caminho, achei que o
       modelo original (`voyage-3-lite`) só gera 512 dimensões, não 1024
       como a decisão registrada assumia — trocado por `voyage-3.5`
-      (ver `docs/ARCHITECTURE.md` §6 e §8). Nada da sua parte a fazer
+      (ver `docs/ARCHITECTURE.md` §1 e §8). Nada da sua parte a fazer
       aqui, já corrigido em código.
 - [x] **Conteúdo real dos 10 playbooks** — extraídos, mapeados por
       pilar/etapa (`supabase/seed/playbooks/manifest.json`) e **ingeridos**
@@ -20,12 +21,21 @@ playbooks ingeridos e busca por similaridade testada ao vivo.
       Frameworks/transcrições/casos/bibliografia (os outros tipos que
       `knowledge_documents` aceita) continuam em aberto pra quando fizer
       sentido — os 10 playbooks já cobrem o mínimo da spec.
+- [x] **Fluxo completo validado ao vivo** — mentorado de teste conversou
+      com o Career Copilot, gerou os 3 artefatos de FIND, mentor validou
+      os 3, `/jornada` mostrou tudo certo. Encontrados e corrigidos 2
+      bugs reais nesse processo (campos enum sem `.nullable()` na geração
+      de artefato, query ambígua de FK em `/mentor`) — detalhes em
+      `docs/ARCHITECTURE.md` §1. Dado de teste apagado depois.
 
 **Um lembrete operacional, não bloqueio**: sua conta na Voyage está sem
 cartão cadastrado, limitada a 3 requisições/minuto. O script já lida com
 isso (espera e tenta de novo), mas se algum dia o volume de ingestão
 crescer bastante, cadastrar um cartão em https://dashboard.voyageai.com
 destrava o limite padrão — não precisa fazer isso agora.
+
+**Se/quando for pra produção**: `VOYAGE_API_KEY` também precisa ir nas
+Environment Variables da Vercel (mesmo passo já feito com as outras 5).
 
 ## 1. Bloqueante — resolvido ✅
 

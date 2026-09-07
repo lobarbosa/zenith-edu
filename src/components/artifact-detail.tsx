@@ -81,6 +81,13 @@ const NIVEL_LABEL: Record<string, string> = {
   referencia: "Referência",
 };
 
+// Campos de opção fixa chegam null quando o agente ainda não tem base na
+// conversa pra julgar (SPEC-AGENTS.md §11) — nunca escondido, sempre
+// rotulado como pendente.
+function nivelLabel(v: string | null): string {
+  return v ? NIVEL_LABEL[v] : "Ainda não avaliado";
+}
+
 function CompetencyMapDetail({ conteudo }: { conteudo: CompetencyMap }) {
   return (
     <div className="space-y-4">
@@ -95,7 +102,7 @@ function CompetencyMapDetail({ conteudo }: { conteudo: CompetencyMap }) {
                   {item.nome} <span className="text-muted-foreground">· {item.pilar}</span>
                 </p>
                 <p className="text-muted-foreground">
-                  Nível atual: {NIVEL_LABEL[item.nivel_atual]} → exigido: {NIVEL_LABEL[item.nivel_exigido]}
+                  Nível atual: {nivelLabel(item.nivel_atual)} → exigido: {nivelLabel(item.nivel_exigido)}
                 </p>
                 <p className="text-muted-foreground">Evidência atual: {item.evidencia_atual}</p>
                 <p className="text-muted-foreground">Lacuna: {item.lacuna}</p>
@@ -125,6 +132,14 @@ const SITUACAO_LABEL: Record<string, string> = {
   parcial: "Parcial",
   nao_atendido: "Não atendido",
 };
+function situacaoLabel(v: string | null): string {
+  return v ? SITUACAO_LABEL[v] : "Ainda não avaliado";
+}
+
+const DISTANCIA_LABEL: Record<string, string> = { curta: "Curta", media: "Média", longa: "Longa" };
+function distanciaLabel(v: string | null): string {
+  return v ? DISTANCIA_LABEL[v] : "Ainda não avaliada";
+}
 
 function NextChairMapDetail({ conteudo }: { conteudo: NextChairMap }) {
   return (
@@ -150,7 +165,7 @@ function NextChairMapDetail({ conteudo }: { conteudo: NextChairMap }) {
                 <p className="font-medium">
                   {item.requisito}{" "}
                   <span className="text-muted-foreground">
-                    · {SITUACAO_LABEL[item.situacao]}
+                    · {situacaoLabel(item.situacao)}
                   </span>
                 </p>
                 <p className="text-muted-foreground">Evidência: {item.evidencia}</p>
@@ -160,9 +175,7 @@ function NextChairMapDetail({ conteudo }: { conteudo: NextChairMap }) {
         )}
       </Field>
 
-      <Field label="Distância até a cadeira">
-        {{ curta: "Curta", media: "Média", longa: "Longa" }[conteudo.distancia]}
-      </Field>
+      <Field label="Distância até a cadeira">{distanciaLabel(conteudo.distancia)}</Field>
 
       <Field label="Hipóteses alternativas">
         {conteudo.hipoteses_alternativas.length === 0 ? (

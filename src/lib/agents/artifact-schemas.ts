@@ -18,13 +18,19 @@ export const CareerMapSchema = z.object({
 });
 export type CareerMap = z.infer<typeof CareerMapSchema>;
 
+// nivel_atual/nivel_exigido são nullable: são julgamento que exige base na
+// conversa (SPEC-AGENTS.md §11), e um enum de opções fixas não tem como
+// representar "vazio" a não ser null — string fora da lista quebra o
+// parse. Achado rodando geração real contra o Opus: o modelo, seguindo a
+// instrução de "campo sem base fica vazio" ao pé da letra, tentava emitir
+// string vazia num enum e o Zod rejeitava, esgotando as 3 tentativas.
 export const CompetencyMapSchema = z.object({
   competencias: z.array(
     z.object({
       nome: z.string(),
       pilar: z.enum(["BUSINESS", "VALUE", "PEOPLE", "COMMUNICATION"]),
-      nivel_atual: z.enum(["inicial", "em_desenvolvimento", "solido", "referencia"]),
-      nivel_exigido: z.enum(["inicial", "em_desenvolvimento", "solido", "referencia"]),
+      nivel_atual: z.enum(["inicial", "em_desenvolvimento", "solido", "referencia"]).nullable(),
+      nivel_exigido: z.enum(["inicial", "em_desenvolvimento", "solido", "referencia"]).nullable(),
       evidencia_atual: z.string(),
       lacuna: z.string(),
     })
@@ -44,11 +50,11 @@ export const NextChairMapSchema = z.object({
   requisitos: z.array(
     z.object({
       requisito: z.string(),
-      situacao: z.enum(["atendido", "parcial", "nao_atendido"]),
+      situacao: z.enum(["atendido", "parcial", "nao_atendido"]).nullable(),
       evidencia: z.string(),
     })
   ),
-  distancia: z.enum(["curta", "media", "longa"]),
+  distancia: z.enum(["curta", "media", "longa"]).nullable(),
   hipoteses_alternativas: z.array(z.string()),
   riscos_da_escolha: z.array(z.string()),
 });

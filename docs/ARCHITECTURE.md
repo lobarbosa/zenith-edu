@@ -30,22 +30,43 @@ encontrou e corrigiu um bug real — ver §6.
 | 5. `/mentor` — leitura e validação do perfil | ✅ feita e validada ao vivo |
 
 **Fase 1** (`SPEC-SOFTWARE.md` §15: corpus ingerido → orquestrador → Career
-Copilot → artefatos de FIND → `/jornada`) começou. Primeira entrega —
-infraestrutura do corpus — está em código; o resto da lista ainda não.
+Copilot → artefatos de FIND → `/jornada`) está **completa e validada de
+ponta a ponta** contra Supabase e Anthropic reais — mesmo rigor da Fase 0.
 
 | Entrega (ordem da spec) | Status |
 |---|---|
 | Schema Fase 1 completo (`0004_fase1_schema.sql`, `0005_knowledge_search.sql`) | ✅ feita e rodada em produção |
 | Corpus ingerido — 10 playbooks reais, `scripts/ingest-playbooks.js` | ✅ feito e validado ao vivo — 21 chunks, busca por similaridade testada e retornando resultado relevante |
-| Orquestrador (roteador + gate de etapa liberada) + Career Copilot (`/api/chat`) | ✅ feita em código, não validada ao vivo ainda |
-| Geração de artefato (`POST /api/artifact`) + validação pelo mentor | ✅ feita em código, não validada ao vivo ainda |
-| `/copiloto`, `/jornada`, fila de validação em `/mentor` e `/mentor/[menteeId]` | ✅ feitas em código, não validadas ao vivo ainda |
+| Orquestrador (roteador + gate de etapa liberada) + Career Copilot (`/api/chat`) | ✅ feita e validada ao vivo |
+| Geração de artefato (`POST /api/artifact`) + validação pelo mentor | ✅ feita e validada ao vivo |
+| `/copiloto`, `/jornada`, fila de validação em `/mentor` e `/mentor/[menteeId]` | ✅ feitas e validadas ao vivo |
 
-As migrations rodaram e o corpus está ingerido e testado — a base de dados
-da Fase 1 é real agora, não só código. O que falta validar ao vivo é o
-fluxo completo do mentorado (conversar com o Career Copilot usando esse
-corpus de verdade, gerar um artefato, mentor validar), mesmo padrão de
-rigor da Fase 0. `tsc`, `lint` e `build` passam limpos.
+Fluxo completo rodado de verdade: mentorado conversa com o Career Copilot
+(usando perfil real + RAG do corpus real) → gera os 3 artefatos de FIND →
+mentor vê a fila, valida os 3 → `/jornada` mostra tudo validado. Essa
+validação encontrou e corrigiu **dois bugs reais**, nenhum pego por
+`tsc`/`lint`/`build`:
+
+1. **Campos enum na geração de artefato.** `nivel_atual`, `nivel_exigido`
+   (`competency_map`), `situacao`, `distancia` (`next_chair_map`) são
+   `z.enum(...)` sem `.nullable()`. O prompt de geração diz "campo sem
+   base fica vazio" — para string/lista isso é `""`/`[]`, mas um enum de
+   opções fixas não tem como representar "vazio" (a API do Opus tenta
+   emitir algo fora da lista, o Zod rejeita, esgota as 3 tentativas,
+   `502`). `competency_map` e `next_chair_map` falharam 100% das vezes;
+   `career_map` (sem nenhum campo enum) passou de primeira — o padrão do
+   erro apontou direto pra causa. Corrigido: os 4 campos viraram
+   `.nullable()`, o prompt agora distingue explicitamente "campo de texto/
+   lista vazio" de "campo de opção fixa sem base = `null`", e a UI
+   (`artifact-detail.tsx`) trata `null` como "Ainda não avaliado".
+2. **Query ambígua em `/mentor`.** `artifacts` tem duas FKs pra `mentees`
+   (`mentee_id` e `validado_por`) — `.select(..., mentees(email))` sem
+   desambiguar dá `PGRST201` (300 Multiple Choices) do PostgREST, porque
+   ele não sabe qual relação usar. A página inteira quebrava (erro 500)
+   assim que existia qualquer artefato pendente. Corrigido com o hint
+   explícito `mentees!artifacts_mentee_id_fkey(email)`.
+
+`tsc`, `lint` e `build` passam limpos depois das correções.
 
 ---
 
@@ -537,11 +558,18 @@ mentorado pelo status real (perfil validado → Jornada; diagnóstico
 concluído aguardando devolutiva → sem botão; senão → continuar/iniciar
 diagnóstico) em vez de mandar sempre pra `/diagnostico`.
 
-Passou por `tsc`/`lint`/`build`. As tabelas existem, o corpus está
-ingerido e testado — falta só a validação de ponta a ponta do fluxo do
-mentorado em si (conversar com o Career Copilot usando esse corpus real,
-gerar os 3 artefatos de FIND, mentor validar), mesmo padrão de rigor da
-Fase 0. Esse é o próximo passo, e agora nada externo bloqueia ele.
+**Validado de ponta a ponta**, com um mentorado de teste (`+fase1test`,
+apagado depois — cascata removeu tudo): conversou com o Career Copilot
+(3 turnos, referenciando perfil e conversa anterior corretamente), gerou
+os 3 artefatos de FIND, mentor validou os 3 pela fila de `/mentor`,
+`/jornada` mostrou tudo validado com conteúdo real. Encontrou os dois
+bugs listados no §1 (campos enum sem `.nullable()`, query ambígua de FK
+em `/mentor`) — nenhum dos dois seria pego por `tsc`/`lint`/`build`,
+só rodando o fluxo real contra o Opus e o PostgREST.
+
+Com isso a Fase 1 está encerrada. Próximo passo, na ordem do
+`SPEC-SOFTWARE.md` §15, é a Fase 2 (Business e Value Copilot) — ainda não
+iniciada, sem pedido do usuário pra começar.
 
 Checklist completo do que está pendente — incluindo o que só um humano pode
 fazer (credenciais, contas, decisões de produto) — em

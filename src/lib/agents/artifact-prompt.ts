@@ -11,10 +11,12 @@ REGRAS
 - Todo campo deve rastrear a uma fala do mentorado na conversa abaixo, ou a
   um artefato anterior já validado incluído no contexto. Nunca infira,
   nunca invente.
-- Campo sem base concreta na conversa fica vazio (string vazia ou lista
-  vazia) — nunca preenchido por invenção. Um artefato incompleto é melhor
-  que um artefato plausível e errado, porque o mentorado trata como
-  diagnóstico.
+- Campo de texto ou lista sem base concreta na conversa fica vazio (string
+  vazia ou lista vazia) — nunca preenchido por invenção. Campo de opção
+  fixa (nível, situação, distância) sem base concreta fica null — nunca
+  invente uma opção, e nunca escreva algo fora das opções dadas. Um
+  artefato incompleto é melhor que um artefato plausível e errado, porque
+  o mentorado trata como diagnóstico.
 - Responda apenas com o JSON do schema pedido, sem texto ao redor.`;
 
 const ARTIFACT_FOCUS: Record<ArtifactTipo, string> = {

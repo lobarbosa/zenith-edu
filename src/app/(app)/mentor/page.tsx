@@ -50,7 +50,9 @@ export default async function MentorPage() {
       .order("created_at", { ascending: true }),
     admin
       .from("artifacts")
-      .select("id, tipo, versao, conteudo, criado_em, mentees(email)")
+      // artifacts tem duas FKs pra mentees (mentee_id e validado_por) —
+      // sem o hint, o PostgREST não sabe qual embutir e retorna 300.
+      .select("id, tipo, versao, conteudo, criado_em, mentees!artifacts_mentee_id_fkey(email)")
       .eq("status", "rascunho_agente")
       .order("criado_em", { ascending: true }),
     admin.from("mentees").select("id, email").order("created_at", { ascending: true }),
