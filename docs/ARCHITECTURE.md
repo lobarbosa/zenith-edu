@@ -113,13 +113,16 @@ self-service via `POST /api/account/delete`.
 | Base legal: execução de contrato (dados operacionais) + consentimento explícito (dados sensíveis da conversa) | Decisão de produto, escolhida pelo usuário nas opções apresentadas |
 | Retenção: até 30 dias após solicitação | Decisão de produto — na prática a exclusão self-service é imediata, a janela é teto, não meta |
 
-Validação: não foi possível rodar contra o Supabase real desta vez — a
-rede deste ambiente bloqueou a chamada (`Host not in...`, ver
-`curl "$HTTPS_PROXY/__agentproxy/status"`). A garantia do cascade vem da
-leitura direta de cada cláusula `on delete` em `0001_init.sql` e
-`0004_fase1_schema.sql` (tabela acima), não de teste ao vivo — registrado
-aqui porque foge do padrão de todas as entregas anteriores desta fase.
-Único caso de borda não coberto: `executive_profiles.validated_by`
+Validado ao vivo contra o Supabase real: criado usuário de teste com linha
+em `mentees`, `diagnostic_sessions`, `messages`, `executive_profiles`,
+`journey_state`, `conversations`, `artifacts`, `mentor_flags` e
+`agent_runs`; chamado `admin.auth.admin.deleteUser` (mesma chamada da
+rota); confirmado que todas as 8 primeiras zeraram e `agent_runs`
+sobreviveu com `mentee_id = null`, como desenhado. (Na primeira tentativa
+a chamada falhou com "Host not in allowlist" — não era bloqueio de rede,
+era o `fetch` nativo do Node não respeitar `HTTPS_PROXY` por padrão;
+resolvido rodando com `NODE_USE_ENV_PROXY=1`, sem qualquer mudança no
+código do produto.) Único caso de borda não coberto: `executive_profiles.validated_by`
 referencia `auth.users(id)` sem `on delete cascade` — se a conta sendo
 excluída já validou algum perfil como mentor, o `deleteUser` falha por
 violação de FK (a rota devolve 500, sem corromper nada). Não bloqueia o
