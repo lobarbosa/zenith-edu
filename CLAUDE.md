@@ -95,6 +95,16 @@ Executive advisory premium, nunca infoproduto.
 - Não refatore o que não foi pedido.
 - Quando a decisão for de produto e não de engenharia, pergunte.
 
+## Processo de deploy
+
+A Vercel faz deploy de produção a partir da `main`. Todo o desenvolvimento
+acontece numa branch de trabalho separada — ela nunca é a fonte do deploy.
+Sempre que uma entrega for concluída e validada, abra PR da branch de
+trabalho pra `main` e mescle antes de considerar a entrega fechada. Não
+deixe trabalho validado parado numa branch sem mesclar — foi assim que
+`/mentor` ficou 20 commits atrás em produção e quebrou (ver
+`docs/HUMAN-CHECKLIST.md`, seção 4).
+
 ## Definition of done da Fase 0
 
 - Um prospect entra por magic link, completa os 8 blocos e a sessão fecha

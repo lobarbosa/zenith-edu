@@ -62,16 +62,20 @@ URLs foi confirmada. Se quiser fechar esse último 1%: da próxima vez que
 você logar de verdade, é só confirmar que caiu direto na home — não
 precisa fazer nada além disso.
 
-## 2. Decisão de produto — ainda em aberto
+## 2. Decisões de produto — resolvidas em 2026-09-07 ✅
 
-- [ ] **Reorganização dos agentes em Skills.** Levantado no início do
-      projeto, nunca retomado.
-      - A: manter como módulo TypeScript comum em `src/lib/agents/`.
-      - B: migrar as execuções que fizerem sentido — dizer qual peça
-        começar.
-- [ ] **`ensureMentee` cria linha também para o mentor** que loga.
-      Inofensivo hoje — confirmar que continua assim quando houver mais
-      de um mentor.
+- [x] **Reorganização dos agentes em Skills — decisão: opção B.** Migrar
+      as execuções que fizerem sentido pra Skills. Levantei um plano
+      (qual peça começar, o que muda tecnicamente) antes de mexer em
+      código — ver seção logo abaixo desta, ou `docs/ARCHITECTURE.md`.
+- [x] **`ensureMentee` cria linha também para o mentor** que loga —
+      decisão: não mexer. Só existe um mentor (você) por enquanto; se
+      isso mudar no futuro, revisitar.
+- [x] **Texto de `/privacidade`** — decisão: mantém como está até você
+      levar pra revisão de um advogado antes do primeiro acesso externo
+      de verdade. Nenhuma mudança de código pendente da minha parte.
+- [x] **XLSX em Anexos** — decisão: mantém de fora, sem XLSX. Não
+      retomar por enquanto.
 
 ## 1c. Bloqueante — deploy na Vercel — resolvido ✅
 
@@ -94,28 +98,37 @@ precisa fazer nada além disso.
       Confirmado adicionado — allowlist agora tem as 4 URLs corretas
       (localhost, domínio próprio, domínio Vercel e wildcard da Vercel).
 
-**Ainda não confirmado**: o clique real num magic link — o item que o
-LLM Council apontou como o de maior risco não testado (toda validação até
-aqui usou sessão mintada via admin API, nunca o e-mail de verdade). Com o
-redirect corrigido, agora dá pra fechar isso: acesse a URL da Vercel,
-`/login`, digite um e-mail seu de verdade, abra a caixa de entrada e
-clique no link. Confirme que cai direto na home, logado.
+- [x] **Clique real num magic link** — o item que o LLM Council apontou
+      como o de maior risco não testado. Confirmado ao vivo em 2026-09-07:
+      pediu o link, recebeu, clicou, caiu autenticado em produção.
 
 ## 3. Não bloqueia agora, fica registrado
-- [ ] **Texto de `/privacidade` não passou por revisão jurídica.** Segue
-      fielmente as decisões de produto que você tomou (base legal,
-      retenção, canal de exclusão) e os requisitos do `SPEC-SOFTWARE.md`
-      §12, mas eu não sou advogado — antes do primeiro acesso externo de
-      verdade, vale um advogado revisar o texto.
-- [ ] **XLSX não é aceito em Anexos.** Adiado por vulnerabilidade sem
-      correção no pacote npm mais óbvio (`xlsx`/SheetJS) — decisão sua,
-      registrada em `docs/ARCHITECTURE.md`. Quando quiser retomar, as
-      opções levantadas foram `exceljs` (mantido, mas pesado) ou o build
-      corrigido do próprio SheetJS via `cdn.sheetjs.com` (leve, mas fora
-      do registro npm).
 - [x] **Bucket `attachments` no Storage** — criado por mim, privado, com
       limite de 15 MB e allowlist de mime-type já configurados no próprio
       bucket (redundante com a validação em código, de propósito).
+
+## 4. Bloqueante — achado na validação do magic link em produção — resolvido ✅
+
+- [x] **`/mentor` dando 500 em produção** — a `main` estava 20 commits
+      atrás desta branch (a Vercel faz deploy a partir da `main`, e todo
+      o trabalho de Fase 1/2/3 nunca tinha sido mesclado de volta).
+      Mesclei via PR (#2) — deploy novo já reflete o estado atual do
+      produto.
+- [x] **`SUPABASE_SERVICE_ROLE_KEY` malformada na Vercel** — o valor
+      salvo tinha o JWT correto seguido de uma quebra de linha e o
+      conteúdo inteiro de `ANTHROPIC_API_KEY=...` colado atrás (colagem
+      de duas linhas do `.env.local` num campo só). Isso quebrava toda
+      chamada do client admin (`Headers.set: ... is an invalid header
+      value`). Você corrigiu o valor pra conter só o JWT — `/mentor`
+      voltou a funcionar.
+
+**Ação pendente sua, não bloqueia o produto**: a `SUPABASE_SERVICE_ROLE_KEY`
+e a `ANTHROPIC_API_KEY` reais ficaram expostas em texto puro nos Runtime
+Logs da Vercel (e nesta conversa) por causa do vazamento acima — as duas
+devem ser tratadas como comprometidas. Você disse que vai trocar pelas
+versões finais depois; quando fizer isso, gire as duas chaves (revoga e
+gera novas, não só edita o valor) — não é suficiente só corrigir o campo
+malformado, porque o valor antigo já vazou pra fora do Vercel.
 
 ---
 
