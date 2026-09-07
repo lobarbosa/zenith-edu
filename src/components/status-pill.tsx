@@ -1,6 +1,7 @@
 const TONE_CLASSES = {
   good: "bg-good-soft text-good",
   warning: "bg-warning-soft text-warning",
+  bad: "bg-bad-soft text-bad",
   neutral: "bg-secondary text-muted-foreground",
 } as const;
 

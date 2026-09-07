@@ -131,6 +131,28 @@ mentor, fora de escopo aqui.
 
 `tsc`, `lint` e `build` passam limpos.
 
+**Rejeitar perfil/artefato** (`docs/HUMAN-CHECKLIST.md` §2, decisão B) —
+mentor agora tem "Validar" e "Rejeitar" lado a lado em `/mentor` e
+`/mentor/[menteeId]`, pro perfil e pros 4 artefatos. Rejeitar exige
+justificativa (campo obrigatório, trava tanto no client quanto num check
+constraint no banco); o mentorado vê o motivo em `/jornada` (artefato) ou
+na home (perfil).
+
+| Decisão | Motivo |
+|---|---|
+| Status novo `rejeitado` nas duas tabelas, em vez de reaproveitar `arquivado` (que já existe em `artifacts`) | `arquivado` não tem semântica de "motivo obrigatório" nem de "aparece pro mentorado com o porquê" — são conceitos diferentes; forçar os dois no mesmo valor deixaria a UI ambígua |
+| `ReviewActions` substitui `ValidateButton`, um componente só para as duas ações | Validar e rejeitar são a mesma decisão binária do mentor sobre o mesmo item — mesmo padrão de "uma responsabilidade" já usado em `DeleteAccountButton` (ação + confirmação inline) |
+| Artefato rejeitado libera `GenerateArtifactButton` de novo (mesma condição que já existia para `validado_mentor`) | O mentorado pode voltar a conversar com o copiloto e pedir nova versão — `POST /api/artifact` já bloqueia só quando existe `rascunho_agente` pendente, `rejeitado` não conta, nenhuma mudança necessária ali |
+| Perfil rejeitado **não** ganhou botão de "gerar nova síntese" | `synthesizeExecutiveProfile` usa a transcrição fixa da sessão de diagnóstico já encerrada — chamar de novo com o mesmo texto tende a produzir o mesmo perfil. Sem uma forma de reabrir o diagnóstico (fora de escopo, não pedido), o caminho de correção é o mentor retomar contato diretamente; a tela só mostra o motivo |
+
+Migration `0006_rejeicao.sql` escrita mas **não aplicada** — sem connection
+string de Postgres direta neste ambiente, só a URL REST e as chaves.
+Precisa rodar no SQL Editor do Supabase antes de `/api/mentor/reject`
+funcionar (`docs/HUMAN-CHECKLIST.md` §1b). `tsc`, `lint` e `build` passam
+limpos; a mecânica de update+select condicional espelha exatamente
+`/api/mentor/validate`, já validada ao vivo antes — não repeti a validação
+ao vivo aqui porque a migration ainda não existe no banco.
+
 ---
 
 ## 2. Stack

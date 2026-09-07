@@ -50,7 +50,7 @@ async function menteeCta(supabase: SupabaseClient, user: User) {
       .maybeSingle(),
     supabase
       .from("executive_profiles")
-      .select("status, version")
+      .select("status, version, motivo_rejeicao")
       .eq("mentee_id", mentee.id)
       .order("version", { ascending: false })
       .limit(1)
@@ -64,6 +64,16 @@ async function menteeCta(supabase: SupabaseClient, user: User) {
       <Button asChild>
         <Link href="/jornada">Ir para a Jornada</Link>
       </Button>
+    );
+  }
+
+  if (profile?.status === "rejeitado") {
+    return (
+      <p className="text-sm text-muted-foreground">
+        {status.label}
+        {profile.motivo_rejeicao ? ` — ${profile.motivo_rejeicao}` : ""} — seu mentor vai retomar
+        contato com você.
+      </p>
     );
   }
 

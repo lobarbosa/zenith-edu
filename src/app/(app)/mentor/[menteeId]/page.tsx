@@ -11,7 +11,7 @@ import { menteeStatus } from "@/lib/mentee-status";
 import { ensureJourneyState, ETAPA_ORDER } from "@/lib/agents/journey";
 import { EtapaStepper } from "../../jornada/etapa-stepper";
 import { ProfileDetail } from "../profile-detail";
-import { ValidateButton } from "../validate-button";
+import { ReviewActions } from "../review-actions";
 import { Transcript } from "../transcript";
 import { AdvanceButton } from "./advance-button";
 
@@ -19,17 +19,26 @@ type ArtifactRow = {
   id: string;
   tipo: ArtifactTipo;
   versao: number;
-  status: "rascunho_agente" | "validado_mentor";
+  status: "rascunho_agente" | "validado_mentor" | "rejeitado";
   conteudo: unknown;
   criado_em: string;
   validado_em: string | null;
+  motivo_rejeicao: string | null;
 };
 
-const ARTIFACT_STATUS_LABEL = { rascunho_agente: "Rascunho do agente", validado_mentor: "Validado" };
-const ARTIFACT_STATUS_TONE = { rascunho_agente: "warning", validado_mentor: "good" } as const;
+const ARTIFACT_STATUS_LABEL = {
+  rascunho_agente: "Rascunho do agente",
+  validado_mentor: "Validado",
+  rejeitado: "Rejeitado",
+};
+const ARTIFACT_STATUS_TONE = {
+  rascunho_agente: "warning",
+  validado_mentor: "good",
+  rejeitado: "bad",
+} as const;
 
-const STATUS_LABEL = { rascunho_agente: "Rascunho do agente", validado: "Validado" };
-const STATUS_TONE = { rascunho_agente: "warning", validado: "good" } as const;
+const STATUS_LABEL = { rascunho_agente: "Rascunho do agente", validado: "Validado", rejeitado: "Rejeitado" };
+const STATUS_TONE = { rascunho_agente: "warning", validado: "good", rejeitado: "bad" } as const;
 
 function formatDate(value: string | null) {
   if (!value) return "—";
@@ -90,13 +99,13 @@ export default async function MenteeDetailPage(props: PageProps<"/mentor/[mentee
 
   const { data: profiles } = await admin
     .from("executive_profiles")
-    .select("id, version, status, perfil, created_at, validated_at")
+    .select("id, version, status, perfil, created_at, validated_at, motivo_rejeicao")
     .eq("mentee_id", menteeId)
     .order("version", { ascending: false });
 
   const { data: artifactRows } = await admin
     .from("artifacts")
-    .select("id, tipo, versao, status, conteudo, criado_em, validado_em")
+    .select("id, tipo, versao, status, conteudo, criado_em, validado_em, motivo_rejeicao")
     .eq("mentee_id", menteeId)
     .order("versao", { ascending: false });
 
@@ -212,8 +221,11 @@ export default async function MenteeDetailPage(props: PageProps<"/mentor/[mentee
                         {STATUS_LABEL[item.status as keyof typeof STATUS_LABEL]}
                       </StatusPill>
                     </div>
-                    {item.status === "rascunho_agente" && <ValidateButton profileId={item.id} />}
+                    {item.status === "rascunho_agente" && <ReviewActions profileId={item.id} />}
                   </div>
+                  {item.status === "rejeitado" && item.motivo_rejeicao && (
+                    <p className="text-sm text-bad">Motivo da rejeição: {item.motivo_rejeicao}</p>
+                  )}
                   {parsed.success ? (
                     <ProfileDetail perfil={parsed.data} />
                   ) : (
@@ -253,8 +265,11 @@ export default async function MenteeDetailPage(props: PageProps<"/mentor/[mentee
                               {ARTIFACT_STATUS_LABEL[item.status]}
                             </StatusPill>
                           </div>
-                          {item.status === "rascunho_agente" && <ValidateButton artifactId={item.id} />}
+                          {item.status === "rascunho_agente" && <ReviewActions artifactId={item.id} />}
                         </div>
+                        {item.status === "rejeitado" && item.motivo_rejeicao && (
+                          <p className="text-sm text-bad">Motivo da rejeição: {item.motivo_rejeicao}</p>
+                        )}
                         <ArtifactDetail tipo={tipo} conteudo={item.conteudo} />
                       </div>
                     ))}

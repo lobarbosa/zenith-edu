@@ -64,10 +64,6 @@ precisa fazer nada além disso.
 
 ## 2. Decisão de produto — ainda em aberto
 
-- [ ] **"Rejeitar" um perfil.** Hoje só existe "Validar".
-      - A: deixar como está — o mentor simplesmente não valida um rascunho
-        ruim, resolve fora do sistema.
-      - B: adicionar uma ação de "pedir nova versão"/"rejeitar".
 - [ ] **Reorganização dos agentes em Skills.** Levantado no início do
       projeto, nunca retomado.
       - A: manter como módulo TypeScript comum em `src/lib/agents/`.
@@ -76,6 +72,20 @@ precisa fazer nada além disso.
 - [ ] **`ensureMentee` cria linha também para o mentor** que loga.
       Inofensivo hoje — confirmar que continua assim quando houver mais
       de um mentor.
+
+## 1b. Bloqueante — migration `0006_rejeicao.sql` pendente de aplicar
+
+- [ ] **Rodar `supabase/migrations/0006_rejeicao.sql` no Supabase.** Decisão
+      B do item "rejeitar perfil" (abaixo) foi implementada em código —
+      adiciona o status `rejeitado`, os campos `motivo_rejeicao`,
+      `rejeitado_em`, `rejeitado_por` em `executive_profiles` e `artifacts`,
+      e uma constraint que obriga o motivo quando o status é `rejeitado`.
+      Diferente da exclusão de conta, não consegui aplicar isso sozinho
+      desta vez — não há uma connection string de Postgres direta no
+      `.env.local`, só a URL REST e as chaves, e as migrations anteriores
+      sempre foram rodadas por você no SQL Editor do Supabase. Cole o
+      conteúdo do arquivo lá e rode. Sem isso, `/api/mentor/reject` falha
+      com erro de coluna/constraint inexistente.
 
 ## 3. Não bloqueia agora, fica registrado
 

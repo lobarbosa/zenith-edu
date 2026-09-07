@@ -18,12 +18,17 @@ type ArtifactRow = {
   id: string;
   tipo: ArtifactTipo;
   versao: number;
-  status: "rascunho_agente" | "validado_mentor";
+  status: "rascunho_agente" | "validado_mentor" | "rejeitado";
   conteudo: unknown;
+  motivo_rejeicao: string | null;
 };
 
-const STATUS_LABEL = { rascunho_agente: "Em revisão do mentor", validado_mentor: "Validado" };
-const STATUS_TONE = { rascunho_agente: "warning", validado_mentor: "good" } as const;
+const STATUS_LABEL = {
+  rascunho_agente: "Em revisão do mentor",
+  validado_mentor: "Validado",
+  rejeitado: "Rejeitado pelo mentor",
+};
+const STATUS_TONE = { rascunho_agente: "warning", validado_mentor: "good", rejeitado: "bad" } as const;
 
 export default async function JornadaPage() {
   const supabase = await createClient();
@@ -37,7 +42,7 @@ export default async function JornadaPage() {
 
   const { data: artifacts } = await supabase
     .from("artifacts")
-    .select("id, tipo, versao, status, conteudo")
+    .select("id, tipo, versao, status, conteudo, motivo_rejeicao")
     .eq("mentee_id", mentee.id)
     .order("versao", { ascending: false });
 
@@ -91,11 +96,16 @@ export default async function JornadaPage() {
                       {latest ? STATUS_LABEL[latest.status] : "Ainda não gerado"}
                     </StatusPill>
                   </div>
-                  {(!latest || latest.status === "validado_mentor") && (
+                  {(!latest ||
+                    latest.status === "validado_mentor" ||
+                    latest.status === "rejeitado") && (
                     <GenerateArtifactButton tipo={tipo} label={latest ? "Gerar nova versão" : "Gerar"} />
                   )}
                 </div>
 
+                {latest?.status === "rejeitado" && latest.motivo_rejeicao && (
+                  <p className="text-sm text-bad">Motivo da rejeição: {latest.motivo_rejeicao}</p>
+                )}
                 {latest?.status === "validado_mentor" && (
                   <ArtifactDetail tipo={tipo} conteudo={latest.conteudo} />
                 )}

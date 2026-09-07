@@ -6,7 +6,7 @@ import { ExecutiveProfileSchema } from "@/lib/agents/executive-profile-schema";
 import { ARTIFACT_LABELS, type ArtifactTipo } from "@/lib/agents/artifact-schemas";
 import { ArtifactDetail } from "@/components/artifact-detail";
 import { ProfileDetail } from "./profile-detail";
-import { ValidateButton } from "./validate-button";
+import { ReviewActions } from "./review-actions";
 import { MenteeRoster, type RosterEntry } from "./mentee-roster";
 
 type PendingItem = {
@@ -133,9 +133,9 @@ export default async function MentorPage() {
                 </p>
               </div>
               {item.kind === "perfil" ? (
-                <ValidateButton profileId={item.id} />
+                <ReviewActions profileId={item.id} />
               ) : (
-                <ValidateButton artifactId={item.id} />
+                <ReviewActions artifactId={item.id} />
               )}
             </div>
 
