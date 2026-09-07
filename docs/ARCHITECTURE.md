@@ -36,8 +36,7 @@ infraestrutura do corpus — está em código; o resto da lista ainda não.
 | Entrega (ordem da spec) | Status |
 |---|---|
 | Schema Fase 1 completo (`0004_fase1_schema.sql`) + `/api/knowledge/ingest` | ✅ feita, aguardando migration rodar e `VOYAGE_API_KEY` |
-| Orquestrador (roteador + gate de etapa liberada) | não iniciado |
-| Career Copilot | não iniciado |
+| Orquestrador (roteador + gate de etapa liberada) + Career Copilot (`/api/chat`) | ✅ feita em código, **não testada ao vivo** — sem UI ainda, sem migration rodada |
 | Artefatos de FIND (`career_map`, `competency_map`, `next_chair_map`) | não iniciado |
 | `/jornada` | não iniciado |
 
@@ -405,6 +404,13 @@ botão "Sair") uma vez só, e cada página ganhou `flex-1` no lugar de
 | Embedding via Voyage AI (`voyage-3-lite`), chamado com `fetch()` puro, sem SDK novo no `package.json` | Peça nova de stack, perguntada e confirmada antes de escrever código (`CLAUDE.md` proíbe trocar/introduzir peça sem perguntar). `voyage-3-lite` gera 1024 dimensões nativas, batendo exato com `vector(1024)` da spec. Sem SDK porque a API é uma chamada REST simples — adicionar dependência só pra isso seria peso sem necessidade. |
 | Chunking aproxima token por palavra (`~0,75 palavra/token`), sem tokenizer no projeto | `SPEC-SOFTWARE.md` §9 pede "~800 tokens, sobreposição de ~100"; sem uma lib de tokenização (que também seria peça nova de stack), a aproximação por contagem de palavra é suficiente pro tamanho de chunk ser consistente — precisão exata de token não muda o resultado da busca por similaridade. |
 | `/api/knowledge/ingest` reusa `isMentor()` em vez de checar a coluna `papel` nova | `SPEC-SOFTWARE.md` §3: "mentor e admin são a mesma pessoa nas primeiras turmas... separar na UI só quando houver segunda pessoa." A coluna `papel` existe no schema (spec pede isso desde já), mas nada a lê ainda — seria antecipar separação de papel que a própria spec manda não antecipar. |
+| `/api/chat` não recebe `agentKey` nem `conversationId` do cliente | `SPEC-SOFTWARE.md` §8: "o roteamento acontece no servidor. A interface é um chat único." O cliente só manda a mensagem; o servidor decide território e conversa. |
+| Uma `conversations` por (mentorado, agent_key), reaproveitada por continuidade | Nem a spec nem os agentes definem isso de forma literal — é leitura de engenharia de "continuidade vale: se a conversa já está em um território e a mensagem segue nele, mantenha o mesmo copiloto" (`SPEC-AGENTS.md` §4) combinada com `conversations.agent_key not null`. Histórico enviado ao modelo, porém, é o transcript inteiro do mentorado entre territórios (últimas 40 mensagens) — perder contexto ao trocar de assunto seria pior experiência que a spec descreve. |
+| Território bloqueado: o Career Copilot responde com uma instrução de sistema extra, não uma string fixa | `SPEC-AGENTS.md` §4: "recusa seca quebra a experiência premium... a ponte é gerada pelo copiloto da etapa atual, com o contexto do que foi perguntado." Uma mensagem canônica ("esse território abre em...") seria exatamente a recusa seca que a spec pede pra evitar. |
+| Só Career Copilot tem prompt implementado; os outros 4 `agent_key` do roteador nunca são de fato respondidos | `etapas_liberadas` começa e permanece `['FIND']` até `/api/mentor/advance` existir (Fase 1, ainda não construída) — nenhum outro território é alcançável de verdade nesta entrega. Implementar Business/Value/Leadership/Executive agora seria puro código morto. |
+| Prompt de detecção de sinais (`signals.ts`) é texto novo, não transcrito literal da spec | `SPEC-AGENTS.md` §13 descreve os gatilhos (contradição, resistência, risco, avanço, fora de escopo) qualitativamente, sem prompt pronto — diferente dos prompts de agente, que são "fonte de verdade" travada. Escrito como um classificador Haiku leve, mesmo padrão de custo/confiabilidade do roteador e do classificador de bloco. |
+| `agent_runs` grava 3 linhas por turno (`router`, `career`, `signals`) | "Todo run de agente grava em `agent_runs`" (`SPEC-SOFTWARE.md` §7, regra 10) — são 3 chamadas de modelo reais por turno de copiloto, cada uma seu próprio custo/latência a auditar no Mentor Console (Fase 4) depois. |
+| `journey_state` é criado (bootstrap FIND/mês 1) via `service_role` na primeira mensagem ao copiloto | Não é "avançar etapa" (ação exclusiva do mentor) — é o estado inicial da jornada passar a existir. Sem policy de insert pro mentorado nessa tabela (0004), então precisa rodar como admin, mesma lógica de qualquer outra escrita cross-policy já usada em `/api/mentor/*`. |
 
 ---
 
@@ -475,9 +481,20 @@ bibliografia ainda não foi escrito — isso é IP do programa, não algo que a
 sessão de código pode gerar. Sem isso, `POST /api/knowledge/ingest`
 funciona mas o corpus fica vazio.
 
-**Ainda não iniciado**: orquestrador (roteador Haiku + gate de etapa
-liberada), Career Copilot, artefatos de FIND, `/jornada`. Cada um é a
-próxima entrega, na ordem — não adiantar.
+**Orquestrador + Career Copilot (`POST /api/chat`)** também estão em
+código: roteador Haiku, gate de etapa liberada com ponte gerada pelo
+próprio copiloto (em vez de mensagem fixa), contexto de perfil/artefatos/
+RAG injetado, detecção de sinais pro mentor, log em `agent_runs`. Passou
+por `tsc`/`lint`/`build`, mas **diferente da Fase 0, isso não foi validado
+ao vivo** — depende da migration `0004`/`0005` rodarem (a segunda cria a
+função de busca por similaridade `match_knowledge_chunks`) e não existe
+nenhuma tela ainda pra chamar a rota; só dá pra exercitar via chamada
+HTTP direta. Validação de ponta a ponta é o próximo passo natural antes
+de seguir pra artefatos de FIND.
+
+**Ainda não iniciado**: artefatos de FIND (`career_map`, `competency_map`,
+`next_chair_map`), `/jornada`. Próximas entregas, na ordem — não
+adiantar.
 
 Checklist completo do que está pendente — incluindo o que só um humano pode
 fazer (credenciais, contas, decisões de produto) — em

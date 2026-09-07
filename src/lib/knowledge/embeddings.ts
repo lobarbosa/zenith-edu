@@ -9,12 +9,20 @@ export async function embedChunks(chunks: string[]): Promise<number[][]> {
   const embeddings: number[][] = [];
   for (let i = 0; i < chunks.length; i += BATCH_SIZE) {
     const batch = chunks.slice(i, i + BATCH_SIZE);
-    embeddings.push(...(await embedBatch(batch)));
+    embeddings.push(...(await embedBatch(batch, "document")));
   }
   return embeddings;
 }
 
-async function embedBatch(batch: string[]): Promise<number[][]> {
+// Voyage distingue o embedding de documento (indexação) do de query (busca)
+// pra otimizar a similaridade entre os dois — mesmo texto, `input_type`
+// diferente.
+export async function embedQuery(text: string): Promise<number[]> {
+  const [embedding] = await embedBatch([text], "query");
+  return embedding;
+}
+
+async function embedBatch(batch: string[], inputType: "document" | "query"): Promise<number[][]> {
   const response = await fetch("https://api.voyageai.com/v1/embeddings", {
     method: "POST",
     headers: {
@@ -24,7 +32,7 @@ async function embedBatch(batch: string[]): Promise<number[][]> {
     body: JSON.stringify({
       input: batch,
       model: VOYAGE_MODEL,
-      input_type: "document",
+      input_type: inputType,
     }),
   });
 

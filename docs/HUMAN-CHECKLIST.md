@@ -3,10 +3,12 @@
 Levantado numa revisão completa do projeto, atualizado depois do início
 da Fase 1 (infraestrutura do corpus de conhecimento).
 
-## 0. Fase 1 — bloqueante pra corpus virar realidade
+## 0. Fase 1 — bloqueante pra corpus e copiloto virarem realidade
 
-- [ ] **Rodar `supabase/migrations/0004_fase1_schema.sql`** no SQL Editor
-      do Supabase, na sequência das três primeiras (mesmo editor de antes).
+- [ ] **Rodar `supabase/migrations/0004_fase1_schema.sql` e
+      `0005_knowledge_search.sql`**, nessa ordem, no SQL Editor do Supabase
+      (mesmo editor de antes, depois das três primeiras). A `0005` cria a
+      função de busca por similaridade que `/api/chat` usa pro RAG.
 - [ ] **`VOYAGE_API_KEY`** — criar conta em https://dash.voyageai.com,
       gerar a chave e adicionar em `.env.local` (local) e nas Environment
       Variables da Vercel (produção). Usada só em `/api/knowledge/ingest`.
