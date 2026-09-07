@@ -145,13 +145,17 @@ na home (perfil).
 | Artefato rejeitado libera `GenerateArtifactButton` de novo (mesma condição que já existia para `validado_mentor`) | O mentorado pode voltar a conversar com o copiloto e pedir nova versão — `POST /api/artifact` já bloqueia só quando existe `rascunho_agente` pendente, `rejeitado` não conta, nenhuma mudança necessária ali |
 | Perfil rejeitado **não** ganhou botão de "gerar nova síntese" | `synthesizeExecutiveProfile` usa a transcrição fixa da sessão de diagnóstico já encerrada — chamar de novo com o mesmo texto tende a produzir o mesmo perfil. Sem uma forma de reabrir o diagnóstico (fora de escopo, não pedido), o caminho de correção é o mentor retomar contato diretamente; a tela só mostra o motivo |
 
-Migration `0006_rejeicao.sql` escrita mas **não aplicada** — sem connection
-string de Postgres direta neste ambiente, só a URL REST e as chaves.
-Precisa rodar no SQL Editor do Supabase antes de `/api/mentor/reject`
-funcionar (`docs/HUMAN-CHECKLIST.md` §1b). `tsc`, `lint` e `build` passam
-limpos; a mecânica de update+select condicional espelha exatamente
-`/api/mentor/validate`, já validada ao vivo antes — não repeti a validação
-ao vivo aqui porque a migration ainda não existe no banco.
+Migration `0006_rejeicao.sql` aplicada pelo usuário no SQL Editor do
+Supabase (eu não tinha connection string de Postgres direta pra rodar
+sozinho). Validado ao vivo depois: usuário de teste com perfil e artefato
+em `rascunho_agente`; confirmado que `update` pra `rejeitado` sem
+`motivo_rejeicao` é bloqueado pela constraint em ambas as tabelas;
+rejeição com motivo grava `status`, `motivo_rejeicao`, `rejeitado_em`,
+`rejeitado_por` corretamente; repetir a rejeição num item já rejeitado é
+no-op (a trava `.eq("status", "rascunho_agente")` não encontra a linha,
+rota devolveria 404, mesmo padrão de `/api/mentor/validate`); artefato
+rejeitado não deixa `rascunho_agente` pendente, então `POST /api/artifact`
+não bloquearia gerar nova versão. `tsc`, `lint` e `build` passam limpos.
 
 ---
 

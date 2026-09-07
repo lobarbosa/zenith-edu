@@ -73,20 +73,6 @@ precisa fazer nada além disso.
       Inofensivo hoje — confirmar que continua assim quando houver mais
       de um mentor.
 
-## 1b. Bloqueante — migration `0006_rejeicao.sql` pendente de aplicar
-
-- [ ] **Rodar `supabase/migrations/0006_rejeicao.sql` no Supabase.** Decisão
-      B do item "rejeitar perfil" (abaixo) foi implementada em código —
-      adiciona o status `rejeitado`, os campos `motivo_rejeicao`,
-      `rejeitado_em`, `rejeitado_por` em `executive_profiles` e `artifacts`,
-      e uma constraint que obriga o motivo quando o status é `rejeitado`.
-      Diferente da exclusão de conta, não consegui aplicar isso sozinho
-      desta vez — não há uma connection string de Postgres direta no
-      `.env.local`, só a URL REST e as chaves, e as migrations anteriores
-      sempre foram rodadas por você no SQL Editor do Supabase. Cole o
-      conteúdo do arquivo lá e rode. Sem isso, `/api/mentor/reject` falha
-      com erro de coluna/constraint inexistente.
-
 ## 3. Não bloqueia agora, fica registrado
 
 - [ ] **Deploy na Vercel** — decisão explícita foi ficar local por
