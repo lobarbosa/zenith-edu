@@ -1,29 +1,31 @@
 # Checklist de construção humana
 
-Levantado numa revisão completa do projeto, atualizado depois da Fase 1
-ficar completa em código (corpus, orquestrador, Career Copilot, geração
-de artefato, `/copiloto`, `/jornada`, fila de validação em `/mentor`).
+Levantado numa revisão completa do projeto, atualizado depois do corpus
+da Fase 1 ficar real: migrations rodadas, Voyage funcionando, 10
+playbooks ingeridos e busca por similaridade testada ao vivo.
 
-## 0. Fase 1 — bloqueante pra tudo isso virar realidade
+## 0. Fase 1 — resolvido ✅
 
-Confirmado consultando o Supabase real do projeto: as tabelas Fase 1
-(`journey_state`, `artifacts` etc.) ainda não existem no banco. Até rodar
-a migration, `/copiloto`, `/jornada` e a fila de artefatos em `/mentor`
-quebram ao carregar — não é um bug, é essa dependência.
+- [x] **Migrations `0004_fase1_schema.sql` e `0005_knowledge_search.sql`**
+      rodadas em produção — confirmado lendo as tabelas direto no banco.
+- [x] **`VOYAGE_API_KEY`** criada e testada. No caminho, achei que o
+      modelo original (`voyage-3-lite`) só gera 512 dimensões, não 1024
+      como a decisão registrada assumia — trocado por `voyage-3.5`
+      (ver `docs/ARCHITECTURE.md` §6 e §8). Nada da sua parte a fazer
+      aqui, já corrigido em código.
+- [x] **Conteúdo real dos 10 playbooks** — extraídos, mapeados por
+      pilar/etapa (`supabase/seed/playbooks/manifest.json`) e **ingeridos**
+      via `scripts/ingest-playbooks.js` (21 chunks no banco). Busca por
+      similaridade testada com uma query real, retornou os trechos certos.
+      Frameworks/transcrições/casos/bibliografia (os outros tipos que
+      `knowledge_documents` aceita) continuam em aberto pra quando fizer
+      sentido — os 10 playbooks já cobrem o mínimo da spec.
 
-- [ ] **Rodar `supabase/migrations/0004_fase1_schema.sql` e
-      `0005_knowledge_search.sql`**, nessa ordem, no SQL Editor do Supabase
-      (mesmo editor de antes, depois das três primeiras). A `0005` cria a
-      função de busca por similaridade que `/api/chat` usa pro RAG.
-- [ ] **`VOYAGE_API_KEY`** — criar conta em https://dash.voyageai.com,
-      gerar a chave e adicionar em `.env.local` (local) e nas Environment
-      Variables da Vercel (produção). Usada só em `/api/knowledge/ingest`.
-- [x] **Conteúdo real dos 10 playbooks** — entregue. Os 10 estão em
-      `supabase/seed/playbooks/`, extraídos e mapeados pra pilar/etapa
-      (`manifest.json`). Falta só a ingestão em si (script ainda não
-      escrito — é construído e testado junto das migrations, não antes).
-      Frameworks/transcrições/casos/bibliografia continuam em aberto pra
-      quando fizer sentido — os 10 playbooks já cobrem o mínimo da spec.
+**Um lembrete operacional, não bloqueio**: sua conta na Voyage está sem
+cartão cadastrado, limitada a 3 requisições/minuto. O script já lida com
+isso (espera e tenta de novo), mas se algum dia o volume de ingestão
+crescer bastante, cadastrar um cartão em https://dashboard.voyageai.com
+destrava o limite padrão — não precisa fazer isso agora.
 
 ## 1. Bloqueante — resolvido ✅
 

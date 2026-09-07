@@ -1,8 +1,10 @@
 // Embedding do corpus via Voyage AI (parceiro de embeddings da Anthropic).
-// voyage-3-lite gera 1024 dimensões nativamente — bate com o vector(1024)
-// de knowledge_chunks (SPEC-SOFTWARE.md §6). Só chame a partir de rota de
-// servidor: VOYAGE_API_KEY nunca pode chegar a um client component.
-const VOYAGE_MODEL = "voyage-3-lite";
+// voyage-3.5 gera 1024 dimensões nativamente — bate com o vector(1024) de
+// knowledge_chunks (SPEC-SOFTWARE.md §6). voyage-3-lite NÃO serve: testado
+// contra a API real, ele só aceita 512 (a própria API recusa forçar 1024
+// via output_dimension). Só chame a partir de rota de servidor:
+// VOYAGE_API_KEY nunca pode chegar a um client component.
+const VOYAGE_MODEL = "voyage-3.5";
 const BATCH_SIZE = 100;
 
 export async function embedChunks(chunks: string[]): Promise<number[][]> {

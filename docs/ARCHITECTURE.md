@@ -35,18 +35,17 @@ infraestrutura do corpus — está em código; o resto da lista ainda não.
 
 | Entrega (ordem da spec) | Status |
 |---|---|
-| Schema Fase 1 completo (`0004_fase1_schema.sql`, `0005_knowledge_search.sql`) + `/api/knowledge/ingest` | ✅ feita, aguardando migrations rodarem e `VOYAGE_API_KEY` |
-| Orquestrador (roteador + gate de etapa liberada) + Career Copilot (`/api/chat`) | ✅ feita em código |
-| Geração de artefato (`POST /api/artifact`) + validação pelo mentor | ✅ feita em código |
-| `/copiloto`, `/jornada`, fila de validação em `/mentor` e `/mentor/[menteeId]` | ✅ feitas em código |
+| Schema Fase 1 completo (`0004_fase1_schema.sql`, `0005_knowledge_search.sql`) | ✅ feita e rodada em produção |
+| Corpus ingerido — 10 playbooks reais, `scripts/ingest-playbooks.js` | ✅ feito e validado ao vivo — 21 chunks, busca por similaridade testada e retornando resultado relevante |
+| Orquestrador (roteador + gate de etapa liberada) + Career Copilot (`/api/chat`) | ✅ feita em código, não validada ao vivo ainda |
+| Geração de artefato (`POST /api/artifact`) + validação pelo mentor | ✅ feita em código, não validada ao vivo ainda |
+| `/copiloto`, `/jornada`, fila de validação em `/mentor` e `/mentor/[menteeId]` | ✅ feitas em código, não validadas ao vivo ainda |
 
-**Nenhuma dessas quatro linhas foi validada ao vivo ainda** — confirmado
-rodando uma query real contra o Supabase do projeto: `journey_state` (e as
-demais tabelas Fase 1) ainda não existem no banco, então `/copiloto`,
-`/jornada` e a fila de artefatos em `/mentor` quebram até as migrations
-`0004` e `0005` rodarem (`docs/HUMAN-CHECKLIST.md` §0). `tsc`, `lint` e
-`build` passam limpos; a validação de ponta a ponta (mesmo padrão da
-Fase 0) é o passo seguinte assim que o banco estiver migrado.
+As migrations rodaram e o corpus está ingerido e testado — a base de dados
+da Fase 1 é real agora, não só código. O que falta validar ao vivo é o
+fluxo completo do mentorado (conversar com o Career Copilot usando esse
+corpus de verdade, gerar um artefato, mentor validar), mesmo padrão de
+rigor da Fase 0. `tsc`, `lint` e `build` passam limpos.
 
 ---
 
@@ -409,7 +408,7 @@ botão "Sair") uma vez só, e cada página ganhou `flex-1` no lugar de
 | `messages.block` só teve o `not null` removido, sem tocar no `check` | `block between 1 and 8` já é satisfeito por `NULL` em SQL (lógica de três valores — a expressão avalia `NULL`, não `false`), então a constraint existente já aceitava mensagem de conversa com copiloto sem `block`. Mudar o check seria trabalho redundante. |
 | `knowledge_documents`/`knowledge_chunks` sem nenhuma RLS policy (nem para o mentorado, nem para o mentor) | É o corpus (IP do produto) — só a rota de ingestão e o RAG (ambos futuros, rodando com `service_role` no servidor) tocam essas tabelas. `SPEC-SOFTWARE.md` §6: "nunca retornado bruto ao cliente." Nenhum caminho client-side deveria conseguir ler, então nenhuma policy é a trava mais simples. |
 | `mentor_flags` sem policy de select para ninguém além de `service_role` | `SPEC-AGENTS.md` §13 é explícito: sinal "nunca é devolvido ao mentorado, nem insinuado". Sem policy é mais forte que uma policy que tenta filtrar por papel — não existe tabela de papel ainda pra confiar nisso. |
-| Embedding via Voyage AI (`voyage-3-lite`), chamado com `fetch()` puro, sem SDK novo no `package.json` | Peça nova de stack, perguntada e confirmada antes de escrever código (`CLAUDE.md` proíbe trocar/introduzir peça sem perguntar). `voyage-3-lite` gera 1024 dimensões nativas, batendo exato com `vector(1024)` da spec. Sem SDK porque a API é uma chamada REST simples — adicionar dependência só pra isso seria peso sem necessidade. |
+| Embedding via Voyage AI (`voyage-3.5`, não `voyage-3-lite`), chamado com `fetch()` puro, sem SDK novo no `package.json` | Peça nova de stack, perguntada e confirmada antes de escrever código (`CLAUDE.md` proíbe trocar/introduzir peça sem perguntar). `voyage-3-lite` foi a escolha original (assumida como 1024 dimensões nativas) mas, testado contra a API real assim que a chave existiu, só aceita 512 — a própria API recusa `output_dimension: 1024` pra esse modelo. Trocado por `voyage-3.5`, que gera 1024 nativas e bate com `vector(1024)` da spec. Sem SDK porque a API é uma chamada REST simples. |
 | Chunking aproxima token por palavra (`~0,75 palavra/token`), sem tokenizer no projeto | `SPEC-SOFTWARE.md` §9 pede "~800 tokens, sobreposição de ~100"; sem uma lib de tokenização (que também seria peça nova de stack), a aproximação por contagem de palavra é suficiente pro tamanho de chunk ser consistente — precisão exata de token não muda o resultado da busca por similaridade. |
 | `/api/knowledge/ingest` reusa `isMentor()` em vez de checar a coluna `papel` nova | `SPEC-SOFTWARE.md` §3: "mentor e admin são a mesma pessoa nas primeiras turmas... separar na UI só quando houver segunda pessoa." A coluna `papel` existe no schema (spec pede isso desde já), mas nada a lê ainda — seria antecipar separação de papel que a própria spec manda não antecipar. |
 | `/api/chat` não recebe `agentKey` nem `conversationId` do cliente | `SPEC-SOFTWARE.md` §8: "o roteamento acontece no servidor. A interface é um chat único." O cliente só manda a mensagem; o servidor decide território e conversa. |
@@ -486,17 +485,32 @@ infraestrutura do corpus — está em código:
   Voyage AI (`src/lib/knowledge/embeddings.ts`), persiste em
   `knowledge_documents`/`knowledge_chunks`. Protegido por `isMentor()`.
 
-**Falta pra essa entrega virar corpus de verdade**: a migration ainda não
-rodou no Supabase, `VOYAGE_API_KEY` ainda não existe em `.env.local`/Vercel.
-O conteúdo, que dependia só do usuário, chegou: os 10 playbooks completos
-da spec estão extraídos e mapeados por pilar/etapa em
-`supabase/seed/playbooks/` (`manifest.json`). Uma divergência entre o
+**O corpus é real agora.** Migrations `0004`/`0005` rodaram em produção,
+`VOYAGE_API_KEY` foi criada e testada, e os 10 playbooks foram ingeridos
+via `scripts/ingest-playbooks.js` (21 chunks). Uma divergência entre o
 cabeçalho de 2 documentos (Networking, Gestão de Stakeholders — "People &
 Relationships") e o `SPEC-AGENTS.md` §1 (que os atribui ao Executive
 Copilot) foi decidida pelo usuário: seguir a spec — ver
-`supabase/seed/playbooks/README.md`. Falta só escrever e testar o script
-de ingestão, junto com a migration rodando (não antes — mesma disciplina
-do resto do projeto).
+`supabase/seed/playbooks/README.md`. Busca por similaridade testada com
+uma query real ("Quero saber se estou pronto pra virar diretor") contra o
+pilar CAREER: retornou os 5 trechos mais relevantes, todos do Playbook de
+Carreira/Posicionamento, com similaridade decrescente coerente.
+
+No caminho, um bug real foi encontrado e corrigido antes de afetar
+qualquer coisa: `voyage-3-lite` (o modelo original) gera 512 dimensões,
+não 1024 como a decisão registrada assumia — a própria API da Voyage
+recusa forçar 1024 nesse modelo. Trocado por `voyage-3.5`, que gera 1024
+nativas (`src/lib/knowledge/embeddings.ts`). Achado rodando a primeira
+chamada real contra a Voyage, mesmo padrão de "só descobre testando ao
+vivo" que já valeu pro classificador de bloco na Fase 0.
+
+`scripts/ingest-playbooks.js` grava direto no banco com `service_role`
+(chunking e modelo espelham `src/lib/knowledge/chunking.ts` e
+`embeddings.ts` — mantenha em sincronia se um mudar), não passa por
+`POST /api/knowledge/ingest`: essa rota exige sessão de mentor
+autenticada e não existe UI (`/admin/conhecimento`) pra gerar isso ainda.
+É idempotente (pula título já ingerido) e lida com o rate limit de conta
+Voyage sem cartão cadastrado (3 RPM) com espera e retentativa.
 
 **Orquestrador + Career Copilot (`POST /api/chat`)**: roteador Haiku, gate
 de etapa liberada com ponte gerada pelo próprio copiloto (em vez de
@@ -523,20 +537,11 @@ mentorado pelo status real (perfil validado → Jornada; diagnóstico
 concluído aguardando devolutiva → sem botão; senão → continuar/iniciar
 diagnóstico) em vez de mandar sempre pra `/diagnostico`.
 
-Passou por `tsc`/`lint`/`build`. **Diferente da Fase 0, nada disso foi
-validado ao vivo** — confirmado consultando o Supabase real do projeto:
-as tabelas Fase 1 ainda não existem (`journey_state` etc.), então
-`/copiloto`, `/jornada` e a fila de artefatos quebram até as migrations
-`0004` e `0005` rodarem. Validação de ponta a ponta (mesmo padrão da
-Fase 0: mentee conversa → gera os 3 artefatos → mentor valida) é o
-próximo passo assim que o banco estiver migrado e a `VOYAGE_API_KEY`
-existir.
-
-Com isso, a Fase 1 está **completa em código** — falta só rodar as
-migrations, a chave da Voyage e validar ao vivo (`docs/HUMAN-CHECKLIST.md`
-§0). O conteúdo real dos playbooks (IP do programa) segue como o único
-item que só o usuário resolve; sem ele o corpus RAG fica vazio e o Career
-Copilot responde mais genérico, mas o restante do fluxo funciona.
+Passou por `tsc`/`lint`/`build`. As tabelas existem, o corpus está
+ingerido e testado — falta só a validação de ponta a ponta do fluxo do
+mentorado em si (conversar com o Career Copilot usando esse corpus real,
+gerar os 3 artefatos de FIND, mentor validar), mesmo padrão de rigor da
+Fase 0. Esse é o próximo passo, e agora nada externo bloqueia ele.
 
 Checklist completo do que está pendente — incluindo o que só um humano pode
 fazer (credenciais, contas, decisões de produto) — em
