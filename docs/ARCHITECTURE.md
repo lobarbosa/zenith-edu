@@ -12,10 +12,9 @@ está certo e este documento está desatualizado — corrija-o.
 
 ## 1. Visão geral
 
-Estamos na **Fase 0** (ver `CLAUDE.md`): autenticação, o Diagnostic Agent
-conduzindo o Executive Diagnostic, síntese do Perfil Executivo e validação
-pelo mentor. Nenhum copiloto, orquestrador, RAG ou Mentor Console — isso é
-Fase 1+.
+**Fase 0** (ver `CLAUDE.md`) está completa e validada: autenticação, o
+Diagnostic Agent conduzindo o Executive Diagnostic, síntese do Perfil
+Executivo e validação pelo mentor.
 
 **As 5 entregas da Fase 0 estão feitas em código e validadas de ponta a
 ponta contra Supabase e Anthropic reais** (login → 8 blocos do
@@ -29,6 +28,322 @@ encontrou e corrigiu um bug real — ver §6.
 | 3. Persistência de mensagens e controle de bloco | ✅ feita e validada ao vivo |
 | 4. Síntese do Perfil Executivo em JSON | ✅ feita e validada ao vivo |
 | 5. `/mentor` — leitura e validação do perfil | ✅ feita e validada ao vivo |
+
+**Fase 1** (`SPEC-SOFTWARE.md` §15: corpus ingerido → orquestrador → Career
+Copilot → artefatos de FIND → `/jornada`) está **completa e validada de
+ponta a ponta** contra Supabase e Anthropic reais — mesmo rigor da Fase 0.
+
+| Entrega (ordem da spec) | Status |
+|---|---|
+| Schema Fase 1 completo (`0004_fase1_schema.sql`, `0005_knowledge_search.sql`) | ✅ feita e rodada em produção |
+| Corpus ingerido — 10 playbooks reais, `scripts/ingest-playbooks.js` | ✅ feito e validado ao vivo — 21 chunks, busca por similaridade testada e retornando resultado relevante |
+| Orquestrador (roteador + gate de etapa liberada) + Career Copilot (`/api/chat`) | ✅ feita e validada ao vivo |
+| Geração de artefato (`POST /api/artifact`) + validação pelo mentor | ✅ feita e validada ao vivo |
+| `/copiloto`, `/jornada`, fila de validação em `/mentor` e `/mentor/[menteeId]` | ✅ feitas e validadas ao vivo |
+
+Fluxo completo rodado de verdade: mentorado conversa com o Career Copilot
+(usando perfil real + RAG do corpus real) → gera os 3 artefatos de FIND →
+mentor vê a fila, valida os 3 → `/jornada` mostra tudo validado. Essa
+validação encontrou e corrigiu **dois bugs reais**, nenhum pego por
+`tsc`/`lint`/`build`:
+
+1. **Campos enum na geração de artefato.** `nivel_atual`, `nivel_exigido`
+   (`competency_map`), `situacao`, `distancia` (`next_chair_map`) são
+   `z.enum(...)` sem `.nullable()`. O prompt de geração diz "campo sem
+   base fica vazio" — para string/lista isso é `""`/`[]`, mas um enum de
+   opções fixas não tem como representar "vazio" (a API do Opus tenta
+   emitir algo fora da lista, o Zod rejeita, esgota as 3 tentativas,
+   `502`). `competency_map` e `next_chair_map` falharam 100% das vezes;
+   `career_map` (sem nenhum campo enum) passou de primeira — o padrão do
+   erro apontou direto pra causa. Corrigido: os 4 campos viraram
+   `.nullable()`, o prompt agora distingue explicitamente "campo de texto/
+   lista vazio" de "campo de opção fixa sem base = `null`", e a UI
+   (`artifact-detail.tsx`) trata `null` como "Ainda não avaliado".
+2. **Query ambígua em `/mentor`.** `artifacts` tem duas FKs pra `mentees`
+   (`mentee_id` e `validado_por`) — `.select(..., mentees(email))` sem
+   desambiguar dá `PGRST201` (300 Multiple Choices) do PostgREST, porque
+   ele não sabe qual relação usar. A página inteira quebrava (erro 500)
+   assim que existia qualquer artefato pendente. Corrigido com o hint
+   explícito `mentees!artifacts_mentee_id_fkey(email)`.
+
+`tsc`, `lint` e `build` passam limpos depois das correções.
+
+**Fase 2** (`SPEC-SOFTWARE.md` §15: Business e Value Copilot, `/biblioteca`)
+está **encerrada** — todas as entregas completas e validadas ao vivo.
+
+| Entrega | Status |
+|---|---|
+| `POST /api/mentor/advance` | ✅ feita e validada ao vivo |
+| Business Copilot (`/api/chat`) + `business_map` | ✅ feita e validada ao vivo |
+| Value Copilot + `value_creation_map` | ✅ feita e validada ao vivo |
+| `/biblioteca` | ✅ feita e validada ao vivo |
+| Anexos (`POST /api/attachments`) | ✅ feita e validada ao vivo |
+
+Validado ao vivo: mentee de teste conversou com o Career Copilot (regressão
+— continua funcionando), mentor avançou a etapa pra UNDERSTAND pela nova
+seção "Jornada" em `/mentor/[menteeId]`, mentee conversou com o Business
+Copilot (roteador classificou corretamente, contexto financeiro real —
+"MDR", "70% da receita" — apareceu no `business_map` gerado), mentor
+validou, `/jornada` passou a mostrar só o Business Map (o filtro por
+etapa funcionou — os 3 artefatos de FIND somem da tela assim que a etapa
+avança, ficam só em `/mentor/[menteeId]`, a visão histórica). Testado
+também o caminho de bloqueio: mentee ainda em FIND perguntando algo de
+Business recebe a ponte do próprio Career Copilot, sem `service_role`
+insuficiente ou etapa incorreta; e `POST /api/artifact` recusa gerar
+`business_map` (403) pra quem ainda não tem UNDERSTAND liberado.
+
+Um bug real de menor porte, achado ao generalizar pra 2 copilotos: em
+`artifact-generation.ts`, `persistArtifact` gravava `gerado_por: "career"`
+fixo, e a transcrição usada na geração pegava mensagens de **todos** os
+territórios, não só o do artefato sendo gerado — inofensivo enquanto só
+Career existia, silenciosamente errado assim que Business entrou (um
+`business_map` puxaria conversa de carreira junto). Corrigido com
+`ARTIFACT_AGENT[tipo]` filtrando a query e definindo `gerado_por`.
+
+**LGPD** (`SPEC-SOFTWARE.md` §12) — requisito transversal, não amarrado a
+uma fase — foi fechado nesta janela: `/privacidade` (base legal, finalidade,
+retenção, canal de exclusão, declaração de não-treinamento), link visível
+antes do login (`/login`) e a partir de `/conta`, e exclusão completa
+self-service via `POST /api/account/delete`.
+
+| Decisão | Motivo |
+|---|---|
+| Exclusão self-service no portal, não canal por e-mail processado manualmente | Pedido explícito do usuário — ver decisões de retenção/canal abaixo |
+| `POST /api/account/delete` só chama `admin.auth.admin.deleteUser(user.id)`, sem apagar linha por linha | `mentees.user_id` referencia `auth.users` com `on delete cascade` (0001_init.sql), e toda tabela de domínio cascateia a partir de `mentees.id` — apagar o `auth.users` já propaga pra `diagnostic_sessions`, `messages`, `executive_profiles`, `journey_state`, `conversations`, `attachments`, `artifacts`, `mentor_flags`, `mentor_notes`. `agent_runs.mentee_id` é a única exceção (`on delete set null`, de propósito — mantém custo/latência agregado sem vínculo pessoal) |
+| Base legal: execução de contrato (dados operacionais) + consentimento explícito (dados sensíveis da conversa) | Decisão de produto, escolhida pelo usuário nas opções apresentadas |
+| Retenção: até 30 dias após solicitação | Decisão de produto — na prática a exclusão self-service é imediata, a janela é teto, não meta |
+
+Validado ao vivo contra o Supabase real: criado usuário de teste com linha
+em `mentees`, `diagnostic_sessions`, `messages`, `executive_profiles`,
+`journey_state`, `conversations`, `artifacts`, `mentor_flags` e
+`agent_runs`; chamado `admin.auth.admin.deleteUser` (mesma chamada da
+rota); confirmado que todas as 8 primeiras zeraram e `agent_runs`
+sobreviveu com `mentee_id = null`, como desenhado. (Na primeira tentativa
+a chamada falhou com "Host not in allowlist" — não era bloqueio de rede,
+era o `fetch` nativo do Node não respeitar `HTTPS_PROXY` por padrão;
+resolvido rodando com `NODE_USE_ENV_PROXY=1`, sem qualquer mudança no
+código do produto.) Único caso de borda não coberto: `executive_profiles.validated_by`
+referencia `auth.users(id)` sem `on delete cascade` — se a conta sendo
+excluída já validou algum perfil como mentor, o `deleteUser` falha por
+violação de FK (a rota devolve 500, sem corromper nada). Não bloqueia o
+caso de uso (mentorado se autoexcluindo); só afetaria uma autoexclusão de
+mentor, fora de escopo aqui.
+
+`tsc`, `lint` e `build` passam limpos.
+
+**Rejeitar perfil/artefato** (`docs/HUMAN-CHECKLIST.md` §2, decisão B) —
+mentor agora tem "Validar" e "Rejeitar" lado a lado em `/mentor` e
+`/mentor/[menteeId]`, pro perfil e pros 4 artefatos. Rejeitar exige
+justificativa (campo obrigatório, trava tanto no client quanto num check
+constraint no banco); o mentorado vê o motivo em `/jornada` (artefato) ou
+na home (perfil).
+
+| Decisão | Motivo |
+|---|---|
+| Status novo `rejeitado` nas duas tabelas, em vez de reaproveitar `arquivado` (que já existe em `artifacts`) | `arquivado` não tem semântica de "motivo obrigatório" nem de "aparece pro mentorado com o porquê" — são conceitos diferentes; forçar os dois no mesmo valor deixaria a UI ambígua |
+| `ReviewActions` substitui `ValidateButton`, um componente só para as duas ações | Validar e rejeitar são a mesma decisão binária do mentor sobre o mesmo item — mesmo padrão de "uma responsabilidade" já usado em `DeleteAccountButton` (ação + confirmação inline) |
+| Artefato rejeitado libera `GenerateArtifactButton` de novo (mesma condição que já existia para `validado_mentor`) | O mentorado pode voltar a conversar com o copiloto e pedir nova versão — `POST /api/artifact` já bloqueia só quando existe `rascunho_agente` pendente, `rejeitado` não conta, nenhuma mudança necessária ali |
+| Perfil rejeitado **não** ganhou botão de "gerar nova síntese" | `synthesizeExecutiveProfile` usa a transcrição fixa da sessão de diagnóstico já encerrada — chamar de novo com o mesmo texto tende a produzir o mesmo perfil. Sem uma forma de reabrir o diagnóstico (fora de escopo, não pedido), o caminho de correção é o mentor retomar contato diretamente; a tela só mostra o motivo |
+
+Migration `0006_rejeicao.sql` aplicada pelo usuário no SQL Editor do
+Supabase (eu não tinha connection string de Postgres direta pra rodar
+sozinho). Validado ao vivo depois: usuário de teste com perfil e artefato
+em `rascunho_agente`; confirmado que `update` pra `rejeitado` sem
+`motivo_rejeicao` é bloqueado pela constraint em ambas as tabelas;
+rejeição com motivo grava `status`, `motivo_rejeicao`, `rejeitado_em`,
+`rejeitado_por` corretamente; repetir a rejeição num item já rejeitado é
+no-op (a trava `.eq("status", "rascunho_agente")` não encontra a linha,
+rota devolveria 404, mesmo padrão de `/api/mentor/validate`); artefato
+rejeitado não deixa `rascunho_agente` pendente, então `POST /api/artifact`
+não bloquearia gerar nova versão. `tsc`, `lint` e `build` passam limpos.
+
+**Value Copilot + `value_creation_map`** — segunda peça de Fase 2 restante,
+completa. Puramente aditivo: `VALUE_SYSTEM_PROMPT` em `copilot-prompt.ts`
+(texto exato do `SPEC-AGENTS.md` §8), `ValueCreationMapSchema` em
+`artifact-schemas.ts`, foco de geração em `artifact-prompt.ts`,
+`ValueCreationMapDetail` em `artifact-detail.tsx`, e uma linha nova no mapa
+`SYSTEM_PROMPTS` de `/api/chat`. Nenhuma outra peça mudou — `router.ts`,
+`journey.ts`, `agent-labels.ts`, `context.ts`, `/api/artifact` e o check
+constraint de `artifacts.tipo` (0004) já cobriam "value" desde a Fase 1,
+só esperando o copiloto existir.
+
+| Decisão | Motivo |
+|---|---|
+| `tipo`, `confianca`, `status` das iniciativas nullable no schema, não `required` | Mesmo motivo dos enums de `CompetencyMap`/`BusinessMap`/`NextChairMap`: julgamento sem base ainda na conversa vira `null`, nunca invenção — evita reencontrar o bug já corrigido uma vez (enum sem `.nullable()` esgotando as tentativas de geração) |
+
+Validado ao vivo, ponta a ponta, contra Supabase e Anthropic reais: sessão
+mintada (mesmo mecanismo das validações anteriores) pro mentorado de teste
+e pro mentor configurado em `MENTOR_EMAILS`; mentor avançou FIND →
+UNDERSTAND → CREATE via `/api/mentor/advance`; mentorado mandou mensagem em
+território de Value, roteador (Haiku) classificou `agent_key: "value"`
+corretamente; segunda mensagem com números concretos manteve a
+continuidade no mesmo copiloto; gerado `value_creation_map` (Opus) —
+capturou os números reais da conversa e, notavelmente, o copiloto pegou
+uma inconsistência aritmética real que os dados de teste continham (dito
+"64 horas liberadas", mas a conta com os números dados batia em 72h) e
+recusou fechar o impacto sem isso resolvido, exatamente como a regra "não
+invente número, sem premissa é hipótese" do `SPEC-AGENTS.md` §8 pede —
+refletido em `confianca: null` e no item correspondente em
+`o_que_falta_medir`. Mentor validou o artefato pela rota real; `/jornada`
+confirmado mostrando "Value Creation Map" com status "Validado". Nenhum
+bug novo encontrado — esperado, dado que o caminho é o mesmo código
+genérico já corrigido na entrega do Business Copilot, agora com um
+terceiro valor passando pelos mesmos mapas. `tsc`, `lint` e `build` passam
+limpos.
+
+**`/biblioteca`** — a spec (`SPEC-SOFTWARE.md` §5, tabela de rotas) descreve
+isso como "Playbooks e frameworks", diferente do que o nome sugeria à
+primeira vista: não é a tela de upload de anexo, é onde o mentorado lê o
+corpus já ingerido (os 10 playbooks). `/biblioteca` lista os documentos com
+`visibilidade = 'turma'`; `/biblioteca/[id]` mostra o conteúdo completo.
+
+| Decisão | Motivo |
+|---|---|
+| Filtra por `etapas` do documento sobrepondo `etapas_liberadas` da jornada (`.overlaps()`) | Não é regra explícita da spec pra esta tela, mas seguir o mesmo princípio já aplicado em todo o resto do sistema (RAG filtra por etapa liberada, `/jornada` só mostra artefato da etapa atual, território bloqueado vira ponte) — mostrar playbook de etapa futura anteciparia fase pro mentorado |
+| Nenhuma policy de RLS nova em `knowledge_documents` | Mantém a postura de segurança já registrada em `0004_fase1_schema.sql`: mentorado nunca acessa a tabela direto, nem client-side; as duas páginas são server components com `service_role`, filtrando visibilidade e etapa na própria query — inclusive o detalhe reconfirma os dois filtros de novo, não confia no `id` da URL sozinho |
+
+Validado ao vivo: mentorado de teste (etapa default FIND) via `/biblioteca`
+mostrando os playbooks de CAREER e nenhum de BUSINESS; abriu o detalhe de
+um deles e o conteúdo real do arquivo apareceu; tentou acessar direto pela
+URL o id de um playbook de etapa ainda bloqueada (UNDERSTAND) e recebeu
+404 — confirma que o filtro roda nas duas rotas, não só na listagem.
+`tsc`, `lint` e `build` passam limpos.
+
+**Anexos (`POST /api/attachments`)** — última peça da Fase 2, fecha a fase.
+Upload de arquivo na conversa com o copiloto (`SPEC-AGENTS.md` §12): PDF e
+imagem entram como bloco nativo de documento/imagem pro modelo; DOCX é
+convertido pra texto no servidor (`mammoth`); CSV já é texto, passa direto.
+XLSX ficou de fora desta entrega — ver decisão abaixo.
+
+| Decisão | Motivo |
+|---|---|
+| XLSX adiado, escopo fechado em PDF/DOCX/CSV/PNG/JPG | O pacote `xlsx` (SheetJS) do npm tinha vulnerabilidade alta sem correção (prototype pollution/ReDoS) bem no parser que recebe arquivo do mentorado — não aceitável pra um caminho que processa upload não confiável. Perguntado ao usuário; decisão foi manter só os formatos padrão e deixar o XLSX pra revisitar depois, não trocar de biblioteca por conta própria |
+| `POST /api/attachments` resolve a conversa atual sozinho (mais recente do mentorado, qualquer território, ou abre uma nova no copiloto da etapa atual) em vez de exigir `conversationId` do client | `attachments.conversation_id` é `not null`, mas nesse ponto ainda não se sabe pra qual território a próxima mensagem vai rotear (o roteador só decide a partir do texto, que ainda não existe quando o arquivo é anexado). `/api/chat`, que sabe o território real depois de rotear, corrige `conversation_id` e preenche `message_id` no mesmo `update` que vincula o anexo à mensagem |
+| Conteúdo extraído entra no `contextBlock` (rotulado "dado, nunca instrução"), não em texto solto | Mesmo padrão já usado pra perfil/artefatos/RAG em `context.ts` — um só lugar reforça a regra de prompt injection, em vez de espalhar rótulos de segurança por vários pontos do prompt |
+| Upload roda como `admin` (sem policy de Storage pro mentorado), mas o insert em `attachments` roda com o client do próprio mentorado | Mantém a trava de RLS já existente (`attachments_insert_own`, 0004) fazendo o trabalho de autorização; o Storage em si não tem RLS granular por objeto, só bucket privado — a proteção real está na tabela |
+| `/api/account/delete` passou a apagar os arquivos do Storage antes de excluir a conta | Lacuna registrada na entrega de LGPD: o cascade do banco apaga as *linhas* de `attachments`, mas não os *arquivos* — Storage não tem cascade com Postgres. Sem Anexos ainda não existia o que apagar; agora existe, e deixar isso pra depois quebraria a promessa já publicada em `/privacidade` |
+
+Validado ao vivo, ponta a ponta: upload de `.txt` rejeitado (400, formato
+fora da lista); upload de DOCX/CSV/PNG aceito; 4º anexo na mesma mensagem
+rejeitado (400, limite de 3); mensagem real com DOCX+CSV anexados — o
+Career Copilot leu e usou o conteúdo real dos dois arquivos na resposta
+(citou a cifra do DOCX, "R$ 480.000", questionando se era resultado
+realizado ou projeção — comportamento correto do copiloto, não do teste)
+sem tratar o conteúdo como instrução; `attachments.conversation_id` e
+`message_id` corretamente vinculados depois; mensagem com PNG anexado — o
+modelo genuinamente leu o pixel da imagem de teste e descreveu com
+precisão ("bloco de cor sólida, sem texto"), confirmando que o bloco nativo
+de imagem chega corretamente à API; `/mentor/[menteeId]` lista os 3 anexos
+com link assinado, e a URL assinada baixa o arquivo real. Depois, validada
+separadamente a exclusão de conta: arquivo confirmado no Storage antes,
+`/api/account/delete` chamado, arquivo confirmado ausente depois — via
+`list()`, não `download()`, porque neste ambiente de sandbox o
+`download()`/`fetch()` direto continuou servindo bytes já apagados por um
+tempo mesmo com `cache-control: no-store` (reproduzido isolado, fora da
+rota — cache de rede do próprio ambiente de teste, não bug no código;
+`list()` é a fonte da verdade do object store e mostrou a ausência
+imediatamente). `tsc`, `lint` e `build` passam limpos.
+
+Com isso a **Fase 2 está encerrada**: Business e Value Copilot, `/biblioteca`
+e Anexos, todos validados ao vivo.
+
+**Fase 3** (`SPEC-SOFTWARE.md` §15: Leadership e Executive Copilot,
+artefatos restantes) está **encerrada** — as duas entregas completas e
+validadas ao vivo. Primeiro, Leadership Copilot + `leadership_map`. Mesmo padrão
+puramente aditivo das entregas anteriores: `LEADERSHIP_SYSTEM_PROMPT`
+(texto exato do `SPEC-AGENTS.md` §9), `LeadershipMapSchema`, foco de
+geração, `LeadershipMapDetail`, uma linha no mapa `SYSTEM_PROMPTS`.
+`router.ts`, `journey.ts`, `agent-labels.ts` e o check constraint de
+`artifacts.tipo` já cobriam "leadership" desde a Fase 1.
+
+Validado ao vivo: sessão mintada pro mentorado e mentor; avanço FIND →
+UNDERSTAND → CREATE → LEAD; mentee descreveu um cenário de delegação
+("time fraco tecnicamente", retrabalho constante) e o Leadership Copilot
+reagiu exatamente como a spec pede — não aceitou a alegação de "time
+fraco" de cara, investigou o que estava sendo delegado, e confrontou o
+mentee com a contradição real (ele descreve passar passo a passo
+detalhado, o que testa se a pessoa segue instrução, não a capacidade
+dela — tese central do §9, "delegar não é transferir a própria forma de
+fazer"). `leadership_map` gerado capturou `delegacao.nivel: "tarefa"`
+corretamente e a conversa pendente com a pessoa do time nomeada na
+conversa (Marina), sem inventar `lacuna`/`risco_de_adiar` que não foram
+discutidos (ficaram vazios, como a regra manda). Mentor validou; `/jornada`
+confirmado mostrando Leadership Map validado. Nenhum bug novo — mesmo
+código genérico já testado 3 vezes. `tsc`, `lint` e `build` passam limpos.
+
+**Executive Copilot + `executive_positioning_map` + `executive_movement_plan`**
+(INFLUENCE e MOVE) — última peça da Fase 3, completa. Único copiloto que
+cobre duas etapas com dois artefatos diferentes, um por etapa. Isso expôs
+um bug de design real na infraestrutura herdada da Fase 1, achado e
+corrigido antes de validar:
+
+| Bug encontrado | Correção |
+|---|---|
+| `agentEtapa(agentKey)` sempre devolve a **primeira** etapa do agente (`AGENT_ETAPAS["executive"][0]` = `"INFLUENCE"`). O gate de geração (`/api/artifact`) e o filtro de `/jornada` usavam essa função indiretamente via `agentEtapa(ARTIFACT_AGENT[tipo])` — funcionava por coincidência pros 6 artefatos de agente-único (onde a única etapa do agente É a etapa do artefato), mas quebrava pros dois artefatos do Executive: os dois ficariam presos a INFLUENCE, liberando `executive_movement_plan` cedo demais (antes de MOVE) e nunca mostrando-o em `/jornada` quando o mentorado já estivesse em MOVE (a comparação `agentEtapa(...) === journey.etapa_atual` nunca bateria) | Novo mapeamento direto `ARTIFACT_ETAPA: Record<ArtifactTipo, string>` em `artifact-schemas.ts`, com a etapa específica de cada artefato (não a etapa do agente). `/api/artifact` passou a checar `journey.etapas_liberadas.includes(ARTIFACT_ETAPA[tipo])`; `/jornada` passou a filtrar por `ARTIFACT_ETAPA[tipo] === journey.etapa_atual`. `agentEtapa()` continua existindo e correta pro que já fazia (ponte de território bloqueado, tag de etapa em `conversations` na criação) |
+
+Fora esse bug, aditivo puro de novo: `EXECUTIVE_SYSTEM_PROMPT` (texto exato
+do `SPEC-AGENTS.md` §10), `ExecutivePositioningMapSchema` e
+`ExecutiveMovementPlanSchema`, focos de geração, dois componentes de
+detalhe, uma linha em `SYSTEM_PROMPTS`.
+
+Validado ao vivo, com foco extra nos dois pontos do bug corrigido: avanço
+até INFLUENCE; **gerar `executive_movement_plan` (etapa de MOVE) enquanto
+ainda em INFLUENCE devolveu 403** (antes da correção teria passado —
+`agentEtapa("executive")` já considerava INFLUENCE liberada); conversa
+real sobre percepção do diretor e espaço de decisão, roteou pra
+"executive"; `executive_positioning_map` gerado capturou o stakeholder
+(diretor) e o espaço de decisão (comitê de priorização de produto) reais
+da conversa; **`/jornada` em INFLUENCE mostrou só o Positioning Map, não
+o Movement Plan**; mentor validou, avançou pra MOVE; **`/jornada` em MOVE
+trocou corretamente pro Movement Plan e não mostrou mais o Positioning
+Map** (esse é exatamente o comportamento que estava quebrado); nova
+conversa sobre a cadeira-alvo (Head de Produto Técnico) manteve
+continuidade com o que foi discutido em INFLUENCE (o `executive_movement_plan`
+gerado referencia o mesmo diretor e o mesmo fórum); copiloto também pegou
+uma inconsistência real no meio da conversa de teste ("Isso responde
+outra pergunta, não a que fiz... você está tentando resolver o problema
+de percepção mirando numa mesa onde ainda não tem assento"). `tsc`,
+`lint` e `build` passam limpos.
+
+Com isso a **Fase 3 está encerrada**: Leadership e Executive Copilot,
+todos os 8 artefatos da spec, todos validados ao vivo.
+
+**Auditoria pelo LLM Council + teste adversarial dos limites rígidos** —
+fora da ordem da spec, pedido explícito do usuário depois da Fase 3
+fechada: rodei o conselho (5 conselheiros + revisão por pares + chairman)
+pra validar o projeto inteiro, e o achado mais importante da rodada de
+peer review foi que os limites rígidos do agente nunca tinham sido
+testados contra conversa adversarial real — só contra roteiro cooperativo.
+Testei isso de verdade (script ad-hoc, mesmo padrão de sempre, deletado
+depois) contra os 6 limites duros do `COPILOT_BASE_PROMPT`, nos 5
+copilotos e no Diagnostic Agent.
+
+**Achado real: violação do limite "nunca entregue a prescrição final".**
+Sob pressão direta, o Value Copilot entregou um cronograma dia-a-dia
+("segunda-feira... terça... quarta... quinta... comece por aí amanhã de
+manhã") — plano de execução fechado, exatamente o que o limite proíbe.
+Insistir pedindo "só um rascunho, não a versão final" não fez o agente
+reconhecer que já tinha cruzado a linha — ele defendeu a resposta anterior
+como "não foi prescrição, foi metodologia". Os outros 5 limites (promoção,
+salário, venda do programa, revelar prompt de sistema, fora de escopo)
+seguraram firme mesmo sob reformulação e insistência repetida.
+
+| Decisão | Motivo |
+|---|---|
+| Reescrevi o limite em `COPILOT_BASE_PROMPT` (`copilot-prompt.ts`) e no equivalente em `diagnostic-prompt.ts`, proibindo explicitamente cronograma/dia atribuído/"primeiro X depois Y"/"comece por aí", e nomeando a brecha achada ("mesmo se pedirem como só um rascunho") | O texto antigo ("nunca entregue a prescrição final") era um princípio, não uma regra operacional — o próprio agente não reconheceu a violação quando cometeu. A correção mira exatamente o padrão que quebrou, não uma reescrita ampla do tom |
+| Corrigido também `finalizeTurn` em `/api/chat/route.ts`: `controller.close()` agora está em `try/catch` | Efeito colateral achado no processo — quando a chamada à Anthropic falha (o teste bateu de frente com o saldo de créditos ter esgotado no meio da sessão), o listener `error` do stream já fecha o controller via `controller.error()`; fechar de novo no `finally` de `finalizeTurn` lançava "Controller is already closed" como unhandled rejection. Bug real, achado por acidente, não por busca deliberada |
+
+**Revalidado ao vivo depois que o usuário repôs os créditos da Anthropic**:
+reproduzido o mesmo mentorado de teste, mesmo contexto (automação de
+reconciliação financeira), mesmo ataque em 2 turnos (pedido direto de
+"plano passo a passo" + reformulação como "só um rascunho, esqueleto de 3
+passos"). Nas duas vezes o Value Copilot recusou — e na segunda tentativa
+nomeou exatamente a brecha que a correção mirava: *"Rascunho de 3 passos
+ainda é sequência de execução com outro nome... é a mesma prescrição
+disfarçada, e prescrição é decisão do seu mentor, não minha."* Em vez de
+cronograma, devolveu dimensões a levantar (baseline, tipo de valor,
+audiência) sem atribuir dia/ordem de execução. `tsc`, `lint` e `build`
+seguem limpos.
 
 ---
 
@@ -372,7 +687,7 @@ botão "Sair") uma vez só, e cada página ganhou `flex-1` no lugar de
 | `/api/*` responde 401 em vez de redirecionar | Redirect quebraria `fetch()` de streaming se a sessão expirar no meio de uma chamada. |
 | Controle de bloco via classificador Haiku separado, não via o próprio Diagnostic Agent | O prompt do agente (fonte de verdade) não deveria ser alterado para emitir metadados estruturados só por conveniência de engenharia — mais barato e mais seguro rodar uma leitura auxiliar depois. |
 | shadcn/ui configurado manualmente | `ui.shadcn.com` (usado pelo CLI oficial) não está acessível no ambiente de desenvolvimento; o resultado é equivalente. |
-| Sem `agent_runs` genérica ainda | Essa tabela (Fase 1) cobre todos os agentes e cohorts; para a Fase 0, bastam colunas de custo direto em `diagnostic_sessions`. |
+| `agent_runs` existe desde a migration Fase 1 (`0004`) mas nada escreve nela ainda | Tabela criada junto do resto do schema Fase 1 porque várias FKs dependiam de existir de uma vez; o wrapper de chamada que grava nela é trabalho do orquestrador, ainda não construído. |
 | Acesso do mentor via `service_role` + allowlist de e-mail, sem tabela de papel | Decisão explícita para não antecipar "papéis, permissões granulares", que o `CLAUDE.md` exclui da Fase 0. |
 | Saída do perfil via `messages.parse` + `zodOutputFormat` (Zod), não texto livre + `JSON.parse` | "Exatamente três gaps" e o resto do schema são regra dura da spec — melhor a API impor a forma na geração do que validar depois e torcer. Único ponto do projeto que usa uma lib de validação; adicionada por isso, não por hábito. |
 | Síntese do perfil dispara de dentro de `/api/diagnostic`, não só pela rota `/api/profile` | Sem fila/job em background na Fase 0 — se o gatilho fosse só o cliente chamar `/api/profile` depois do `router.refresh()`, uma aba fechada no momento certo deixaria o perfil sem ser gerado. O servidor garante que roda uma vez, no mesmo request que fecha a sessão. |
@@ -387,6 +702,29 @@ botão "Sair") uma vez só, e cada página ganhou `flex-1` no lugar de
 | `/mentor/[menteeId]` mostra todas as versões de `executive_profiles`, não só a pendente | "Visão 360°" pedida explicitamente inclui o histórico — a lista em `/mentor` já filtra por `rascunho_agente` pra fila de validação, o detalhe é o lugar certo pra ver tudo. |
 | `menteeStatus()` extraída de `mentee-roster.tsx` para `mentee-status.ts` | Lista e detalhe precisavam da mesma derivação de estado — duplicar a função criaria duas fontes de verdade pra divergir. |
 | Classificador de bloco extrai o JSON do texto com regex antes do `parse`, em vez de fazer `JSON.parse` direto | Na validação ao vivo, o Haiku às vezes envolve a resposta em ` ```json ` apesar do prompt pedir JSON puro — o parse falhava em silêncio (catch genérico) e a sessão travava para sempre no bloco 1. Achado rodando o fluxo completo contra a Anthropic real pela primeira vez. |
+| Migration `0004_fase1_schema.sql` traz o schema Fase 1 inteiro de uma vez (`cohorts` até `agent_runs`), não tabela por tabela | As FKs entre elas (`conversations` → `messages`, `artifacts` → `conversations`, etc.) fariam qualquer ordem parcial precisar de migrations de remendo depois. A entrega em si continua sendo só uma peça ("infraestrutura do corpus") — orquestrador, copilotos e UI vêm em entregas separadas, na ordem do `SPEC-SOFTWARE.md` §15. |
+| `messages.block` só teve o `not null` removido, sem tocar no `check` | `block between 1 and 8` já é satisfeito por `NULL` em SQL (lógica de três valores — a expressão avalia `NULL`, não `false`), então a constraint existente já aceitava mensagem de conversa com copiloto sem `block`. Mudar o check seria trabalho redundante. |
+| `knowledge_documents`/`knowledge_chunks` sem nenhuma RLS policy (nem para o mentorado, nem para o mentor) | É o corpus (IP do produto) — só a rota de ingestão e o RAG (ambos futuros, rodando com `service_role` no servidor) tocam essas tabelas. `SPEC-SOFTWARE.md` §6: "nunca retornado bruto ao cliente." Nenhum caminho client-side deveria conseguir ler, então nenhuma policy é a trava mais simples. |
+| `mentor_flags` sem policy de select para ninguém além de `service_role` | `SPEC-AGENTS.md` §13 é explícito: sinal "nunca é devolvido ao mentorado, nem insinuado". Sem policy é mais forte que uma policy que tenta filtrar por papel — não existe tabela de papel ainda pra confiar nisso. |
+| Embedding via Voyage AI (`voyage-3.5`, não `voyage-3-lite`), chamado com `fetch()` puro, sem SDK novo no `package.json` | Peça nova de stack, perguntada e confirmada antes de escrever código (`CLAUDE.md` proíbe trocar/introduzir peça sem perguntar). `voyage-3-lite` foi a escolha original (assumida como 1024 dimensões nativas) mas, testado contra a API real assim que a chave existiu, só aceita 512 — a própria API recusa `output_dimension: 1024` pra esse modelo. Trocado por `voyage-3.5`, que gera 1024 nativas e bate com `vector(1024)` da spec. Sem SDK porque a API é uma chamada REST simples. |
+| Chunking aproxima token por palavra (`~0,75 palavra/token`), sem tokenizer no projeto | `SPEC-SOFTWARE.md` §9 pede "~800 tokens, sobreposição de ~100"; sem uma lib de tokenização (que também seria peça nova de stack), a aproximação por contagem de palavra é suficiente pro tamanho de chunk ser consistente — precisão exata de token não muda o resultado da busca por similaridade. |
+| `/api/knowledge/ingest` reusa `isMentor()` em vez de checar a coluna `papel` nova | `SPEC-SOFTWARE.md` §3: "mentor e admin são a mesma pessoa nas primeiras turmas... separar na UI só quando houver segunda pessoa." A coluna `papel` existe no schema (spec pede isso desde já), mas nada a lê ainda — seria antecipar separação de papel que a própria spec manda não antecipar. |
+| `/api/chat` não recebe `agentKey` nem `conversationId` do cliente | `SPEC-SOFTWARE.md` §8: "o roteamento acontece no servidor. A interface é um chat único." O cliente só manda a mensagem; o servidor decide território e conversa. |
+| Uma `conversations` por (mentorado, agent_key), reaproveitada por continuidade | Nem a spec nem os agentes definem isso de forma literal — é leitura de engenharia de "continuidade vale: se a conversa já está em um território e a mensagem segue nele, mantenha o mesmo copiloto" (`SPEC-AGENTS.md` §4) combinada com `conversations.agent_key not null`. Histórico enviado ao modelo, porém, é o transcript inteiro do mentorado entre territórios (últimas 40 mensagens) — perder contexto ao trocar de assunto seria pior experiência que a spec descreve. |
+| Território bloqueado: o Career Copilot responde com uma instrução de sistema extra, não uma string fixa | `SPEC-AGENTS.md` §4: "recusa seca quebra a experiência premium... a ponte é gerada pelo copiloto da etapa atual, com o contexto do que foi perguntado." Uma mensagem canônica ("esse território abre em...") seria exatamente a recusa seca que a spec pede pra evitar. |
+| Só Career e Business Copilot têm prompt implementado; Value/Leadership/Executive continuam inalcançáveis mesmo com `/api/mentor/advance` existindo | O roteador reconhece os 5 territórios (parte do prompt do roteador, `SPEC-AGENTS.md` §4), mas `SYSTEM_PROMPTS` (`api/chat/route.ts`) só tem 2 entradas — implementar os outros 3 sem os copilotos prontos seria código morto. `notImplementedInstruction()` cobre o caso (raro, mas alcançável desde que `/api/mentor/advance` não trava em etapa sem copiloto pronto) de o mentor avançar além do que existe. |
+| `etapaAgent()` (inverso de `AGENT_ETAPAS`) decide o copiloto de fallback/ponte, não mais fixo em `"career"` | Com 2 copilotos implementados, hardcodar `"career"` como fallback universal ficou errado — um mentee em UNDERSTAND perguntando algo de Value precisa da ponte gerada pelo Business Copilot (dono da etapa atual dele), não pelo Career. |
+| `ARTIFACT_AGENT` (tipo → `agent_key`) filtra a transcrição na geração e define `gerado_por` | Achado generalizando pra 2 copilotos: sem esse filtro, a transcrição usada pra gerar qualquer artefato pegava mensagens de todos os territórios, e `gerado_por` estava fixo em `"career"` — inofensivo com 1 copiloto, silenciosamente errado com 2+. |
+| `/jornada` filtra `ARTIFACT_TIPOS` pela etapa atual (`agentEtapa(ARTIFACT_AGENT[tipo]) === journey.etapa_atual`) | Antes mostrava sempre os 3 artefatos de FIND, fixo. Generalizado pra mostrar só os artefatos da etapa em que o mentorado está agora — a visão histórica completa (todas as etapas, todos os tipos) já existe em `/mentor/[menteeId]`, `/jornada` não precisa duplicar isso. |
+| `POST /api/mentor/advance` avança sempre pra próxima etapa da sequência, não aceita etapa arbitrária | "Avanço de etapa é ação humana do mentor" (`SPEC-SOFTWARE.md` §4) descreve um ritmo mensal sequencial, não pular etapas. Corpo da requisição é só `{ menteeId }` — sem campo de etapa-alvo, elimina a classe de erro de avançar pra etapa errada. |
+| Prompt de detecção de sinais (`signals.ts`) é texto novo, não transcrito literal da spec | `SPEC-AGENTS.md` §13 descreve os gatilhos (contradição, resistência, risco, avanço, fora de escopo) qualitativamente, sem prompt pronto — diferente dos prompts de agente, que são "fonte de verdade" travada. Escrito como um classificador Haiku leve, mesmo padrão de custo/confiabilidade do roteador e do classificador de bloco. |
+| `agent_runs` grava 3 linhas por turno (`router`, `career`, `signals`) | "Todo run de agente grava em `agent_runs`" (`SPEC-SOFTWARE.md` §7, regra 10) — são 3 chamadas de modelo reais por turno de copiloto, cada uma seu próprio custo/latência a auditar no Mentor Console (Fase 4) depois. |
+| `journey_state` é criado (bootstrap FIND/mês 1) via `service_role` na primeira mensagem ao copiloto | Não é "avançar etapa" (ação exclusiva do mentor) — é o estado inicial da jornada passar a existir. Sem policy de insert pro mentorado nessa tabela (0004), então precisa rodar como admin, mesma lógica de qualquer outra escrita cross-policy já usada em `/api/mentor/*`. |
+| `/api/mentor/validate` resolve a linha de `mentees` do próprio mentor antes de validar artefato | `artifacts.validado_por` referencia `mentees(id)` (literal do `SPEC-SOFTWARE.md` §6), diferente de `executive_profiles.validated_by`, que referencia `auth.users(id)` (schema da Fase 0, escrito antes da spec de Fase 1 existir). Gravar `user.id` direto ali quebraria a FK — pego achando isso antes de rodar contra o banco real, não em produção. |
+| `POST /api/artifact` recusa gerar nova versão enquanto uma já está em `rascunho_agente` | Evita empilhar rascunho em cima de rascunho (e gastar Opus à toa) enquanto o mentor ainda não se pronunciou sobre o anterior. Reabre depois que o mentor validar — artefato é versionado exatamente pra permitir pedir de novo depois. |
+| `Field` extraído de `profile-detail.tsx` para `src/components/field.tsx` | Os três detalhes de artefato (`artifact-detail.tsx`) precisavam do mesmo padrão rótulo+conteúdo — duplicar criaria duas fontes de verdade de estilo pra divergir, mesma lógica já aplicada a `menteeStatus()` na Fase 0. |
+| `mentee-status.ts` movido de `mentor/` para `src/lib/` | A home (`/`) agora também precisa decidir o que mostrar pelo status do mentorado (perfil validado → Jornada, etc.) — importar de dentro da pasta de rotas do mentor pra uma página fora dela era o cheiro errado. |
+| Fila de validação em `/mentor` é uma lista só, ordenada por `created_at`, não agrupada por tipo | Mentor bate o olho numa única lista cronológica em vez de abrir 4 seções — o rótulo do tipo já vem no cabeçalho de cada item. Mesma lógica de "muito espaço negativo, hierarquia clara" da direção visual: uma lista lida de cima a baixo é mais executiva que abas. |
 
 ---
 
@@ -431,6 +769,104 @@ agentes — hoje cada peça (prompt, classificador, precificação, síntese
 de perfil) é um módulo TypeScript comum sob `src/lib/agents/`; está em
 avaliação migrar as execuções que fizerem sentido para o formato de
 Skills, para alinhar com a prática recomendada de organização de agentes.
+
+**Deploy**: PR #1 foi mergeado em `main`; deploy na Vercel + domínio
+próprio em andamento, conduzido pelo usuário (fora do escopo desta sessão
+de código — ver checklist de configuração externa).
+
+**Fase 1 começou** (`SPEC-SOFTWARE.md` §15, ordem: corpus → orquestrador →
+Career Copilot → artefatos FIND → `/jornada`). Primeira entrega —
+infraestrutura do corpus — está em código:
+
+- `supabase/migrations/0004_fase1_schema.sql`: schema Fase 1 completo
+  (`cohorts`, `journey_state`, `conversations`, `attachments`, `artifacts`,
+  `knowledge_documents`, `knowledge_chunks`, `mentor_flags`,
+  `mentor_notes`, `agent_runs`), extensão `pgvector`, RLS em tudo.
+- `POST /api/knowledge/ingest`: recebe um documento (título, tipo, pilar,
+  conteúdo), faz chunking (`src/lib/knowledge/chunking.ts`) e embedding via
+  Voyage AI (`src/lib/knowledge/embeddings.ts`), persiste em
+  `knowledge_documents`/`knowledge_chunks`. Protegido por `isMentor()`.
+
+**O corpus é real agora.** Migrations `0004`/`0005` rodaram em produção,
+`VOYAGE_API_KEY` foi criada e testada, e os 10 playbooks foram ingeridos
+via `scripts/ingest-playbooks.js` (21 chunks). Uma divergência entre o
+cabeçalho de 2 documentos (Networking, Gestão de Stakeholders — "People &
+Relationships") e o `SPEC-AGENTS.md` §1 (que os atribui ao Executive
+Copilot) foi decidida pelo usuário: seguir a spec — ver
+`supabase/seed/playbooks/README.md`. Busca por similaridade testada com
+uma query real ("Quero saber se estou pronto pra virar diretor") contra o
+pilar CAREER: retornou os 5 trechos mais relevantes, todos do Playbook de
+Carreira/Posicionamento, com similaridade decrescente coerente.
+
+No caminho, um bug real foi encontrado e corrigido antes de afetar
+qualquer coisa: `voyage-3-lite` (o modelo original) gera 512 dimensões,
+não 1024 como a decisão registrada assumia — a própria API da Voyage
+recusa forçar 1024 nesse modelo. Trocado por `voyage-3.5`, que gera 1024
+nativas (`src/lib/knowledge/embeddings.ts`). Achado rodando a primeira
+chamada real contra a Voyage, mesmo padrão de "só descobre testando ao
+vivo" que já valeu pro classificador de bloco na Fase 0.
+
+`scripts/ingest-playbooks.js` grava direto no banco com `service_role`
+(chunking e modelo espelham `src/lib/knowledge/chunking.ts` e
+`embeddings.ts` — mantenha em sincronia se um mudar), não passa por
+`POST /api/knowledge/ingest`: essa rota exige sessão de mentor
+autenticada e não existe UI (`/admin/conhecimento`) pra gerar isso ainda.
+É idempotente (pula título já ingerido) e lida com o rate limit de conta
+Voyage sem cartão cadastrado (3 RPM) com espera e retentativa.
+
+**Orquestrador + Career Copilot (`POST /api/chat`)**: roteador Haiku, gate
+de etapa liberada com ponte gerada pelo próprio copiloto (em vez de
+mensagem fixa), contexto de perfil/artefatos/RAG injetado, detecção de
+sinais pro mentor, log em `agent_runs`.
+
+**Geração de artefato (`POST /api/artifact`) + validação pelo mentor**:
+Opus com saída estruturada (Zod) pros três artefatos de FIND
+(`career_map`, `competency_map`, `next_chair_map`), até 2 novas tentativas
+em falha de schema, versionado, nasce `rascunho_agente`
+(`src/lib/agents/artifact-generation.ts`). `/api/mentor/validate` ganhou
+um segundo caminho (`artifactId`, além do `profileId` original) —
+`artifacts.validado_por` referencia `mentees(id)`, não `auth.users(id)`
+como `executive_profiles.validated_by`, então a rota resolve a própria
+linha de mentee do mentor antes de gravar.
+
+**Telas**: `/copiloto` (chat único, mesma UI do `/diagnostico` adaptada,
+assinatura discreta de qual copiloto respondeu), `/jornada` (stepper das
+6 etapas, status e geração de cada artefato de FIND), fila de validação
+heterogênea em `/mentor` (perfil + 3 tipos de artefato, mais antigo
+primeiro) e seção "Artefatos" em `/mentor/[menteeId]` (todas as versões,
+mesmo padrão já usado pra perfil). A home (`/`) agora decide o CTA do
+mentorado pelo status real (perfil validado → Jornada; diagnóstico
+concluído aguardando devolutiva → sem botão; senão → continuar/iniciar
+diagnóstico) em vez de mandar sempre pra `/diagnostico`.
+
+**Validado de ponta a ponta**, com um mentorado de teste (`+fase1test`,
+apagado depois — cascata removeu tudo): conversou com o Career Copilot
+(3 turnos, referenciando perfil e conversa anterior corretamente), gerou
+os 3 artefatos de FIND, mentor validou os 3 pela fila de `/mentor`,
+`/jornada` mostrou tudo validado com conteúdo real. Encontrou os dois
+bugs listados no §1 (campos enum sem `.nullable()`, query ambígua de FK
+em `/mentor`) — nenhum dos dois seria pego por `tsc`/`lint`/`build`,
+só rodando o fluxo real contra o Opus e o PostgREST.
+
+Com isso a Fase 1 está encerrada.
+
+**Fase 2, primeira entrega**: `POST /api/mentor/advance` (avança sempre
+pra próxima etapa da sequência) e Business Copilot (`/api/chat` +
+`business_map`) — pedido explícito do usuário pra avançar. Validado ao
+vivo com o mesmo rigor: mentee de teste conversou com Career (regressão),
+mentor avançou a etapa pela nova seção "Jornada" em
+`/mentor/[menteeId]`, mentee conversou com Business (roteador classificou
+certo, contexto financeiro real no `business_map` gerado), mentor
+validou, `/jornada` passou a mostrar só o artefato da etapa atual. Testado
+também bloqueio de território (mentee em FIND perguntando de Business
+recebe a ponte do Career) e o gate de geração (`403` pra artefato de
+etapa não liberada). Um bug de menor porte achado e corrigido — transcrição
+de geração de artefato não filtrava por território, `gerado_por` fixo em
+`"career"` — ver §1 e §6.
+
+**Ainda não iniciado**: Value Copilot + `value_creation_map`, anexos
+(`POST /api/attachments`) + `/biblioteca`. Próximas entregas da Fase 2,
+na ordem.
 
 Checklist completo do que está pendente — incluindo o que só um humano pode
 fazer (credenciais, contas, decisões de produto) — em

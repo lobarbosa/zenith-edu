@@ -1,8 +1,9 @@
+import Link from "next/link";
 import { LoginForm } from "./login-form";
 
 export default function LoginPage() {
   return (
-    <main className="flex min-h-screen items-center justify-center px-6">
+    <main className="flex min-h-screen flex-col items-center justify-center px-6">
       <div className="w-full max-w-sm space-y-10">
         <div className="space-y-2">
           <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
@@ -15,6 +16,13 @@ export default function LoginPage() {
 
         <LoginForm />
       </div>
+
+      <Link
+        href="/privacidade"
+        className="mt-16 text-xs text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 rounded-sm"
+      >
+        Política de privacidade
+      </Link>
     </main>
   );
 }

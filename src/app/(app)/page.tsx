@@ -1,6 +1,9 @@
 import Link from "next/link";
+import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { isMentor } from "@/lib/mentor";
+import { ensureMentee } from "@/lib/mentees";
+import { menteeStatus } from "@/lib/mentee-status";
 import { Button } from "@/components/ui/button";
 
 export default async function HomePage() {
@@ -10,6 +13,7 @@ export default async function HomePage() {
   } = await supabase.auth.getUser();
 
   const mentor = isMentor(user?.email);
+  const cta = mentor ? null : await menteeCta(supabase, user!);
 
   return (
     <main className="flex flex-1 items-center justify-center px-6">
@@ -26,11 +30,66 @@ export default async function HomePage() {
             <Link href="/mentor">Ir para o Mentor</Link>
           </Button>
         ) : (
-          <Button asChild>
-            <Link href="/diagnostico">Iniciar Executive Diagnostic</Link>
-          </Button>
+          cta
         )}
       </div>
     </main>
+  );
+}
+
+async function menteeCta(supabase: SupabaseClient, user: User) {
+  const mentee = await ensureMentee(supabase, user);
+
+  const [{ data: session }, { data: profile }] = await Promise.all([
+    supabase
+      .from("diagnostic_sessions")
+      .select("status, current_block")
+      .eq("mentee_id", mentee.id)
+      .order("started_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from("executive_profiles")
+      .select("status, version, motivo_rejeicao")
+      .eq("mentee_id", mentee.id)
+      .order("version", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
+
+  const status = menteeStatus(session, profile);
+
+  if (profile?.status === "validado") {
+    return (
+      <Button asChild>
+        <Link href="/jornada">Ir para a Jornada</Link>
+      </Button>
+    );
+  }
+
+  if (profile?.status === "rejeitado") {
+    return (
+      <p className="text-sm text-muted-foreground">
+        {status.label}
+        {profile.motivo_rejeicao ? ` — ${profile.motivo_rejeicao}` : ""} — seu mentor vai retomar
+        contato com você.
+      </p>
+    );
+  }
+
+  if (session?.status === "concluida") {
+    return (
+      <p className="text-sm text-muted-foreground">
+        {status.label} — o mentor vai retornar com a devolutiva.
+      </p>
+    );
+  }
+
+  return (
+    <Button asChild>
+      <Link href="/diagnostico">
+        {session ? "Continuar o Executive Diagnostic" : "Iniciar Executive Diagnostic"}
+      </Link>
+    </Button>
   );
 }

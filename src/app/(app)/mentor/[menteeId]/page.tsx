@@ -4,14 +4,48 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isMentor } from "@/lib/mentor";
 import { ExecutiveProfileSchema } from "@/lib/agents/executive-profile-schema";
+import { ARTIFACT_TIPOS, ARTIFACT_LABELS, type ArtifactTipo } from "@/lib/agents/artifact-schemas";
 import { StatusPill } from "@/components/status-pill";
-import { menteeStatus } from "../mentee-status";
+import { ArtifactDetail } from "@/components/artifact-detail";
+import { menteeStatus } from "@/lib/mentee-status";
+import { ensureJourneyState, ETAPA_ORDER } from "@/lib/agents/journey";
+import { ATTACHMENTS_BUCKET } from "@/lib/attachments/limits";
+import { EtapaStepper } from "../../jornada/etapa-stepper";
 import { ProfileDetail } from "../profile-detail";
-import { ValidateButton } from "../validate-button";
+import { ReviewActions } from "../review-actions";
 import { Transcript } from "../transcript";
+import { AdvanceButton } from "./advance-button";
 
-const STATUS_LABEL = { rascunho_agente: "Rascunho do agente", validado: "Validado" };
-const STATUS_TONE = { rascunho_agente: "warning", validado: "good" } as const;
+function formatBytes(value: number) {
+  if (value < 1024) return `${value} B`;
+  if (value < 1024 * 1024) return `${(value / 1024).toFixed(0)} KB`;
+  return `${(value / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+type ArtifactRow = {
+  id: string;
+  tipo: ArtifactTipo;
+  versao: number;
+  status: "rascunho_agente" | "validado_mentor" | "rejeitado";
+  conteudo: unknown;
+  criado_em: string;
+  validado_em: string | null;
+  motivo_rejeicao: string | null;
+};
+
+const ARTIFACT_STATUS_LABEL = {
+  rascunho_agente: "Rascunho do agente",
+  validado_mentor: "Validado",
+  rejeitado: "Rejeitado",
+};
+const ARTIFACT_STATUS_TONE = {
+  rascunho_agente: "warning",
+  validado_mentor: "good",
+  rejeitado: "bad",
+} as const;
+
+const STATUS_LABEL = { rascunho_agente: "Rascunho do agente", validado: "Validado", rejeitado: "Rejeitado" };
+const STATUS_TONE = { rascunho_agente: "warning", validado: "good", rejeitado: "bad" } as const;
 
 function formatDate(value: string | null) {
   if (!value) return "—";
@@ -66,11 +100,46 @@ export default async function MenteeDetailPage(props: PageProps<"/mentor/[mentee
         .order("created_at", { ascending: true })
     : { data: [] };
 
+  const journey = await ensureJourneyState(admin, menteeId);
+  const journeyIndex = ETAPA_ORDER.indexOf(journey.etapa_atual as (typeof ETAPA_ORDER)[number]);
+  const nextEtapa = journeyIndex < ETAPA_ORDER.length - 1 ? ETAPA_ORDER[journeyIndex + 1] : null;
+
   const { data: profiles } = await admin
     .from("executive_profiles")
-    .select("id, version, status, perfil, created_at, validated_at")
+    .select("id, version, status, perfil, created_at, validated_at, motivo_rejeicao")
     .eq("mentee_id", menteeId)
     .order("version", { ascending: false });
+
+  const { data: artifactRows } = await admin
+    .from("artifacts")
+    .select("id, tipo, versao, status, conteudo, criado_em, validado_em, motivo_rejeicao")
+    .eq("mentee_id", menteeId)
+    .order("versao", { ascending: false });
+
+  // Anexos: privados ao mentorado, o mentor enxerga ao revisar aqui
+  // (SPEC-AGENTS.md §12, "Visibilidade"). URL assinada gerada agora — o
+  // bucket é privado, nunca URL pública.
+  const { data: attachmentRows } = await admin
+    .from("attachments")
+    .select("id, nome_arquivo, tipo_mime, tamanho_bytes, storage_path, criado_em")
+    .eq("mentee_id", menteeId)
+    .order("criado_em", { ascending: false });
+
+  const attachments = await Promise.all(
+    (attachmentRows ?? []).map(async (row) => {
+      const { data: signed } = await admin.storage
+        .from(ATTACHMENTS_BUCKET)
+        .createSignedUrl(row.storage_path, 3600);
+      return { ...row, signedUrl: signed?.signedUrl ?? null };
+    })
+  );
+
+  const artifactsByTipo = new Map<ArtifactTipo, ArtifactRow[]>();
+  for (const item of (artifactRows ?? []) as ArtifactRow[]) {
+    const list = artifactsByTipo.get(item.tipo) ?? [];
+    list.push(item);
+    artifactsByTipo.set(item.tipo, list);
+  }
 
   const latestProfile = profiles?.[0]
     ? { status: profiles[0].status, version: profiles[0].version }
@@ -100,6 +169,21 @@ export default async function MenteeDetailPage(props: PageProps<"/mentor/[mentee
         </div>
         <StatusPill tone={status.tone}>{status.label}</StatusPill>
       </div>
+
+      <section className="mb-12">
+        <h2 className="mb-4 text-lg font-semibold tracking-tight text-foreground">Jornada</h2>
+        <p className="mb-4 text-sm text-muted-foreground">
+          {journey.etapa_atual} · mês {journey.mes} de 6
+        </p>
+        <EtapaStepper etapaAtual={journey.etapa_atual} etapasLiberadas={journey.etapas_liberadas} />
+        <div className="mt-4">
+          {nextEtapa ? (
+            <AdvanceButton menteeId={menteeId} label={`Avançar para ${nextEtapa}`} />
+          ) : (
+            <p className="text-xs text-muted-foreground">Já está na última etapa (MOVE).</p>
+          )}
+        </div>
+      </section>
 
       <section className="mb-12">
         <h2 className="mb-4 text-lg font-semibold tracking-tight text-foreground">
@@ -162,8 +246,11 @@ export default async function MenteeDetailPage(props: PageProps<"/mentor/[mentee
                         {STATUS_LABEL[item.status as keyof typeof STATUS_LABEL]}
                       </StatusPill>
                     </div>
-                    {item.status === "rascunho_agente" && <ValidateButton profileId={item.id} />}
+                    {item.status === "rascunho_agente" && <ReviewActions profileId={item.id} />}
                   </div>
+                  {item.status === "rejeitado" && item.motivo_rejeicao && (
+                    <p className="text-sm text-bad">Motivo da rejeição: {item.motivo_rejeicao}</p>
+                  )}
                   {parsed.success ? (
                     <ProfileDetail perfil={parsed.data} />
                   ) : (
@@ -176,6 +263,76 @@ export default async function MenteeDetailPage(props: PageProps<"/mentor/[mentee
               );
             })}
           </div>
+        )}
+      </section>
+
+      <section className="mt-12">
+        <h2 className="mb-4 text-lg font-semibold tracking-tight text-foreground">Artefatos</h2>
+        <div className="space-y-10">
+          {ARTIFACT_TIPOS.map((tipo) => {
+            const versions = artifactsByTipo.get(tipo) ?? [];
+            return (
+              <div key={tipo}>
+                <p className="mb-4 text-sm font-semibold text-foreground">{ARTIFACT_LABELS[tipo]}</p>
+                {versions.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Ainda não gerado.</p>
+                ) : (
+                  <div className="space-y-8">
+                    {versions.map((item) => (
+                      <div
+                        key={item.id}
+                        className="space-y-4 border-t border-border pt-6 first:border-t-0 first:pt-0"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm text-foreground">versão {item.versao}</p>
+                            <StatusPill tone={ARTIFACT_STATUS_TONE[item.status]}>
+                              {ARTIFACT_STATUS_LABEL[item.status]}
+                            </StatusPill>
+                          </div>
+                          {item.status === "rascunho_agente" && <ReviewActions artifactId={item.id} />}
+                        </div>
+                        {item.status === "rejeitado" && item.motivo_rejeicao && (
+                          <p className="text-sm text-bad">Motivo da rejeição: {item.motivo_rejeicao}</p>
+                        )}
+                        <ArtifactDetail tipo={tipo} conteudo={item.conteudo} />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="mt-12">
+        <h2 className="mb-4 text-lg font-semibold tracking-tight text-foreground">Anexos</h2>
+        {attachments.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Nenhum arquivo enviado ainda.</p>
+        ) : (
+          <ul className="divide-y divide-border">
+            {attachments.map((attachment) => (
+              <li key={attachment.id} className="flex items-center justify-between gap-4 py-3">
+                <div>
+                  <p className="text-sm text-foreground">{attachment.nome_arquivo}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {formatBytes(attachment.tamanho_bytes)} · {formatDate(attachment.criado_em)}
+                  </p>
+                </div>
+                {attachment.signedUrl && (
+                  <a
+                    href={attachment.signedUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-sm font-medium text-primary outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/50 rounded-sm"
+                  >
+                    Abrir
+                  </a>
+                )}
+              </li>
+            ))}
+          </ul>
         )}
       </section>
     </main>

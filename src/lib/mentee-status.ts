@@ -4,13 +4,16 @@ export type Session = {
 } | null;
 
 export type Profile = {
-  status: "rascunho_agente" | "validado";
+  status: "rascunho_agente" | "validado" | "rejeitado";
   version: number;
 } | null;
 
 export function menteeStatus(session: Session, profile: Profile) {
   if (profile?.status === "validado") {
     return { label: "Perfil validado", tone: "good" as const };
+  }
+  if (profile?.status === "rejeitado") {
+    return { label: "Perfil rejeitado pelo mentor", tone: "bad" as const };
   }
   if (session?.status === "concluida") {
     return { label: "Aguardando validação", tone: "warning" as const };

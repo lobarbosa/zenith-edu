@@ -1,0 +1,72 @@
+[
+  {
+    "file": "carreira.txt",
+    "titulo": "Playbook de Carreira",
+    "tipo": "playbook",
+    "pilar": "CAREER",
+    "etapas": ["FIND"]
+  },
+  {
+    "file": "posicionamento.txt",
+    "titulo": "Playbook de Posicionamento Executivo",
+    "tipo": "playbook",
+    "pilar": "CAREER",
+    "etapas": ["FIND"]
+  },
+  {
+    "file": "analise-de-negocio.txt",
+    "titulo": "Playbook de Análise de Negócio",
+    "tipo": "playbook",
+    "pilar": "BUSINESS",
+    "etapas": ["UNDERSTAND"]
+  },
+  {
+    "file": "geracao-de-valor.txt",
+    "titulo": "Playbook de Geração de Valor",
+    "tipo": "playbook",
+    "pilar": "VALUE",
+    "etapas": ["CREATE"]
+  },
+  {
+    "file": "lideranca.txt",
+    "titulo": "Playbook de Liderança",
+    "tipo": "playbook",
+    "pilar": "PEOPLE",
+    "etapas": ["LEAD"]
+  },
+  {
+    "file": "delegacao.txt",
+    "titulo": "Playbook de Delegação",
+    "tipo": "playbook",
+    "pilar": "PEOPLE",
+    "etapas": ["LEAD"]
+  },
+  {
+    "file": "comunicacao-executiva.txt",
+    "titulo": "Playbook de Comunicação Executiva",
+    "tipo": "playbook",
+    "pilar": "COMMUNICATION",
+    "etapas": ["INFLUENCE", "MOVE"]
+  },
+  {
+    "file": "networking.txt",
+    "titulo": "Playbook de Networking Executivo",
+    "tipo": "playbook",
+    "pilar": "COMMUNICATION",
+    "etapas": ["INFLUENCE", "MOVE"]
+  },
+  {
+    "file": "preparacao-para-reunioes.txt",
+    "titulo": "Playbook de Preparação para Reuniões",
+    "tipo": "playbook",
+    "pilar": "COMMUNICATION",
+    "etapas": ["INFLUENCE", "MOVE"]
+  },
+  {
+    "file": "gestao-de-stakeholders.txt",
+    "titulo": "Playbook de Gestão de Stakeholders",
+    "tipo": "playbook",
+    "pilar": "COMMUNICATION",
+    "etapas": ["INFLUENCE", "MOVE"]
+  }
+]

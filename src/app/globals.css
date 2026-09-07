@@ -36,6 +36,9 @@
   --good: #2f6b4f;
   --good-soft: #e7f2ec;
 
+  --bad: #b91c1c;
+  --bad-soft: #fbeaea;
+
   --border: #e4e4e7;
   --input: #e4e4e7;
   --ring: #16264d;
@@ -62,6 +65,8 @@
   --color-warning-soft: var(--warning-soft);
   --color-good: var(--good);
   --color-good-soft: var(--good-soft);
+  --color-bad: var(--bad);
+  --color-bad-soft: var(--bad-soft);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
