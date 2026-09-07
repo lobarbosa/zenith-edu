@@ -8,9 +8,12 @@ import { ARTIFACT_TIPOS, ARTIFACT_LABELS, type ArtifactTipo } from "@/lib/agents
 import { StatusPill } from "@/components/status-pill";
 import { ArtifactDetail } from "@/components/artifact-detail";
 import { menteeStatus } from "@/lib/mentee-status";
+import { ensureJourneyState, ETAPA_ORDER } from "@/lib/agents/journey";
+import { EtapaStepper } from "../../jornada/etapa-stepper";
 import { ProfileDetail } from "../profile-detail";
 import { ValidateButton } from "../validate-button";
 import { Transcript } from "../transcript";
+import { AdvanceButton } from "./advance-button";
 
 type ArtifactRow = {
   id: string;
@@ -81,6 +84,10 @@ export default async function MenteeDetailPage(props: PageProps<"/mentor/[mentee
         .order("created_at", { ascending: true })
     : { data: [] };
 
+  const journey = await ensureJourneyState(admin, menteeId);
+  const journeyIndex = ETAPA_ORDER.indexOf(journey.etapa_atual as (typeof ETAPA_ORDER)[number]);
+  const nextEtapa = journeyIndex < ETAPA_ORDER.length - 1 ? ETAPA_ORDER[journeyIndex + 1] : null;
+
   const { data: profiles } = await admin
     .from("executive_profiles")
     .select("id, version, status, perfil, created_at, validated_at")
@@ -128,6 +135,21 @@ export default async function MenteeDetailPage(props: PageProps<"/mentor/[mentee
         </div>
         <StatusPill tone={status.tone}>{status.label}</StatusPill>
       </div>
+
+      <section className="mb-12">
+        <h2 className="mb-4 text-lg font-semibold tracking-tight text-foreground">Jornada</h2>
+        <p className="mb-4 text-sm text-muted-foreground">
+          {journey.etapa_atual} · mês {journey.mes} de 6
+        </p>
+        <EtapaStepper etapaAtual={journey.etapa_atual} etapasLiberadas={journey.etapas_liberadas} />
+        <div className="mt-4">
+          {nextEtapa ? (
+            <AdvanceButton menteeId={menteeId} label={`Avançar para ${nextEtapa}`} />
+          ) : (
+            <p className="text-xs text-muted-foreground">Já está na última etapa (MOVE).</p>
+          )}
+        </div>
+      </section>
 
       <section className="mb-12">
         <h2 className="mb-4 text-lg font-semibold tracking-tight text-foreground">

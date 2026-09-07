@@ -4,8 +4,19 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { ensureMentee } from "@/lib/mentees";
 import { routeMessage } from "@/lib/agents/router";
 import { AGENT_PILAR, type AgentKey } from "@/lib/agents/router-prompt";
-import { ensureJourneyState, isEtapaLiberada, agentEtapa, ETAPA_MES } from "@/lib/agents/journey";
-import { CAREER_SYSTEM_PROMPT, territoryBridgeInstruction } from "@/lib/agents/copilot-prompt";
+import {
+  ensureJourneyState,
+  isEtapaLiberada,
+  agentEtapa,
+  etapaAgent,
+  ETAPA_MES,
+} from "@/lib/agents/journey";
+import {
+  CAREER_SYSTEM_PROMPT,
+  BUSINESS_SYSTEM_PROMPT,
+  territoryBridgeInstruction,
+  notImplementedInstruction,
+} from "@/lib/agents/copilot-prompt";
 import { buildContextBlock, summarizePerfil, summarizeArtifacts } from "@/lib/agents/context";
 import { searchKnowledge } from "@/lib/knowledge/retrieval";
 import { detectSignals } from "@/lib/agents/signals";
@@ -20,12 +31,12 @@ const MAX_MESSAGE_LENGTH = 4000;
 const HISTORY_LIMIT = 40;
 const ROUTER_HISTORY_LIMIT = 6;
 
-// Só o Career Copilot está implementado. FIND é a única etapa liberada por
-// padrão (avanço de etapa é ação do mentor via /api/mentor/advance, ainda
-// não construída), então nenhum outro agent_key é alcançável de verdade
-// hoje — os quatro restantes são a próxima entrega da Fase 1.
+// Career e Business implementados; Value/Leadership/Executive ainda não —
+// só alcançáveis quando o mentor avançar a etapa via /api/mentor/advance
+// E o copiloto daquela etapa existir.
 const SYSTEM_PROMPTS: Partial<Record<AgentKey, string>> = {
   career: CAREER_SYSTEM_PROMPT,
+  business: BUSINESS_SYSTEM_PROMPT,
 };
 
 export async function POST(request: Request) {
@@ -69,14 +80,24 @@ export async function POST(request: Request) {
   const journey = await ensureJourneyState(admin, mentee.id);
 
   const liberado = isEtapaLiberada(journey.etapas_liberadas, route.agentKey);
+  const requestedImplemented = Boolean(SYSTEM_PROMPTS[route.agentKey]);
+  const currentAgent = etapaAgent(journey.etapa_atual);
   const effectiveAgent: AgentKey =
-    liberado && SYSTEM_PROMPTS[route.agentKey] ? route.agentKey : "career";
+    liberado && requestedImplemented
+      ? route.agentKey
+      : SYSTEM_PROMPTS[currentAgent]
+        ? currentAgent
+        : "career";
   const basePrompt = SYSTEM_PROMPTS[effectiveAgent] ?? CAREER_SYSTEM_PROMPT;
 
   let systemPrompt = basePrompt;
   if (effectiveAgent !== route.agentKey) {
-    const unlockEtapa = agentEtapa(route.agentKey);
-    systemPrompt = `${basePrompt}\n\n${territoryBridgeInstruction(route.agentKey, unlockEtapa, ETAPA_MES[unlockEtapa])}`;
+    if (!liberado) {
+      const unlockEtapa = agentEtapa(route.agentKey);
+      systemPrompt = `${basePrompt}\n\n${territoryBridgeInstruction(route.agentKey, unlockEtapa, ETAPA_MES[unlockEtapa])}`;
+    } else {
+      systemPrompt = `${basePrompt}\n\n${notImplementedInstruction(route.agentKey)}`;
+    }
   }
 
   const [profileResult, artifactsResult, ragTrechos] = await Promise.all([

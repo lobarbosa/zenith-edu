@@ -2,8 +2,13 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ensureMentee } from "@/lib/mentees";
-import { ensureJourneyState } from "@/lib/agents/journey";
-import { ARTIFACT_TIPOS, ARTIFACT_LABELS, type ArtifactTipo } from "@/lib/agents/artifact-schemas";
+import { ensureJourneyState, agentEtapa } from "@/lib/agents/journey";
+import {
+  ARTIFACT_TIPOS,
+  ARTIFACT_LABELS,
+  ARTIFACT_AGENT,
+  type ArtifactTipo,
+} from "@/lib/agents/artifact-schemas";
 import { StatusPill } from "@/components/status-pill";
 import { ArtifactDetail } from "@/components/artifact-detail";
 import { GenerateArtifactButton } from "./generate-artifact-button";
@@ -70,37 +75,39 @@ export default async function JornadaPage() {
       </h2>
 
       <div className="space-y-10">
-        {ARTIFACT_TIPOS.map((tipo) => {
-          const latest = latestByTipo.get(tipo);
+        {ARTIFACT_TIPOS.filter((tipo) => agentEtapa(ARTIFACT_AGENT[tipo]) === journey.etapa_atual).map(
+          (tipo) => {
+            const latest = latestByTipo.get(tipo);
 
-          return (
-            <section
-              key={tipo}
-              className="space-y-4 border-t border-border pt-8 first:border-t-0 first:pt-0"
-            >
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-semibold text-foreground">{ARTIFACT_LABELS[tipo]}</p>
-                  <StatusPill tone={latest ? STATUS_TONE[latest.status] : "neutral"}>
-                    {latest ? STATUS_LABEL[latest.status] : "Ainda não gerado"}
-                  </StatusPill>
+            return (
+              <section
+                key={tipo}
+                className="space-y-4 border-t border-border pt-8 first:border-t-0 first:pt-0"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-semibold text-foreground">{ARTIFACT_LABELS[tipo]}</p>
+                    <StatusPill tone={latest ? STATUS_TONE[latest.status] : "neutral"}>
+                      {latest ? STATUS_LABEL[latest.status] : "Ainda não gerado"}
+                    </StatusPill>
+                  </div>
+                  {(!latest || latest.status === "validado_mentor") && (
+                    <GenerateArtifactButton tipo={tipo} label={latest ? "Gerar nova versão" : "Gerar"} />
+                  )}
                 </div>
-                {(!latest || latest.status === "validado_mentor") && (
-                  <GenerateArtifactButton tipo={tipo} label={latest ? "Gerar nova versão" : "Gerar"} />
-                )}
-              </div>
 
-              {latest?.status === "validado_mentor" && (
-                <ArtifactDetail tipo={tipo} conteudo={latest.conteudo} />
-              )}
-              {!latest && (
-                <p className="text-sm text-muted-foreground">
-                  Converse com o copiloto sobre este tema e depois peça pra gerar.
-                </p>
-              )}
-            </section>
-          );
-        })}
+                {latest?.status === "validado_mentor" && (
+                  <ArtifactDetail tipo={tipo} conteudo={latest.conteudo} />
+                )}
+                {!latest && (
+                  <p className="text-sm text-muted-foreground">
+                    Converse com o copiloto sobre este tema e depois peça pra gerar.
+                  </p>
+                )}
+              </section>
+            );
+          }
+        )}
       </div>
     </main>
   );

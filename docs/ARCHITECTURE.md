@@ -68,6 +68,38 @@ validação encontrou e corrigiu **dois bugs reais**, nenhum pego por
 
 `tsc`, `lint` e `build` passam limpos depois das correções.
 
+**Fase 2** (`SPEC-SOFTWARE.md` §15: Business e Value Copilot, `/biblioteca`)
+começou. Primeira entrega — `/api/mentor/advance` e Business Copilot —
+está **completa e validada ao vivo**.
+
+| Entrega | Status |
+|---|---|
+| `POST /api/mentor/advance` | ✅ feita e validada ao vivo |
+| Business Copilot (`/api/chat`) + `business_map` | ✅ feita e validada ao vivo |
+| Value Copilot + `value_creation_map` | não iniciado |
+| Anexos (`POST /api/attachments`) + `/biblioteca` | não iniciado |
+
+Validado ao vivo: mentee de teste conversou com o Career Copilot (regressão
+— continua funcionando), mentor avançou a etapa pra UNDERSTAND pela nova
+seção "Jornada" em `/mentor/[menteeId]`, mentee conversou com o Business
+Copilot (roteador classificou corretamente, contexto financeiro real —
+"MDR", "70% da receita" — apareceu no `business_map` gerado), mentor
+validou, `/jornada` passou a mostrar só o Business Map (o filtro por
+etapa funcionou — os 3 artefatos de FIND somem da tela assim que a etapa
+avança, ficam só em `/mentor/[menteeId]`, a visão histórica). Testado
+também o caminho de bloqueio: mentee ainda em FIND perguntando algo de
+Business recebe a ponte do próprio Career Copilot, sem `service_role`
+insuficiente ou etapa incorreta; e `POST /api/artifact` recusa gerar
+`business_map` (403) pra quem ainda não tem UNDERSTAND liberado.
+
+Um bug real de menor porte, achado ao generalizar pra 2 copilotos: em
+`artifact-generation.ts`, `persistArtifact` gravava `gerado_por: "career"`
+fixo, e a transcrição usada na geração pegava mensagens de **todos** os
+territórios, não só o do artefato sendo gerado — inofensivo enquanto só
+Career existia, silenciosamente errado assim que Business entrou (um
+`business_map` puxaria conversa de carreira junto). Corrigido com
+`ARTIFACT_AGENT[tipo]` filtrando a query e definindo `gerado_por`.
+
 ---
 
 ## 2. Stack
@@ -435,7 +467,11 @@ botão "Sair") uma vez só, e cada página ganhou `flex-1` no lugar de
 | `/api/chat` não recebe `agentKey` nem `conversationId` do cliente | `SPEC-SOFTWARE.md` §8: "o roteamento acontece no servidor. A interface é um chat único." O cliente só manda a mensagem; o servidor decide território e conversa. |
 | Uma `conversations` por (mentorado, agent_key), reaproveitada por continuidade | Nem a spec nem os agentes definem isso de forma literal — é leitura de engenharia de "continuidade vale: se a conversa já está em um território e a mensagem segue nele, mantenha o mesmo copiloto" (`SPEC-AGENTS.md` §4) combinada com `conversations.agent_key not null`. Histórico enviado ao modelo, porém, é o transcript inteiro do mentorado entre territórios (últimas 40 mensagens) — perder contexto ao trocar de assunto seria pior experiência que a spec descreve. |
 | Território bloqueado: o Career Copilot responde com uma instrução de sistema extra, não uma string fixa | `SPEC-AGENTS.md` §4: "recusa seca quebra a experiência premium... a ponte é gerada pelo copiloto da etapa atual, com o contexto do que foi perguntado." Uma mensagem canônica ("esse território abre em...") seria exatamente a recusa seca que a spec pede pra evitar. |
-| Só Career Copilot tem prompt implementado; os outros 4 `agent_key` do roteador nunca são de fato respondidos | `etapas_liberadas` começa e permanece `['FIND']` até `/api/mentor/advance` existir (Fase 1, ainda não construída) — nenhum outro território é alcançável de verdade nesta entrega. Implementar Business/Value/Leadership/Executive agora seria puro código morto. |
+| Só Career e Business Copilot têm prompt implementado; Value/Leadership/Executive continuam inalcançáveis mesmo com `/api/mentor/advance` existindo | O roteador reconhece os 5 territórios (parte do prompt do roteador, `SPEC-AGENTS.md` §4), mas `SYSTEM_PROMPTS` (`api/chat/route.ts`) só tem 2 entradas — implementar os outros 3 sem os copilotos prontos seria código morto. `notImplementedInstruction()` cobre o caso (raro, mas alcançável desde que `/api/mentor/advance` não trava em etapa sem copiloto pronto) de o mentor avançar além do que existe. |
+| `etapaAgent()` (inverso de `AGENT_ETAPAS`) decide o copiloto de fallback/ponte, não mais fixo em `"career"` | Com 2 copilotos implementados, hardcodar `"career"` como fallback universal ficou errado — um mentee em UNDERSTAND perguntando algo de Value precisa da ponte gerada pelo Business Copilot (dono da etapa atual dele), não pelo Career. |
+| `ARTIFACT_AGENT` (tipo → `agent_key`) filtra a transcrição na geração e define `gerado_por` | Achado generalizando pra 2 copilotos: sem esse filtro, a transcrição usada pra gerar qualquer artefato pegava mensagens de todos os territórios, e `gerado_por` estava fixo em `"career"` — inofensivo com 1 copiloto, silenciosamente errado com 2+. |
+| `/jornada` filtra `ARTIFACT_TIPOS` pela etapa atual (`agentEtapa(ARTIFACT_AGENT[tipo]) === journey.etapa_atual`) | Antes mostrava sempre os 3 artefatos de FIND, fixo. Generalizado pra mostrar só os artefatos da etapa em que o mentorado está agora — a visão histórica completa (todas as etapas, todos os tipos) já existe em `/mentor/[menteeId]`, `/jornada` não precisa duplicar isso. |
+| `POST /api/mentor/advance` avança sempre pra próxima etapa da sequência, não aceita etapa arbitrária | "Avanço de etapa é ação humana do mentor" (`SPEC-SOFTWARE.md` §4) descreve um ritmo mensal sequencial, não pular etapas. Corpo da requisição é só `{ menteeId }` — sem campo de etapa-alvo, elimina a classe de erro de avançar pra etapa errada. |
 | Prompt de detecção de sinais (`signals.ts`) é texto novo, não transcrito literal da spec | `SPEC-AGENTS.md` §13 descreve os gatilhos (contradição, resistência, risco, avanço, fora de escopo) qualitativamente, sem prompt pronto — diferente dos prompts de agente, que são "fonte de verdade" travada. Escrito como um classificador Haiku leve, mesmo padrão de custo/confiabilidade do roteador e do classificador de bloco. |
 | `agent_runs` grava 3 linhas por turno (`router`, `career`, `signals`) | "Todo run de agente grava em `agent_runs`" (`SPEC-SOFTWARE.md` §7, regra 10) — são 3 chamadas de modelo reais por turno de copiloto, cada uma seu próprio custo/latência a auditar no Mentor Console (Fase 4) depois. |
 | `journey_state` é criado (bootstrap FIND/mês 1) via `service_role` na primeira mensagem ao copiloto | Não é "avançar etapa" (ação exclusiva do mentor) — é o estado inicial da jornada passar a existir. Sem policy de insert pro mentorado nessa tabela (0004), então precisa rodar como admin, mesma lógica de qualquer outra escrita cross-policy já usada em `/api/mentor/*`. |
@@ -567,9 +603,25 @@ bugs listados no §1 (campos enum sem `.nullable()`, query ambígua de FK
 em `/mentor`) — nenhum dos dois seria pego por `tsc`/`lint`/`build`,
 só rodando o fluxo real contra o Opus e o PostgREST.
 
-Com isso a Fase 1 está encerrada. Próximo passo, na ordem do
-`SPEC-SOFTWARE.md` §15, é a Fase 2 (Business e Value Copilot) — ainda não
-iniciada, sem pedido do usuário pra começar.
+Com isso a Fase 1 está encerrada.
+
+**Fase 2, primeira entrega**: `POST /api/mentor/advance` (avança sempre
+pra próxima etapa da sequência) e Business Copilot (`/api/chat` +
+`business_map`) — pedido explícito do usuário pra avançar. Validado ao
+vivo com o mesmo rigor: mentee de teste conversou com Career (regressão),
+mentor avançou a etapa pela nova seção "Jornada" em
+`/mentor/[menteeId]`, mentee conversou com Business (roteador classificou
+certo, contexto financeiro real no `business_map` gerado), mentor
+validou, `/jornada` passou a mostrar só o artefato da etapa atual. Testado
+também bloqueio de território (mentee em FIND perguntando de Business
+recebe a ponte do Career) e o gate de geração (`403` pra artefato de
+etapa não liberada). Um bug de menor porte achado e corrigido — transcrição
+de geração de artefato não filtrava por território, `gerado_por` fixo em
+`"career"` — ver §1 e §6.
+
+**Ainda não iniciado**: Value Copilot + `value_creation_map`, anexos
+(`POST /api/attachments`) + `/biblioteca`. Próximas entregas da Fase 2,
+na ordem.
 
 Checklist completo do que está pendente — incluindo o que só um humano pode
 fazer (credenciais, contas, decisões de produto) — em

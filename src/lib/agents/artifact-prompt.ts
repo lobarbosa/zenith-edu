@@ -26,6 +26,8 @@ const ARTIFACT_FOCUS: Record<ArtifactTipo, string> = {
     "Organize as competências discutidas: pilar, nível atual, nível que a próxima cadeira exige, evidência do nível atual e a lacuna. Feche com as prioridades de desenvolvimento.",
   next_chair_map:
     "Organize a cadeira-alvo (papel, escopo, tipo de problema, horizonte), por que essa cadeira, cada requisito e sua situação (atendido/parcial/não atendido) com evidência, a distância até lá, hipóteses alternativas e riscos da escolha.",
+  business_map:
+    "Organize a empresa (setor, modelo de receita, porte), o motor econômico (de onde vem a receita, onde está a margem, o que pressiona), a estrutura de decisão (quem decide sobre o quê e com base em que), como a área do mentorado se conecta a isso (como contribui, como é medida, visibilidade), as lacunas de informação que ele identificou e as perguntas que ele precisa levar pra dentro da empresa.",
 };
 
 export function artifactSystemPrompt(tipo: ArtifactTipo): string {

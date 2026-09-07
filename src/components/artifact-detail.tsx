@@ -5,6 +5,7 @@ import {
   type CareerMap,
   type CompetencyMap,
   type NextChairMap,
+  type BusinessMap,
 } from "@/lib/agents/artifact-schemas";
 
 // "Campo vazio é permitido, com marcação explícita do que falta. Nunca
@@ -204,6 +205,81 @@ function NextChairMapDetail({ conteudo }: { conteudo: NextChairMap }) {
   );
 }
 
+const VISIBILIDADE_LABEL: Record<string, string> = { alta: "Alta", media: "Média", baixa: "Baixa" };
+function visibilidadeLabel(v: string | null): string {
+  return v ? VISIBILIDADE_LABEL[v] : "Ainda não avaliada";
+}
+
+function BusinessMapDetail({ conteudo }: { conteudo: BusinessMap }) {
+  return (
+    <div className="space-y-4">
+      <Field label="Empresa">
+        <p className="font-medium">{conteudo.empresa.setor}</p>
+        <p className="text-muted-foreground">Modelo de receita: {conteudo.empresa.modelo_de_receita}</p>
+        <p className="text-muted-foreground">Porte: {conteudo.empresa.porte}</p>
+      </Field>
+
+      <Field label="Motor econômico">
+        <p className="text-muted-foreground">
+          De onde vem a receita: {conteudo.motor_economico.de_onde_vem_a_receita}
+        </p>
+        <p className="text-muted-foreground">
+          Onde está a margem: {conteudo.motor_economico.onde_esta_a_margem}
+        </p>
+        <p className="text-muted-foreground">O que pressiona: {conteudo.motor_economico.o_que_pressiona}</p>
+      </Field>
+
+      <Field label="Estrutura de decisão">
+        {conteudo.estrutura_de_decisao.length === 0 ? (
+          <EmptyNote />
+        ) : (
+          <ol className="space-y-2">
+            {conteudo.estrutura_de_decisao.map((item, index) => (
+              <li key={index}>
+                <p className="font-medium">{item.quem}</p>
+                <p className="text-muted-foreground">Decide sobre: {item.decide_sobre}</p>
+                <p className="text-muted-foreground">Olha para: {item.olha_para}</p>
+              </li>
+            ))}
+          </ol>
+        )}
+      </Field>
+
+      <Field label="Conexão da área">
+        <p className="text-muted-foreground">Como contribui: {conteudo.conexao_da_area.como_contribui}</p>
+        <p className="text-muted-foreground">Como é medida: {conteudo.conexao_da_area.como_e_medida}</p>
+        <p className="text-muted-foreground">
+          Visibilidade: {visibilidadeLabel(conteudo.conexao_da_area.visibilidade)}
+        </p>
+      </Field>
+
+      <Field label="Lacunas de informação">
+        {conteudo.lacunas_de_informacao.length === 0 ? (
+          <EmptyNote />
+        ) : (
+          <ul className="list-disc space-y-1 pl-4">
+            {conteudo.lacunas_de_informacao.map((item, index) => (
+              <li key={index}>{item}</li>
+            ))}
+          </ul>
+        )}
+      </Field>
+
+      <Field label="Perguntas para levar à empresa">
+        {conteudo.perguntas_para_levar_a_empresa.length === 0 ? (
+          <EmptyNote />
+        ) : (
+          <ul className="list-disc space-y-1 pl-4">
+            {conteudo.perguntas_para_levar_a_empresa.map((item, index) => (
+              <li key={index}>{item}</li>
+            ))}
+          </ul>
+        )}
+      </Field>
+    </div>
+  );
+}
+
 export function ArtifactDetail({ tipo, conteudo }: { tipo: ArtifactTipo; conteudo: unknown }) {
   const parsed = ARTIFACT_SCHEMAS[tipo].safeParse(conteudo);
 
@@ -218,5 +294,6 @@ export function ArtifactDetail({ tipo, conteudo }: { tipo: ArtifactTipo; conteud
   if (tipo === "career_map") return <CareerMapDetail conteudo={parsed.data as CareerMap} />;
   if (tipo === "competency_map")
     return <CompetencyMapDetail conteudo={parsed.data as CompetencyMap} />;
-  return <NextChairMapDetail conteudo={parsed.data as NextChairMap} />;
+  if (tipo === "next_chair_map") return <NextChairMapDetail conteudo={parsed.data as NextChairMap} />;
+  return <BusinessMapDetail conteudo={parsed.data as BusinessMap} />;
 }

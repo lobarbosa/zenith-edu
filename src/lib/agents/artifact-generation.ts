@@ -1,7 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { ARTIFACT_SCHEMAS, type ArtifactTipo } from "./artifact-schemas";
+import { ARTIFACT_SCHEMAS, ARTIFACT_AGENT, type ArtifactTipo } from "./artifact-schemas";
 import { artifactSystemPrompt } from "./artifact-prompt";
 import { summarizePerfil, summarizeArtifacts } from "./context";
 import { costUsd } from "./pricing";
@@ -23,9 +23,12 @@ export async function generateArtifact(
   menteeId: string,
   tipo: ArtifactTipo
 ): Promise<GenerateArtifactResult> {
+  // Só a conversa com o copiloto dono deste artefato — territórios não se
+  // misturam na transcrição que embasa a geração.
   const { data: messages } = await supabase
     .from("messages")
     .select("role, content")
+    .eq("agent_key", ARTIFACT_AGENT[tipo])
     .not("conversation_id", "is", null)
     .order("created_at", { ascending: true });
 
@@ -119,7 +122,13 @@ async function persistArtifact(
 
   const { data: created, error } = await supabase
     .from("artifacts")
-    .insert({ mentee_id: menteeId, tipo, versao: nextVersion, conteudo, gerado_por: "career" })
+    .insert({
+      mentee_id: menteeId,
+      tipo,
+      versao: nextVersion,
+      conteudo,
+      gerado_por: ARTIFACT_AGENT[tipo],
+    })
     .select("id, tipo, versao, status")
     .single();
 

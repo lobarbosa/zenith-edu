@@ -26,6 +26,17 @@ export function agentEtapa(agentKey: AgentKey): string {
   return AGENT_ETAPAS[agentKey][0];
 }
 
+// Inverso de AGENT_ETAPAS — qual copiloto é "dono" da etapa atual do
+// mentorado. Usado como gerador da ponte quando o território pedido está
+// bloqueado (SPEC-AGENTS.md §4): a ponte é sempre gerada pelo copiloto da
+// etapa atual, não por um copiloto fixo.
+export function etapaAgent(etapa: string): AgentKey {
+  const entry = (Object.entries(AGENT_ETAPAS) as [AgentKey, string[]][]).find(([, etapas]) =>
+    etapas.includes(etapa)
+  );
+  return entry ? entry[0] : "career";
+}
+
 export function isEtapaLiberada(etapasLiberadas: string[], agentKey: AgentKey): boolean {
   return AGENT_ETAPAS[agentKey].some((etapa) => etapasLiberadas.includes(etapa));
 }
