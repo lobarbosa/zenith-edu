@@ -100,6 +100,34 @@ Career existia, silenciosamente errado assim que Business entrou (um
 `business_map` puxaria conversa de carreira junto). Corrigido com
 `ARTIFACT_AGENT[tipo]` filtrando a query e definindo `gerado_por`.
 
+**LGPD** (`SPEC-SOFTWARE.md` §12) — requisito transversal, não amarrado a
+uma fase — foi fechado nesta janela: `/privacidade` (base legal, finalidade,
+retenção, canal de exclusão, declaração de não-treinamento), link visível
+antes do login (`/login`) e a partir de `/conta`, e exclusão completa
+self-service via `POST /api/account/delete`.
+
+| Decisão | Motivo |
+|---|---|
+| Exclusão self-service no portal, não canal por e-mail processado manualmente | Pedido explícito do usuário — ver decisões de retenção/canal abaixo |
+| `POST /api/account/delete` só chama `admin.auth.admin.deleteUser(user.id)`, sem apagar linha por linha | `mentees.user_id` referencia `auth.users` com `on delete cascade` (0001_init.sql), e toda tabela de domínio cascateia a partir de `mentees.id` — apagar o `auth.users` já propaga pra `diagnostic_sessions`, `messages`, `executive_profiles`, `journey_state`, `conversations`, `attachments`, `artifacts`, `mentor_flags`, `mentor_notes`. `agent_runs.mentee_id` é a única exceção (`on delete set null`, de propósito — mantém custo/latência agregado sem vínculo pessoal) |
+| Base legal: execução de contrato (dados operacionais) + consentimento explícito (dados sensíveis da conversa) | Decisão de produto, escolhida pelo usuário nas opções apresentadas |
+| Retenção: até 30 dias após solicitação | Decisão de produto — na prática a exclusão self-service é imediata, a janela é teto, não meta |
+
+Validação: não foi possível rodar contra o Supabase real desta vez — a
+rede deste ambiente bloqueou a chamada (`Host not in...`, ver
+`curl "$HTTPS_PROXY/__agentproxy/status"`). A garantia do cascade vem da
+leitura direta de cada cláusula `on delete` em `0001_init.sql` e
+`0004_fase1_schema.sql` (tabela acima), não de teste ao vivo — registrado
+aqui porque foge do padrão de todas as entregas anteriores desta fase.
+Único caso de borda não coberto: `executive_profiles.validated_by`
+referencia `auth.users(id)` sem `on delete cascade` — se a conta sendo
+excluída já validou algum perfil como mentor, o `deleteUser` falha por
+violação de FK (a rota devolve 500, sem corromper nada). Não bloqueia o
+caso de uso (mentorado se autoexcluindo); só afetaria uma autoexclusão de
+mentor, fora de escopo aqui.
+
+`tsc`, `lint` e `build` passam limpos.
+
 ---
 
 ## 2. Stack

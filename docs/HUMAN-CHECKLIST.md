@@ -83,6 +83,18 @@ precisa fazer nada além disso.
       enquanto. Quando fizer sentido: criar o projeto na Vercel, repetir
       as mesmas 5 variáveis nas Environment Variables de lá, e repetir a
       Redirect URL do Supabase Auth com o domínio de produção.
+- [ ] **Texto de `/privacidade` não passou por revisão jurídica.** Segue
+      fielmente as decisões de produto que você tomou (base legal,
+      retenção, canal de exclusão) e os requisitos do `SPEC-SOFTWARE.md`
+      §12, mas eu não sou advogado — antes do primeiro acesso externo de
+      verdade, vale um advogado revisar o texto.
+- [ ] **Exclusão de conta (`POST /api/account/delete`) não foi validada
+      ao vivo contra o Supabase real** — a rede deste ambiente bloqueou a
+      chamada de teste. A garantia vem de ler cada `on delete cascade` das
+      migrations, não de execução real. Na próxima sessão com rede livre,
+      vale rodar de ponta a ponta: criar mentorado de teste com dado em
+      cada tabela, excluir pelo botão em `/conta`, confirmar que sumiu
+      tudo.
 
 ---
 

@@ -10,7 +10,15 @@ export function AppHeader() {
       >
         T-Shaped Executive
       </Link>
-      <LogoutButton />
+      <div className="flex items-center gap-4">
+        <Link
+          href="/conta"
+          className="text-sm text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 rounded-sm"
+        >
+          Conta
+        </Link>
+        <LogoutButton />
+      </div>
     </header>
   );
 }
