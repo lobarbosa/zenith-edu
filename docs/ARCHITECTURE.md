@@ -247,6 +247,33 @@ imediatamente). `tsc`, `lint` e `build` passam limpos.
 Com isso a **Fase 2 está encerrada**: Business e Value Copilot, `/biblioteca`
 e Anexos, todos validados ao vivo.
 
+**Fase 3** (`SPEC-SOFTWARE.md` §15: Leadership e Executive Copilot,
+artefatos restantes) começou. Primeira entrega — Leadership Copilot +
+`leadership_map` — está **completa e validada ao vivo**. Mesmo padrão
+puramente aditivo das entregas anteriores: `LEADERSHIP_SYSTEM_PROMPT`
+(texto exato do `SPEC-AGENTS.md` §9), `LeadershipMapSchema`, foco de
+geração, `LeadershipMapDetail`, uma linha no mapa `SYSTEM_PROMPTS`.
+`router.ts`, `journey.ts`, `agent-labels.ts` e o check constraint de
+`artifacts.tipo` já cobriam "leadership" desde a Fase 1.
+
+Validado ao vivo: sessão mintada pro mentorado e mentor; avanço FIND →
+UNDERSTAND → CREATE → LEAD; mentee descreveu um cenário de delegação
+("time fraco tecnicamente", retrabalho constante) e o Leadership Copilot
+reagiu exatamente como a spec pede — não aceitou a alegação de "time
+fraco" de cara, investigou o que estava sendo delegado, e confrontou o
+mentee com a contradição real (ele descreve passar passo a passo
+detalhado, o que testa se a pessoa segue instrução, não a capacidade
+dela — tese central do §9, "delegar não é transferir a própria forma de
+fazer"). `leadership_map` gerado capturou `delegacao.nivel: "tarefa"`
+corretamente e a conversa pendente com a pessoa do time nomeada na
+conversa (Marina), sem inventar `lacuna`/`risco_de_adiar` que não foram
+discutidos (ficaram vazios, como a regra manda). Mentor validou; `/jornada`
+confirmado mostrando Leadership Map validado. Nenhum bug novo — mesmo
+código genérico já testado 3 vezes. `tsc`, `lint` e `build` passam limpos.
+
+**Ainda não iniciado**: Executive Copilot + `executive_positioning_map` +
+`executive_movement_plan` (INFLUENCE e MOVE) — última peça da Fase 3.
+
 ---
 
 ## 2. Stack

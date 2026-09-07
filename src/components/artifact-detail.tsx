@@ -7,6 +7,7 @@ import {
   type NextChairMap,
   type BusinessMap,
   type ValueCreationMap,
+  type LeadershipMap,
 } from "@/lib/agents/artifact-schemas";
 
 // "Campo vazio é permitido, com marcação explícita do que falta. Nunca
@@ -365,6 +366,102 @@ function ValueCreationMapDetail({ conteudo }: { conteudo: ValueCreationMap }) {
   );
 }
 
+const DELEGACAO_NIVEL_LABEL: Record<string, string> = {
+  tarefa: "Tarefa",
+  projeto: "Projeto",
+  resultado: "Resultado",
+};
+function delegacaoNivelLabel(v: string | null): string {
+  return v ? DELEGACAO_NIVEL_LABEL[v] : "Ainda não avaliado";
+}
+
+function LeadershipMapDetail({ conteudo }: { conteudo: LeadershipMap }) {
+  return (
+    <div className="space-y-4">
+      <Field label="Time">
+        <p className="text-muted-foreground">Tamanho: {conteudo.time.tamanho}</p>
+        <p className="text-muted-foreground">Senioridade: {conteudo.time.senioridade}</p>
+        <p className="text-muted-foreground">Maturidade: {conteudo.time.maturidade}</p>
+      </Field>
+
+      <Field label="Delegação">
+        <p className="text-muted-foreground">
+          Nível predominante: {delegacaoNivelLabel(conteudo.delegacao.nivel)}
+        </p>
+        {conteudo.delegacao.o_que_delega.length > 0 && (
+          <p className="text-muted-foreground">
+            O que delega: {conteudo.delegacao.o_que_delega.join("; ")}
+          </p>
+        )}
+        {conteudo.delegacao.o_que_retem.length > 0 && (
+          <p className="text-muted-foreground">
+            O que retém: {conteudo.delegacao.o_que_retem.join("; ")}
+          </p>
+        )}
+        {conteudo.delegacao.motivo_da_retencao && (
+          <p className="text-muted-foreground">Motivo da retenção: {conteudo.delegacao.motivo_da_retencao}</p>
+        )}
+      </Field>
+
+      <Field label="Gargalos no líder">
+        {conteudo.gargalos_no_lider.length === 0 ? (
+          <EmptyNote />
+        ) : (
+          <ul className="list-disc space-y-1 pl-4">
+            {conteudo.gargalos_no_lider.map((item, index) => (
+              <li key={index}>{item}</li>
+            ))}
+          </ul>
+        )}
+      </Field>
+
+      <Field label="Conversas pendentes">
+        {conteudo.conversas_pendentes.length === 0 ? (
+          <EmptyNote />
+        ) : (
+          <ol className="space-y-2">
+            {conteudo.conversas_pendentes.map((item, index) => (
+              <li key={index}>
+                <p className="font-medium">{item.com_quem}</p>
+                <p className="text-muted-foreground">Tema: {item.tema}</p>
+                <p className="text-muted-foreground">Risco de adiar: {item.risco_de_adiar}</p>
+              </li>
+            ))}
+          </ol>
+        )}
+      </Field>
+
+      <Field label="Desenvolvimento do time">
+        {conteudo.desenvolvimento_do_time.length === 0 ? (
+          <EmptyNote />
+        ) : (
+          <ol className="space-y-2">
+            {conteudo.desenvolvimento_do_time.map((item, index) => (
+              <li key={index}>
+                <p className="font-medium">{item.pessoa}</p>
+                <p className="text-muted-foreground">Lacuna: {item.lacuna}</p>
+                <p className="text-muted-foreground">Movimento: {item.movimento}</p>
+              </li>
+            ))}
+          </ol>
+        )}
+      </Field>
+
+      <Field label="Prioridades">
+        {conteudo.prioridades.length === 0 ? (
+          <EmptyNote />
+        ) : (
+          <ul className="list-disc space-y-1 pl-4">
+            {conteudo.prioridades.map((item, index) => (
+              <li key={index}>{item}</li>
+            ))}
+          </ul>
+        )}
+      </Field>
+    </div>
+  );
+}
+
 export function ArtifactDetail({ tipo, conteudo }: { tipo: ArtifactTipo; conteudo: unknown }) {
   const parsed = ARTIFACT_SCHEMAS[tipo].safeParse(conteudo);
 
@@ -381,5 +478,7 @@ export function ArtifactDetail({ tipo, conteudo }: { tipo: ArtifactTipo; conteud
     return <CompetencyMapDetail conteudo={parsed.data as CompetencyMap} />;
   if (tipo === "next_chair_map") return <NextChairMapDetail conteudo={parsed.data as NextChairMap} />;
   if (tipo === "business_map") return <BusinessMapDetail conteudo={parsed.data as BusinessMap} />;
-  return <ValueCreationMapDetail conteudo={parsed.data as ValueCreationMap} />;
+  if (tipo === "value_creation_map")
+    return <ValueCreationMapDetail conteudo={parsed.data as ValueCreationMap} />;
+  return <LeadershipMapDetail conteudo={parsed.data as LeadershipMap} />;
 }

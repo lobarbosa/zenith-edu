@@ -116,12 +116,46 @@ export const ValueCreationMapSchema = z.object({
 });
 export type ValueCreationMap = z.infer<typeof ValueCreationMapSchema>;
 
+// nivel nullable pelo mesmo motivo dos outros enums: julgamento sem base
+// ainda na conversa.
+export const LeadershipMapSchema = z.object({
+  time: z.object({
+    tamanho: z.string(),
+    senioridade: z.string(),
+    maturidade: z.string(),
+  }),
+  delegacao: z.object({
+    o_que_delega: z.array(z.string()),
+    o_que_retem: z.array(z.string()),
+    motivo_da_retencao: z.string(),
+    nivel: z.enum(["tarefa", "projeto", "resultado"]).nullable(),
+  }),
+  gargalos_no_lider: z.array(z.string()),
+  conversas_pendentes: z.array(
+    z.object({
+      com_quem: z.string(),
+      tema: z.string(),
+      risco_de_adiar: z.string(),
+    })
+  ),
+  desenvolvimento_do_time: z.array(
+    z.object({
+      pessoa: z.string(),
+      lacuna: z.string(),
+      movimento: z.string(),
+    })
+  ),
+  prioridades: z.array(z.string()),
+});
+export type LeadershipMap = z.infer<typeof LeadershipMapSchema>;
+
 export const ARTIFACT_TIPOS = [
   "career_map",
   "competency_map",
   "next_chair_map",
   "business_map",
   "value_creation_map",
+  "leadership_map",
 ] as const;
 export type ArtifactTipo = (typeof ARTIFACT_TIPOS)[number];
 
@@ -131,6 +165,7 @@ export const ARTIFACT_SCHEMAS: Record<ArtifactTipo, z.ZodType> = {
   next_chair_map: NextChairMapSchema,
   business_map: BusinessMapSchema,
   value_creation_map: ValueCreationMapSchema,
+  leadership_map: LeadershipMapSchema,
 };
 
 // Rótulo em português pra UI — nunca no prompt (esse fica em copilot-prompt.ts).
@@ -140,6 +175,7 @@ export const ARTIFACT_LABELS: Record<ArtifactTipo, string> = {
   next_chair_map: "Next Chair Map",
   business_map: "Business Map",
   value_creation_map: "Value Creation Map",
+  leadership_map: "Leadership Map",
 };
 
 // Qual copiloto gera/usa cada artefato — filtra a conversa na geração
@@ -150,4 +186,5 @@ export const ARTIFACT_AGENT: Record<ArtifactTipo, AgentKey> = {
   next_chair_map: "career",
   business_map: "business",
   value_creation_map: "value",
+  leadership_map: "leadership",
 };

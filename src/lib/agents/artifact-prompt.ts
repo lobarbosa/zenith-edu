@@ -30,6 +30,8 @@ const ARTIFACT_FOCUS: Record<ArtifactTipo, string> = {
     "Organize a empresa (setor, modelo de receita, porte), o motor econômico (de onde vem a receita, onde está a margem, o que pressiona), a estrutura de decisão (quem decide sobre o quê e com base em que), como a área do mentorado se conecta a isso (como contribui, como é medida, visibilidade), as lacunas de informação que ele identificou e as perguntas que ele precisa levar pra dentro da empresa.",
   value_creation_map:
     "Organize cada iniciativa discutida (nome, tipo — receita, custo ou risco —, linha de base, métrica, impacto estimado, premissas, horizonte, quem se importa com esse número, confiança e status), a ordem de prioridade entre elas, a narrativa de impacto que amarra o conjunto e o que ainda falta medir.",
+  leadership_map:
+    "Organize o time (tamanho, senioridade, maturidade), a delegação (o que ele delega, o que retém e por quê, e o nível — tarefa, projeto ou resultado), os gargalos que ele mesmo representa, as conversas difíceis pendentes (com quem, tema, risco de adiar), os movimentos de desenvolvimento de cada pessoa do time (pessoa, lacuna, movimento) e as prioridades.",
 };
 
 export function artifactSystemPrompt(tipo: ArtifactTipo): string {
