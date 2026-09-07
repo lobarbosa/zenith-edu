@@ -32,6 +32,10 @@ const ARTIFACT_FOCUS: Record<ArtifactTipo, string> = {
     "Organize cada iniciativa discutida (nome, tipo — receita, custo ou risco —, linha de base, métrica, impacto estimado, premissas, horizonte, quem se importa com esse número, confiança e status), a ordem de prioridade entre elas, a narrativa de impacto que amarra o conjunto e o que ainda falta medir.",
   leadership_map:
     "Organize o time (tamanho, senioridade, maturidade), a delegação (o que ele delega, o que retém e por quê, e o nível — tarefa, projeto ou resultado), os gargalos que ele mesmo representa, as conversas difíceis pendentes (com quem, tema, risco de adiar), os movimentos de desenvolvimento de cada pessoa do time (pessoa, lacuna, movimento) e as prioridades.",
+  executive_positioning_map:
+    "Organize a percepção atual e a desejada, cada stakeholder discutido (quem, poder, percepção atual, percepção desejada, evidência que falta, movimento), a narrativa (contexto, decisão, número), os espaços de decisão (fórum, se ele ocupa hoje, como entrar) e os riscos de percepção.",
+  executive_movement_plan:
+    "Organize a cadeira-alvo, a situação hoje, cada marco (prazo, marco, evidência de conclusão, responsável — mentorado, mentor ou terceiro), as competências em desenvolvimento, as provas de valor já acumuladas, os movimentos de percepção, os cenários (interno ou externo, condições, preparação), os riscos e a revisão.",
 };
 
 export function artifactSystemPrompt(tipo: ArtifactTipo): string {

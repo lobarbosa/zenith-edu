@@ -2,11 +2,11 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ensureMentee } from "@/lib/mentees";
-import { ensureJourneyState, agentEtapa } from "@/lib/agents/journey";
+import { ensureJourneyState } from "@/lib/agents/journey";
 import {
   ARTIFACT_TIPOS,
   ARTIFACT_LABELS,
-  ARTIFACT_AGENT,
+  ARTIFACT_ETAPA,
   type ArtifactTipo,
 } from "@/lib/agents/artifact-schemas";
 import { StatusPill } from "@/components/status-pill";
@@ -86,7 +86,7 @@ export default async function JornadaPage() {
       </h2>
 
       <div className="space-y-10">
-        {ARTIFACT_TIPOS.filter((tipo) => agentEtapa(ARTIFACT_AGENT[tipo]) === journey.etapa_atual).map(
+        {ARTIFACT_TIPOS.filter((tipo) => ARTIFACT_ETAPA[tipo] === journey.etapa_atual).map(
           (tipo) => {
             const latest = latestByTipo.get(tipo);
 

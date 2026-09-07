@@ -1,9 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ensureMentee } from "@/lib/mentees";
-import { ARTIFACT_TIPOS, ARTIFACT_AGENT, type ArtifactTipo } from "@/lib/agents/artifact-schemas";
+import { ARTIFACT_TIPOS, ARTIFACT_ETAPA, type ArtifactTipo } from "@/lib/agents/artifact-schemas";
 import { generateArtifact } from "@/lib/agents/artifact-generation";
-import { ensureJourneyState, isEtapaLiberada } from "@/lib/agents/journey";
+import { ensureJourneyState } from "@/lib/agents/journey";
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -26,7 +26,7 @@ export async function POST(request: Request) {
   const admin = createAdminClient();
 
   const journey = await ensureJourneyState(admin, mentee.id);
-  if (!isEtapaLiberada(journey.etapas_liberadas, ARTIFACT_AGENT[tipo])) {
+  if (!journey.etapas_liberadas.includes(ARTIFACT_ETAPA[tipo])) {
     return new Response("Esta etapa ainda não foi liberada pelo mentor.", { status: 403 });
   }
 

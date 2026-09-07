@@ -8,6 +8,8 @@ import {
   type BusinessMap,
   type ValueCreationMap,
   type LeadershipMap,
+  type ExecutivePositioningMap,
+  type ExecutiveMovementPlan,
 } from "@/lib/agents/artifact-schemas";
 
 // "Campo vazio é permitido, com marcação explícita do que falta. Nunca
@@ -462,6 +464,189 @@ function LeadershipMapDetail({ conteudo }: { conteudo: LeadershipMap }) {
   );
 }
 
+const PODER_LABEL: Record<string, string> = { alto: "Alto", medio: "Médio", baixo: "Baixo" };
+function poderLabel(v: string | null): string {
+  return v ? PODER_LABEL[v] : "Ainda não avaliado";
+}
+
+function boolLabel(v: boolean | null): string {
+  if (v === null) return "Ainda não avaliado";
+  return v ? "Sim" : "Não";
+}
+
+function ExecutivePositioningMapDetail({ conteudo }: { conteudo: ExecutivePositioningMap }) {
+  return (
+    <div className="space-y-4">
+      <Field label="Percepção atual">{conteudo.percepcao_atual || <EmptyNote />}</Field>
+      <Field label="Percepção desejada">{conteudo.percepcao_desejada || <EmptyNote />}</Field>
+
+      <Field label="Stakeholders">
+        {conteudo.stakeholders.length === 0 ? (
+          <EmptyNote />
+        ) : (
+          <ol className="space-y-3">
+            {conteudo.stakeholders.map((item, index) => (
+              <li key={index}>
+                <p className="font-medium">
+                  {item.quem} <span className="text-muted-foreground">· poder {poderLabel(item.poder)}</span>
+                </p>
+                <p className="text-muted-foreground">
+                  Percepção atual → desejada: {item.percepcao_atual} → {item.percepcao_desejada}
+                </p>
+                <p className="text-muted-foreground">Evidência que falta: {item.evidencia_que_falta}</p>
+                <p className="text-muted-foreground">Movimento: {item.movimento}</p>
+              </li>
+            ))}
+          </ol>
+        )}
+      </Field>
+
+      <Field label="Narrativa">
+        <p className="text-muted-foreground">Contexto: {conteudo.narrativa.contexto}</p>
+        <p className="text-muted-foreground">Decisão: {conteudo.narrativa.decisao}</p>
+        <p className="text-muted-foreground">Número: {conteudo.narrativa.numero}</p>
+      </Field>
+
+      <Field label="Espaços de decisão">
+        {conteudo.espacos_de_decisao.length === 0 ? (
+          <EmptyNote />
+        ) : (
+          <ol className="space-y-2">
+            {conteudo.espacos_de_decisao.map((item, index) => (
+              <li key={index}>
+                <p className="font-medium">
+                  {item.forum}{" "}
+                  <span className="text-muted-foreground">· ocupa hoje: {boolLabel(item.ocupa_hoje)}</span>
+                </p>
+                <p className="text-muted-foreground">Como entrar: {item.como_entrar}</p>
+              </li>
+            ))}
+          </ol>
+        )}
+      </Field>
+
+      <Field label="Riscos de percepção">
+        {conteudo.riscos_de_percepcao.length === 0 ? (
+          <EmptyNote />
+        ) : (
+          <ul className="list-disc space-y-1 pl-4">
+            {conteudo.riscos_de_percepcao.map((item, index) => (
+              <li key={index}>{item}</li>
+            ))}
+          </ul>
+        )}
+      </Field>
+    </div>
+  );
+}
+
+const RESPONSAVEL_LABEL: Record<string, string> = {
+  mentorado: "Mentorado",
+  mentor: "Mentor",
+  terceiro: "Terceiro",
+};
+function responsavelLabel(v: string | null): string {
+  return v ? RESPONSAVEL_LABEL[v] : "Ainda não definido";
+}
+
+const CENARIO_LABEL: Record<string, string> = { interno: "Interno", externo: "Externo" };
+function cenarioLabel(v: string | null): string {
+  return v ? CENARIO_LABEL[v] : "Ainda não avaliado";
+}
+
+function ExecutiveMovementPlanDetail({ conteudo }: { conteudo: ExecutiveMovementPlan }) {
+  return (
+    <div className="space-y-4">
+      <Field label="Cadeira-alvo">{conteudo.cadeira_alvo || <EmptyNote />}</Field>
+      <Field label="Situação hoje">{conteudo.situacao_hoje || <EmptyNote />}</Field>
+
+      <Field label="Marcos">
+        {conteudo.marcos.length === 0 ? (
+          <EmptyNote />
+        ) : (
+          <ol className="space-y-2">
+            {conteudo.marcos.map((item, index) => (
+              <li key={index}>
+                <p className="font-medium">
+                  {item.marco} <span className="text-muted-foreground">· {item.prazo}</span>
+                </p>
+                <p className="text-muted-foreground">Evidência de conclusão: {item.evidencia_de_conclusao}</p>
+                <p className="text-muted-foreground">Responsável: {responsavelLabel(item.responsavel)}</p>
+              </li>
+            ))}
+          </ol>
+        )}
+      </Field>
+
+      <Field label="Competências em desenvolvimento">
+        {conteudo.competencias_em_desenvolvimento.length === 0 ? (
+          <EmptyNote />
+        ) : (
+          <ul className="list-disc space-y-1 pl-4">
+            {conteudo.competencias_em_desenvolvimento.map((item, index) => (
+              <li key={index}>{item}</li>
+            ))}
+          </ul>
+        )}
+      </Field>
+
+      <Field label="Provas de valor acumuladas">
+        {conteudo.provas_de_valor_acumuladas.length === 0 ? (
+          <EmptyNote />
+        ) : (
+          <ul className="list-disc space-y-1 pl-4">
+            {conteudo.provas_de_valor_acumuladas.map((item, index) => (
+              <li key={index}>{item}</li>
+            ))}
+          </ul>
+        )}
+      </Field>
+
+      <Field label="Movimentos de percepção">
+        {conteudo.movimentos_de_percepcao.length === 0 ? (
+          <EmptyNote />
+        ) : (
+          <ul className="list-disc space-y-1 pl-4">
+            {conteudo.movimentos_de_percepcao.map((item, index) => (
+              <li key={index}>{item}</li>
+            ))}
+          </ul>
+        )}
+      </Field>
+
+      <Field label="Cenários">
+        {conteudo.cenarios.length === 0 ? (
+          <EmptyNote />
+        ) : (
+          <ol className="space-y-2">
+            {conteudo.cenarios.map((item, index) => (
+              <li key={index}>
+                <p className="font-medium">{cenarioLabel(item.cenario)}</p>
+                <p className="text-muted-foreground">Condições: {item.condicoes}</p>
+                <p className="text-muted-foreground">Preparação: {item.preparacao}</p>
+              </li>
+            ))}
+          </ol>
+        )}
+      </Field>
+
+      <Field label="Riscos">
+        {conteudo.riscos.length === 0 ? (
+          <EmptyNote />
+        ) : (
+          <ul className="list-disc space-y-1 pl-4">
+            {conteudo.riscos.map((item, index) => (
+              <li key={index}>{item}</li>
+            ))}
+          </ul>
+        )}
+      </Field>
+
+      <Field label="Revisão">{conteudo.revisao || <EmptyNote />}</Field>
+    </div>
+  );
+}
+
 export function ArtifactDetail({ tipo, conteudo }: { tipo: ArtifactTipo; conteudo: unknown }) {
   const parsed = ARTIFACT_SCHEMAS[tipo].safeParse(conteudo);
 
@@ -480,5 +665,8 @@ export function ArtifactDetail({ tipo, conteudo }: { tipo: ArtifactTipo; conteud
   if (tipo === "business_map") return <BusinessMapDetail conteudo={parsed.data as BusinessMap} />;
   if (tipo === "value_creation_map")
     return <ValueCreationMapDetail conteudo={parsed.data as ValueCreationMap} />;
-  return <LeadershipMapDetail conteudo={parsed.data as LeadershipMap} />;
+  if (tipo === "leadership_map") return <LeadershipMapDetail conteudo={parsed.data as LeadershipMap} />;
+  if (tipo === "executive_positioning_map")
+    return <ExecutivePositioningMapDetail conteudo={parsed.data as ExecutivePositioningMap} />;
+  return <ExecutiveMovementPlanDetail conteudo={parsed.data as ExecutiveMovementPlan} />;
 }

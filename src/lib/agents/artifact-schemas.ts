@@ -149,6 +149,63 @@ export const LeadershipMapSchema = z.object({
 });
 export type LeadershipMap = z.infer<typeof LeadershipMapSchema>;
 
+// poder nullable pelo mesmo motivo dos outros enums. ocupa_hoje é boolean,
+// mas mesma lógica: sem base ainda na conversa vira null, nunca um chute.
+export const ExecutivePositioningMapSchema = z.object({
+  percepcao_atual: z.string(),
+  percepcao_desejada: z.string(),
+  stakeholders: z.array(
+    z.object({
+      quem: z.string(),
+      poder: z.enum(["alto", "medio", "baixo"]).nullable(),
+      percepcao_atual: z.string(),
+      percepcao_desejada: z.string(),
+      evidencia_que_falta: z.string(),
+      movimento: z.string(),
+    })
+  ),
+  narrativa: z.object({
+    contexto: z.string(),
+    decisao: z.string(),
+    numero: z.string(),
+  }),
+  espacos_de_decisao: z.array(
+    z.object({
+      forum: z.string(),
+      ocupa_hoje: z.boolean().nullable(),
+      como_entrar: z.string(),
+    })
+  ),
+  riscos_de_percepcao: z.array(z.string()),
+});
+export type ExecutivePositioningMap = z.infer<typeof ExecutivePositioningMapSchema>;
+
+export const ExecutiveMovementPlanSchema = z.object({
+  cadeira_alvo: z.string(),
+  situacao_hoje: z.string(),
+  marcos: z.array(
+    z.object({
+      prazo: z.string(),
+      marco: z.string(),
+      evidencia_de_conclusao: z.string(),
+      responsavel: z.enum(["mentorado", "mentor", "terceiro"]).nullable(),
+    })
+  ),
+  competencias_em_desenvolvimento: z.array(z.string()),
+  provas_de_valor_acumuladas: z.array(z.string()),
+  movimentos_de_percepcao: z.array(z.string()),
+  cenarios: z.array(
+    z.object({
+      cenario: z.enum(["interno", "externo"]).nullable(),
+      condicoes: z.string(),
+      preparacao: z.string(),
+    })
+  ),
+  riscos: z.array(z.string()),
+  revisao: z.string(),
+});
+export type ExecutiveMovementPlan = z.infer<typeof ExecutiveMovementPlanSchema>;
+
 export const ARTIFACT_TIPOS = [
   "career_map",
   "competency_map",
@@ -156,6 +213,8 @@ export const ARTIFACT_TIPOS = [
   "business_map",
   "value_creation_map",
   "leadership_map",
+  "executive_positioning_map",
+  "executive_movement_plan",
 ] as const;
 export type ArtifactTipo = (typeof ARTIFACT_TIPOS)[number];
 
@@ -166,6 +225,8 @@ export const ARTIFACT_SCHEMAS: Record<ArtifactTipo, z.ZodType> = {
   business_map: BusinessMapSchema,
   value_creation_map: ValueCreationMapSchema,
   leadership_map: LeadershipMapSchema,
+  executive_positioning_map: ExecutivePositioningMapSchema,
+  executive_movement_plan: ExecutiveMovementPlanSchema,
 };
 
 // Rótulo em português pra UI — nunca no prompt (esse fica em copilot-prompt.ts).
@@ -176,10 +237,13 @@ export const ARTIFACT_LABELS: Record<ArtifactTipo, string> = {
   business_map: "Business Map",
   value_creation_map: "Value Creation Map",
   leadership_map: "Leadership Map",
+  executive_positioning_map: "Executive Positioning Map",
+  executive_movement_plan: "Executive Movement Plan",
 };
 
 // Qual copiloto gera/usa cada artefato — filtra a conversa na geração
-// (artifact-generation.ts) e a etapa liberada na rota (api/artifact).
+// (artifact-generation.ts) e o território do chat (não a liberação —
+// ver ARTIFACT_ETAPA abaixo).
 export const ARTIFACT_AGENT: Record<ArtifactTipo, AgentKey> = {
   career_map: "career",
   competency_map: "career",
@@ -187,4 +251,25 @@ export const ARTIFACT_AGENT: Record<ArtifactTipo, AgentKey> = {
   business_map: "business",
   value_creation_map: "value",
   leadership_map: "leadership",
+  executive_positioning_map: "executive",
+  executive_movement_plan: "executive",
+};
+
+// Etapa específica de cada artefato — não confundir com `agentEtapa`
+// (etapa em que o AGENTE abre pela primeira vez). Para os copilotos de
+// etapa única as duas coincidem; "executive" cobre INFLUENCE e MOVE com um
+// artefato específico para cada uma, então precisa do mapeamento direto:
+// sem ele, os dois artefatos ficariam presos à primeira etapa do agente
+// (INFLUENCE) — liberando os dois cedo demais e nunca mostrando o
+// executive_movement_plan quando o mentorado já estiver em MOVE. Usado
+// pelo gate de geração (`/api/artifact`) e pelo filtro de `/jornada`.
+export const ARTIFACT_ETAPA: Record<ArtifactTipo, string> = {
+  career_map: "FIND",
+  competency_map: "FIND",
+  next_chair_map: "FIND",
+  business_map: "UNDERSTAND",
+  value_creation_map: "CREATE",
+  leadership_map: "LEAD",
+  executive_positioning_map: "INFLUENCE",
+  executive_movement_plan: "MOVE",
 };

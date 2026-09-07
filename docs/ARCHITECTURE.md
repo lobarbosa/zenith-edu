@@ -248,8 +248,8 @@ Com isso a **Fase 2 está encerrada**: Business e Value Copilot, `/biblioteca`
 e Anexos, todos validados ao vivo.
 
 **Fase 3** (`SPEC-SOFTWARE.md` §15: Leadership e Executive Copilot,
-artefatos restantes) começou. Primeira entrega — Leadership Copilot +
-`leadership_map` — está **completa e validada ao vivo**. Mesmo padrão
+artefatos restantes) está **encerrada** — as duas entregas completas e
+validadas ao vivo. Primeiro, Leadership Copilot + `leadership_map`. Mesmo padrão
 puramente aditivo das entregas anteriores: `LEADERSHIP_SYSTEM_PROMPT`
 (texto exato do `SPEC-AGENTS.md` §9), `LeadershipMapSchema`, foco de
 geração, `LeadershipMapDetail`, uma linha no mapa `SYSTEM_PROMPTS`.
@@ -271,8 +271,42 @@ discutidos (ficaram vazios, como a regra manda). Mentor validou; `/jornada`
 confirmado mostrando Leadership Map validado. Nenhum bug novo — mesmo
 código genérico já testado 3 vezes. `tsc`, `lint` e `build` passam limpos.
 
-**Ainda não iniciado**: Executive Copilot + `executive_positioning_map` +
-`executive_movement_plan` (INFLUENCE e MOVE) — última peça da Fase 3.
+**Executive Copilot + `executive_positioning_map` + `executive_movement_plan`**
+(INFLUENCE e MOVE) — última peça da Fase 3, completa. Único copiloto que
+cobre duas etapas com dois artefatos diferentes, um por etapa. Isso expôs
+um bug de design real na infraestrutura herdada da Fase 1, achado e
+corrigido antes de validar:
+
+| Bug encontrado | Correção |
+|---|---|
+| `agentEtapa(agentKey)` sempre devolve a **primeira** etapa do agente (`AGENT_ETAPAS["executive"][0]` = `"INFLUENCE"`). O gate de geração (`/api/artifact`) e o filtro de `/jornada` usavam essa função indiretamente via `agentEtapa(ARTIFACT_AGENT[tipo])` — funcionava por coincidência pros 6 artefatos de agente-único (onde a única etapa do agente É a etapa do artefato), mas quebrava pros dois artefatos do Executive: os dois ficariam presos a INFLUENCE, liberando `executive_movement_plan` cedo demais (antes de MOVE) e nunca mostrando-o em `/jornada` quando o mentorado já estivesse em MOVE (a comparação `agentEtapa(...) === journey.etapa_atual` nunca bateria) | Novo mapeamento direto `ARTIFACT_ETAPA: Record<ArtifactTipo, string>` em `artifact-schemas.ts`, com a etapa específica de cada artefato (não a etapa do agente). `/api/artifact` passou a checar `journey.etapas_liberadas.includes(ARTIFACT_ETAPA[tipo])`; `/jornada` passou a filtrar por `ARTIFACT_ETAPA[tipo] === journey.etapa_atual`. `agentEtapa()` continua existindo e correta pro que já fazia (ponte de território bloqueado, tag de etapa em `conversations` na criação) |
+
+Fora esse bug, aditivo puro de novo: `EXECUTIVE_SYSTEM_PROMPT` (texto exato
+do `SPEC-AGENTS.md` §10), `ExecutivePositioningMapSchema` e
+`ExecutiveMovementPlanSchema`, focos de geração, dois componentes de
+detalhe, uma linha em `SYSTEM_PROMPTS`.
+
+Validado ao vivo, com foco extra nos dois pontos do bug corrigido: avanço
+até INFLUENCE; **gerar `executive_movement_plan` (etapa de MOVE) enquanto
+ainda em INFLUENCE devolveu 403** (antes da correção teria passado —
+`agentEtapa("executive")` já considerava INFLUENCE liberada); conversa
+real sobre percepção do diretor e espaço de decisão, roteou pra
+"executive"; `executive_positioning_map` gerado capturou o stakeholder
+(diretor) e o espaço de decisão (comitê de priorização de produto) reais
+da conversa; **`/jornada` em INFLUENCE mostrou só o Positioning Map, não
+o Movement Plan**; mentor validou, avançou pra MOVE; **`/jornada` em MOVE
+trocou corretamente pro Movement Plan e não mostrou mais o Positioning
+Map** (esse é exatamente o comportamento que estava quebrado); nova
+conversa sobre a cadeira-alvo (Head de Produto Técnico) manteve
+continuidade com o que foi discutido em INFLUENCE (o `executive_movement_plan`
+gerado referencia o mesmo diretor e o mesmo fórum); copiloto também pegou
+uma inconsistência real no meio da conversa de teste ("Isso responde
+outra pergunta, não a que fiz... você está tentando resolver o problema
+de percepção mirando numa mesa onde ainda não tem assento"). `tsc`,
+`lint` e `build` passam limpos.
+
+Com isso a **Fase 3 está encerrada**: Leadership e Executive Copilot,
+todos os 8 artefatos da spec, todos validados ao vivo.
 
 ---
 

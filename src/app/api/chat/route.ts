@@ -16,6 +16,7 @@ import {
   BUSINESS_SYSTEM_PROMPT,
   VALUE_SYSTEM_PROMPT,
   LEADERSHIP_SYSTEM_PROMPT,
+  EXECUTIVE_SYSTEM_PROMPT,
   territoryBridgeInstruction,
   notImplementedInstruction,
 } from "@/lib/agents/copilot-prompt";
@@ -35,14 +36,13 @@ const MAX_MESSAGE_LENGTH = 4000;
 const HISTORY_LIMIT = 40;
 const ROUTER_HISTORY_LIMIT = 6;
 
-// Career, Business, Value e Leadership implementados; Executive ainda não —
-// só alcançável quando o mentor avançar a etapa via /api/mentor/advance E o
-// copiloto daquela etapa existir.
+// Os 5 copilotos implementados — a lista completa da spec.
 const SYSTEM_PROMPTS: Partial<Record<AgentKey, string>> = {
   career: CAREER_SYSTEM_PROMPT,
   business: BUSINESS_SYSTEM_PROMPT,
   value: VALUE_SYSTEM_PROMPT,
   leadership: LEADERSHIP_SYSTEM_PROMPT,
+  executive: EXECUTIVE_SYSTEM_PROMPT,
 };
 
 export async function POST(request: Request) {
