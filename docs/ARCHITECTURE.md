@@ -76,7 +76,7 @@ está **completa e validada ao vivo**.
 |---|---|
 | `POST /api/mentor/advance` | ✅ feita e validada ao vivo |
 | Business Copilot (`/api/chat`) + `business_map` | ✅ feita e validada ao vivo |
-| Value Copilot + `value_creation_map` | não iniciado |
+| Value Copilot + `value_creation_map` | ✅ feita e validada ao vivo |
 | Anexos (`POST /api/attachments`) + `/biblioteca` | não iniciado |
 
 Validado ao vivo: mentee de teste conversou com o Career Copilot (regressão
@@ -156,6 +156,40 @@ no-op (a trava `.eq("status", "rascunho_agente")` não encontra a linha,
 rota devolveria 404, mesmo padrão de `/api/mentor/validate`); artefato
 rejeitado não deixa `rascunho_agente` pendente, então `POST /api/artifact`
 não bloquearia gerar nova versão. `tsc`, `lint` e `build` passam limpos.
+
+**Value Copilot + `value_creation_map`** — segunda peça de Fase 2 restante,
+completa. Puramente aditivo: `VALUE_SYSTEM_PROMPT` em `copilot-prompt.ts`
+(texto exato do `SPEC-AGENTS.md` §8), `ValueCreationMapSchema` em
+`artifact-schemas.ts`, foco de geração em `artifact-prompt.ts`,
+`ValueCreationMapDetail` em `artifact-detail.tsx`, e uma linha nova no mapa
+`SYSTEM_PROMPTS` de `/api/chat`. Nenhuma outra peça mudou — `router.ts`,
+`journey.ts`, `agent-labels.ts`, `context.ts`, `/api/artifact` e o check
+constraint de `artifacts.tipo` (0004) já cobriam "value" desde a Fase 1,
+só esperando o copiloto existir.
+
+| Decisão | Motivo |
+|---|---|
+| `tipo`, `confianca`, `status` das iniciativas nullable no schema, não `required` | Mesmo motivo dos enums de `CompetencyMap`/`BusinessMap`/`NextChairMap`: julgamento sem base ainda na conversa vira `null`, nunca invenção — evita reencontrar o bug já corrigido uma vez (enum sem `.nullable()` esgotando as tentativas de geração) |
+
+Validado ao vivo, ponta a ponta, contra Supabase e Anthropic reais: sessão
+mintada (mesmo mecanismo das validações anteriores) pro mentorado de teste
+e pro mentor configurado em `MENTOR_EMAILS`; mentor avançou FIND →
+UNDERSTAND → CREATE via `/api/mentor/advance`; mentorado mandou mensagem em
+território de Value, roteador (Haiku) classificou `agent_key: "value"`
+corretamente; segunda mensagem com números concretos manteve a
+continuidade no mesmo copiloto; gerado `value_creation_map` (Opus) —
+capturou os números reais da conversa e, notavelmente, o copiloto pegou
+uma inconsistência aritmética real que os dados de teste continham (dito
+"64 horas liberadas", mas a conta com os números dados batia em 72h) e
+recusou fechar o impacto sem isso resolvido, exatamente como a regra "não
+invente número, sem premissa é hipótese" do `SPEC-AGENTS.md` §8 pede —
+refletido em `confianca: null` e no item correspondente em
+`o_que_falta_medir`. Mentor validou o artefato pela rota real; `/jornada`
+confirmado mostrando "Value Creation Map" com status "Validado". Nenhum
+bug novo encontrado — esperado, dado que o caminho é o mesmo código
+genérico já corrigido na entrega do Business Copilot, agora com um
+terceiro valor passando pelos mesmos mapas. `tsc`, `lint` e `build` passam
+limpos.
 
 ---
 

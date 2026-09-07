@@ -6,6 +6,7 @@ import {
   type CompetencyMap,
   type NextChairMap,
   type BusinessMap,
+  type ValueCreationMap,
 } from "@/lib/agents/artifact-schemas";
 
 // "Campo vazio é permitido, com marcação explícita do que falta. Nunca
@@ -280,6 +281,90 @@ function BusinessMapDetail({ conteudo }: { conteudo: BusinessMap }) {
   );
 }
 
+const INICIATIVA_TIPO_LABEL: Record<string, string> = {
+  receita: "Receita",
+  custo: "Custo",
+  risco: "Risco",
+};
+function iniciativaTipoLabel(v: string | null): string {
+  return v ? INICIATIVA_TIPO_LABEL[v] : "Ainda não classificado";
+}
+
+const CONFIANCA_LABEL: Record<string, string> = { alta: "Alta", media: "Média", baixa: "Baixa" };
+function confiancaLabel(v: string | null): string {
+  return v ? CONFIANCA_LABEL[v] : "Ainda não avaliada";
+}
+
+const INICIATIVA_STATUS_LABEL: Record<string, string> = {
+  hipotese: "Hipótese",
+  em_validacao: "Em validação",
+  comprovado: "Comprovado",
+};
+function iniciativaStatusLabel(v: string | null): string {
+  return v ? INICIATIVA_STATUS_LABEL[v] : "Ainda não avaliado";
+}
+
+function ValueCreationMapDetail({ conteudo }: { conteudo: ValueCreationMap }) {
+  return (
+    <div className="space-y-4">
+      <Field label="Iniciativas">
+        {conteudo.iniciativas.length === 0 ? (
+          <EmptyNote />
+        ) : (
+          <ol className="space-y-3">
+            {conteudo.iniciativas.map((item, index) => (
+              <li key={index}>
+                <p className="font-medium">
+                  {item.nome} <span className="text-muted-foreground">· {iniciativaTipoLabel(item.tipo)}</span>
+                </p>
+                <p className="text-muted-foreground">
+                  Linha de base: {item.linha_de_base} → métrica: {item.metrica}
+                </p>
+                <p className="text-muted-foreground">Impacto estimado: {item.impacto_estimado}</p>
+                <p className="text-muted-foreground">
+                  Confiança: {confiancaLabel(item.confianca)} · Status:{" "}
+                  {iniciativaStatusLabel(item.status)}
+                </p>
+                <p className="text-muted-foreground">Horizonte: {item.horizonte}</p>
+                <p className="text-muted-foreground">Quem se importa: {item.quem_se_importa}</p>
+                {item.premissas.length > 0 && (
+                  <p className="text-muted-foreground">Premissas: {item.premissas.join("; ")}</p>
+                )}
+              </li>
+            ))}
+          </ol>
+        )}
+      </Field>
+
+      <Field label="Prioridade">
+        {conteudo.prioridade.length === 0 ? (
+          <EmptyNote />
+        ) : (
+          <ol className="list-decimal space-y-1 pl-4">
+            {conteudo.prioridade.map((item, index) => (
+              <li key={index}>{item}</li>
+            ))}
+          </ol>
+        )}
+      </Field>
+
+      <Field label="Narrativa de impacto">{conteudo.narrativa_de_impacto || <EmptyNote />}</Field>
+
+      <Field label="O que falta medir">
+        {conteudo.o_que_falta_medir.length === 0 ? (
+          <EmptyNote />
+        ) : (
+          <ul className="list-disc space-y-1 pl-4">
+            {conteudo.o_que_falta_medir.map((item, index) => (
+              <li key={index}>{item}</li>
+            ))}
+          </ul>
+        )}
+      </Field>
+    </div>
+  );
+}
+
 export function ArtifactDetail({ tipo, conteudo }: { tipo: ArtifactTipo; conteudo: unknown }) {
   const parsed = ARTIFACT_SCHEMAS[tipo].safeParse(conteudo);
 
@@ -295,5 +380,6 @@ export function ArtifactDetail({ tipo, conteudo }: { tipo: ArtifactTipo; conteud
   if (tipo === "competency_map")
     return <CompetencyMapDetail conteudo={parsed.data as CompetencyMap} />;
   if (tipo === "next_chair_map") return <NextChairMapDetail conteudo={parsed.data as NextChairMap} />;
-  return <BusinessMapDetail conteudo={parsed.data as BusinessMap} />;
+  if (tipo === "business_map") return <BusinessMapDetail conteudo={parsed.data as BusinessMap} />;
+  return <ValueCreationMapDetail conteudo={parsed.data as ValueCreationMap} />;
 }

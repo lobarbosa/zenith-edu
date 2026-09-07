@@ -28,6 +28,8 @@ const ARTIFACT_FOCUS: Record<ArtifactTipo, string> = {
     "Organize a cadeira-alvo (papel, escopo, tipo de problema, horizonte), por que essa cadeira, cada requisito e sua situação (atendido/parcial/não atendido) com evidência, a distância até lá, hipóteses alternativas e riscos da escolha.",
   business_map:
     "Organize a empresa (setor, modelo de receita, porte), o motor econômico (de onde vem a receita, onde está a margem, o que pressiona), a estrutura de decisão (quem decide sobre o quê e com base em que), como a área do mentorado se conecta a isso (como contribui, como é medida, visibilidade), as lacunas de informação que ele identificou e as perguntas que ele precisa levar pra dentro da empresa.",
+  value_creation_map:
+    "Organize cada iniciativa discutida (nome, tipo — receita, custo ou risco —, linha de base, métrica, impacto estimado, premissas, horizonte, quem se importa com esse número, confiança e status), a ordem de prioridade entre elas, a narrativa de impacto que amarra o conjunto e o que ainda falta medir.",
 };
 
 export function artifactSystemPrompt(tipo: ArtifactTipo): string {

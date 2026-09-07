@@ -91,11 +91,37 @@ export const BusinessMapSchema = z.object({
 });
 export type BusinessMap = z.infer<typeof BusinessMapSchema>;
 
+// tipo/confianca/status nullable pelo mesmo motivo dos outros enums acima
+// (julgamento sem base ainda na conversa) — e pra não repetir o bug já
+// achado uma vez (enum sem .nullable() esgota as tentativas de geração
+// quando o modelo tenta emitir string vazia num campo sem base).
+export const ValueCreationMapSchema = z.object({
+  iniciativas: z.array(
+    z.object({
+      nome: z.string(),
+      tipo: z.enum(["receita", "custo", "risco"]).nullable(),
+      linha_de_base: z.string(),
+      metrica: z.string(),
+      impacto_estimado: z.string(),
+      premissas: z.array(z.string()),
+      horizonte: z.string(),
+      quem_se_importa: z.string(),
+      confianca: z.enum(["alta", "media", "baixa"]).nullable(),
+      status: z.enum(["hipotese", "em_validacao", "comprovado"]).nullable(),
+    })
+  ),
+  prioridade: z.array(z.string()),
+  narrativa_de_impacto: z.string(),
+  o_que_falta_medir: z.array(z.string()),
+});
+export type ValueCreationMap = z.infer<typeof ValueCreationMapSchema>;
+
 export const ARTIFACT_TIPOS = [
   "career_map",
   "competency_map",
   "next_chair_map",
   "business_map",
+  "value_creation_map",
 ] as const;
 export type ArtifactTipo = (typeof ARTIFACT_TIPOS)[number];
 
@@ -104,6 +130,7 @@ export const ARTIFACT_SCHEMAS: Record<ArtifactTipo, z.ZodType> = {
   competency_map: CompetencyMapSchema,
   next_chair_map: NextChairMapSchema,
   business_map: BusinessMapSchema,
+  value_creation_map: ValueCreationMapSchema,
 };
 
 // Rótulo em português pra UI — nunca no prompt (esse fica em copilot-prompt.ts).
@@ -112,6 +139,7 @@ export const ARTIFACT_LABELS: Record<ArtifactTipo, string> = {
   competency_map: "Competency Map",
   next_chair_map: "Next Chair Map",
   business_map: "Business Map",
+  value_creation_map: "Value Creation Map",
 };
 
 // Qual copiloto gera/usa cada artefato — filtra a conversa na geração
@@ -121,4 +149,5 @@ export const ARTIFACT_AGENT: Record<ArtifactTipo, AgentKey> = {
   competency_map: "career",
   next_chair_map: "career",
   business_map: "business",
+  value_creation_map: "value",
 };
