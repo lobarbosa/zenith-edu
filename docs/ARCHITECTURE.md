@@ -921,3 +921,39 @@ serviço externo. Fica registrado como decisão em aberto, não esquecimento.
 falta rodar contra o mentee de teste real (o mesmo usado na validação de
 ponta a ponta de 07/09) e conferir Sinais/Pulso/Custo/Alertas com dado
 de verdade antes de considerar a Fase 4 fechada.
+
+## 10. Auth — Google (SSO) e e-mail/senha, além do link mágico (08/09)
+
+Pedido explícito do usuário, fora da ordem das entregas: `/login` ganhou
+duas formas de acesso a mais, mantendo o link mágico como estava.
+
+- **Google**: `supabase.auth.signInWithOAuth({ provider: "google" })`,
+  mesmo `/auth/callback` que já existia (é agnóstico de provedor — só
+  troca código por sessão). **Passo manual do usuário, fora do código**:
+  criar credenciais OAuth no Google Cloud Console e configurar em
+  Supabase → Authentication → Providers → Google. Sem isso o botão
+  aparece mas o login falha.
+- **E-mail/senha**: decisão do usuário foi cadastro direto (opção B —
+  "mais escalável"), não senha como credencial adicional de uma conta já
+  criada por link mágico. `/login` ganhou toggle "Entrar"/"Criar conta"
+  no modo Senha (`signInWithPassword` / `signUp`), mais "Esqueci minha
+  senha" (`resetPasswordForEmail`). `/conta` ganhou um campo pra
+  trocar/definir senha (`updateUser({ password })`) pra quem entrou por
+  link mágico ou Google e quiser senha também.
+- **`/auth/callback` ganhou um parâmetro `next`** (só usado pelo link de
+  redefinição de senha) pra cair em `/redefinir-senha` em vez da home
+  depois de trocar o código — sempre relativo, nunca sai do domínio.
+  `ensureMentee` só roda quando `next` é a home (evita rodar de novo no
+  fluxo de redefinição de senha, que já pressupõe conta existente).
+- Nova rota pública `/redefinir-senha` (adicionada a `PUBLIC_PATHS` no
+  proxy) — renderiza o formulário se houver sessão (chegou via o link do
+  e-mail), ou uma mensagem de link expirado se não.
+- `signUp` cobre os dois comportamentos possíveis do projeto Supabase:
+  se "Confirm email" estiver ligado, mostra "verifique seu e-mail"; se
+  estiver desligado, `data.session` já vem preenchida e pula direto pra
+  home — não checado qual dos dois está configurado neste projeto agora.
+
+**Ainda não validado ao vivo** — `tsc`/`lint`/`build` limpos, mas depende
+do passo manual do Google (acima) pra sequer testar o botão SSO. Cadastro
+por senha e redefinição de senha dá pra testar sem depender de nada
+externo.

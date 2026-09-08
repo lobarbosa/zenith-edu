@@ -1,5 +1,19 @@
 # Checklist de construção humana
 
+## Auth — Google SSO — bloqueante, só você faz
+
+- [ ] **Criar credenciais OAuth no Google Cloud Console** e colar Client
+      ID + Client Secret em Supabase → Authentication → Providers →
+      Google (marcar "Enabled"). Sem isso o botão "Entrar com Google" em
+      `/login` aparece mas todo clique falha. Callback URL a informar no
+      Google Cloud Console é a que o próprio painel do Supabase mostra
+      nessa tela de configuração do provider.
+- [ ] **Conferir se "Confirm email" está ligado ou desligado** em
+      Supabase → Authentication → Providers → Email. Os dois casos já
+      estão tratados no código (`docs/ARCHITECTURE.md` §10), só não sei
+      qual dos dois vale pra este projeto — vale saber pra não estranhar
+      o comportamento no teste.
+
 ## Fase 4 — Mentor Console — construído, falta validar ao vivo
 
 - [ ] **Testar `/mentor` e `/mentor/[menteeId]` com o mentee de teste real.**
