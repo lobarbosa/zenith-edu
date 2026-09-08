@@ -1,5 +1,26 @@
 # Checklist de construção humana
 
+## Fase 4 — Mentor Console — construído, falta validar ao vivo
+
+- [ ] **Testar `/mentor` e `/mentor/[menteeId]` com o mentee de teste real.**
+      Painel novo (Sinais, Pulso da turma, Custo, Alertas em `/mentor`;
+      Preparação de encontro e Notas em `/mentor/[menteeId]`) passou em
+      `tsc`/`lint`/`build`, mas ainda não rodou contra dado real — role
+      como mentor, gera um sinal de verdade (conversa que dispare
+      `mentor_flags`), confirma que aparece e que "Marcar como lido" some
+      da lista. Cria uma nota em `/mentor/[menteeId]` marcando "Visível ao
+      mentorado" e confirma que ela aparece em `/jornada` pro mentorado.
+- [ ] **Teto de custo por mentorado é um placeholder (US$ 5,00), fixo no
+      código.** Ajustar `CUSTO_TETO_USD` em `src/lib/mentor-console.ts`
+      quando você decidir o valor real — o spec não definia um número.
+- [ ] **Langfuse (pedido pelo `SPEC-SOFTWARE.md` §13) não foi introduzido.**
+      Decisão: os 3 alertas mínimos do spec já ficam cobertos só com
+      `agent_runs`, sem depender de serviço externo — não vale a pena
+      trazer peça nova de stack por enquanto. Revisitar se a necessidade de
+      traces detalhados aparecer de verdade.
+
+---
+
 Levantado numa revisão completa do projeto, atualizado depois da Fase 1
 inteira ficar validada ao vivo: migrations, corpus, conversa com o
 Career Copilot, geração de artefato e validação pelo mentor, tudo

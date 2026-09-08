@@ -30,6 +30,10 @@ const STATUS_LABEL = {
 };
 const STATUS_TONE = { rascunho_agente: "warning", validado_mentor: "good", rejeitado: "bad" } as const;
 
+function formatDate(value: string) {
+  return new Date(value).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
+}
+
 export default async function JornadaPage() {
   const supabase = await createClient();
   const {
@@ -45,6 +49,15 @@ export default async function JornadaPage() {
     .select("id, tipo, versao, status, conteudo, motivo_rejeicao")
     .eq("mentee_id", mentee.id)
     .order("versao", { ascending: false });
+
+  // RLS (mentor_notes_select_visible, 0004_fase1_schema.sql) já filtra pra
+  // visivel_ao_mentorado = true e pro próprio mentee — client comum, sem
+  // precisar de admin.
+  const { data: notes } = await supabase
+    .from("mentor_notes")
+    .select("id, etapa, conteudo, criado_em")
+    .eq("mentee_id", mentee.id)
+    .order("criado_em", { ascending: false });
 
   const latestByTipo = new Map<ArtifactTipo, ArtifactRow>();
   for (const item of (artifacts ?? []) as ArtifactRow[]) {
@@ -80,6 +93,27 @@ export default async function JornadaPage() {
           Biblioteca →
         </Link>
       </div>
+
+      {notes && notes.length > 0 && (
+        <>
+          <h2 className="mb-6 mt-12 text-lg font-semibold tracking-tight text-foreground">
+            Notas do mentor
+          </h2>
+          <ul className="space-y-4">
+            {notes.map((note) => (
+              <li key={note.id} className="border-t border-border pt-4 first:border-t-0 first:pt-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
+                    {note.etapa ?? "—"}
+                  </span>
+                  <span className="text-xs text-muted-foreground">{formatDate(note.criado_em)}</span>
+                </div>
+                <p className="mt-1 text-sm text-foreground">{note.conteudo}</p>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
 
       <h2 className="mb-6 mt-12 text-lg font-semibold tracking-tight text-foreground">
         Artefatos desta etapa

@@ -10,11 +10,13 @@ import { ArtifactDetail } from "@/components/artifact-detail";
 import { menteeStatus } from "@/lib/mentee-status";
 import { ensureJourneyState, ETAPA_ORDER } from "@/lib/agents/journey";
 import { ATTACHMENTS_BUCKET } from "@/lib/attachments/limits";
+import { getPreparacaoEncontro } from "@/lib/mentor-console";
 import { EtapaStepper } from "../../jornada/etapa-stepper";
 import { ProfileDetail } from "../profile-detail";
 import { ReviewActions } from "../review-actions";
 import { Transcript } from "../transcript";
 import { AdvanceButton } from "./advance-button";
+import { NotesForm } from "./notes-form";
 
 function formatBytes(value: number) {
   if (value < 1024) return `${value} B`;
@@ -104,6 +106,15 @@ export default async function MenteeDetailPage(props: PageProps<"/mentor/[mentee
   const journeyIndex = ETAPA_ORDER.indexOf(journey.etapa_atual as (typeof ETAPA_ORDER)[number]);
   const nextEtapa = journeyIndex < ETAPA_ORDER.length - 1 ? ETAPA_ORDER[journeyIndex + 1] : null;
 
+  const [preparacao, { data: notes }] = await Promise.all([
+    getPreparacaoEncontro(admin, menteeId),
+    admin
+      .from("mentor_notes")
+      .select("id, etapa, conteudo, visivel_ao_mentorado, criado_em")
+      .eq("mentee_id", menteeId)
+      .order("criado_em", { ascending: false }),
+  ]);
+
   const { data: profiles } = await admin
     .from("executive_profiles")
     .select("id, version, status, perfil, created_at, validated_at, motivo_rejeicao")
@@ -183,6 +194,40 @@ export default async function MenteeDetailPage(props: PageProps<"/mentor/[mentee
             <p className="text-xs text-muted-foreground">Já está na última etapa (MOVE).</p>
           )}
         </div>
+      </section>
+
+      <section className="mb-12">
+        <h2 className="mb-4 text-lg font-semibold tracking-tight text-foreground">
+          Preparação de encontro
+        </h2>
+        <p className="mb-6 text-sm text-muted-foreground">
+          {preparacao.ultimaNotaEm
+            ? `Desde a última nota (${formatDate(preparacao.ultimaNotaEm)}): ${preparacao.novosArtefatos} artefato(s) novo(s), etapa atual ${preparacao.etapaAtual ?? "—"}.`
+            : `Nenhuma nota registrada ainda: ${preparacao.novosArtefatos} artefato(s) desde o início, etapa atual ${preparacao.etapaAtual ?? "—"}.`}
+        </p>
+
+        <h3 className="mb-3 text-sm font-semibold text-foreground">Notas</h3>
+        {!notes || notes.length === 0 ? (
+          <p className="mb-6 text-sm text-muted-foreground">Nenhuma nota ainda.</p>
+        ) : (
+          <ul className="mb-6 space-y-4">
+            {notes.map((note) => (
+              <li key={note.id} className="border-t border-border pt-4 first:border-t-0 first:pt-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
+                    {note.etapa ?? "—"}
+                  </span>
+                  <span className="text-xs text-muted-foreground">{formatDate(note.criado_em)}</span>
+                  {note.visivel_ao_mentorado && (
+                    <StatusPill tone="good">Visível ao mentorado</StatusPill>
+                  )}
+                </div>
+                <p className="mt-1 text-sm text-foreground">{note.conteudo}</p>
+              </li>
+            ))}
+          </ul>
+        )}
+        <NotesForm menteeId={menteeId} etapaAtual={journey.etapa_atual} />
       </section>
 
       <section className="mb-12">

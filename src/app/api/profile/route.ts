@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { synthesizeExecutiveProfile } from "@/lib/agents/executive-profile";
 
 export async function POST(request: Request) {
@@ -33,7 +34,8 @@ export async function POST(request: Request) {
     return new Response("O diagnóstico ainda não foi concluído.", { status: 400 });
   }
 
-  const profile = await synthesizeExecutiveProfile(supabase, session);
+  const admin = createAdminClient();
+  const profile = await synthesizeExecutiveProfile(supabase, admin, session);
 
   if (!profile) {
     return new Response("Falha ao sintetizar o perfil.", { status: 502 });

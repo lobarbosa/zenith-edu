@@ -16,10 +16,14 @@ type DiagnosticSessionRef = {
 // Roda depois que o diagnóstico fecha (bloco 8, encerramento). Nunca lança
 // — uma falha de síntese não pode derrubar o fluxo do mentorado, que já
 // terminou a conversa dele. Registra o erro e retorna null.
+// `admin`: só pra gravar em agent_runs (sem policy pra mentorado, mesmo
+// padrão de generateArtifact em artifact-generation.ts).
 export async function synthesizeExecutiveProfile(
   supabase: SupabaseClient,
+  admin: SupabaseClient,
   session: DiagnosticSessionRef
 ) {
+  const startedAt = Date.now();
   const { data: messages, error: messagesError } = await supabase
     .from("messages")
     .select("role, content")
@@ -30,6 +34,8 @@ export async function synthesizeExecutiveProfile(
     console.error("synthesizeExecutiveProfile: sem transcrição", messagesError);
     return null;
   }
+
+  const latenciaMs = () => Date.now() - startedAt;
 
   const transcript = messages
     .map((m: { role: string; content: string }) =>
@@ -63,6 +69,7 @@ export async function synthesizeExecutiveProfile(
 
       const profile = await persistProfile(supabase, session, response.parsed_output);
       await accumulateSessionCost(supabase, session.id, totalInputTokens, totalOutputTokens, totalCostUsd);
+      await logRun(admin, session.mentee_id, totalInputTokens, totalOutputTokens, totalCostUsd, true, latenciaMs());
       return profile;
     } catch (error) {
       console.error(`synthesizeExecutiveProfile: tentativa ${attempt} falhou`, error);
@@ -70,8 +77,30 @@ export async function synthesizeExecutiveProfile(
   }
 
   await accumulateSessionCost(supabase, session.id, totalInputTokens, totalOutputTokens, totalCostUsd);
+  await logRun(admin, session.mentee_id, totalInputTokens, totalOutputTokens, totalCostUsd, false, latenciaMs());
   console.error("synthesizeExecutiveProfile: esgotou as tentativas para a sessão", session.id);
   return null;
+}
+
+async function logRun(
+  admin: SupabaseClient,
+  menteeId: string,
+  inputTokens: number,
+  outputTokens: number,
+  custoUsd: number,
+  sucesso: boolean,
+  latenciaMs: number
+) {
+  await admin.from("agent_runs").insert({
+    mentee_id: menteeId,
+    agent_key: "perfil",
+    modelo: PROFILE_MODEL,
+    input_tokens: inputTokens,
+    output_tokens: outputTokens,
+    custo_usd: custoUsd,
+    sucesso,
+    latencia_ms: latenciaMs,
+  });
 }
 
 async function persistProfile(

@@ -250,6 +250,7 @@ export async function POST(request: Request) {
     },
   ];
 
+  const turnStartedAt = Date.now();
   const stream = anthropic.messages.stream({
     model: CONVERSATION_MODEL,
     max_tokens: 2048,
@@ -263,6 +264,7 @@ export async function POST(request: Request) {
   async function finalizeTurn(controller: ReadableStreamDefaultController<Uint8Array>) {
     try {
       const finalMessage = await stream.finalMessage();
+      const latenciaMs = Date.now() - turnStartedAt;
       const conversationCost = costUsd(
         CONVERSATION_MODEL,
         finalMessage.usage.input_tokens,
@@ -306,6 +308,7 @@ export async function POST(request: Request) {
           input_tokens: finalMessage.usage.input_tokens,
           output_tokens: finalMessage.usage.output_tokens,
           custo_usd: conversationCost,
+          latencia_ms: latenciaMs,
         },
         {
           mentee_id: mentee.id,

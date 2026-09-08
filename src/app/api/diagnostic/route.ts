@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { DIAGNOSTIC_SYSTEM_PROMPT } from "@/lib/agents/diagnostic-prompt";
 import { DIAGNOSTIC_KICKOFF_MESSAGE, DIAGNOSTIC_META_MARKER } from "@/lib/agents/diagnostic-kickoff";
 import { classifyDiagnosticProgress } from "@/lib/agents/diagnostic-block-classifier";
@@ -80,6 +81,7 @@ export async function POST(request: Request) {
     { role: "user" as const, content: userText },
   ];
 
+  const turnStartedAt = Date.now();
   const stream = anthropic.messages.stream({
     model: CONVERSATION_MODEL,
     max_tokens: 2048,
@@ -93,6 +95,7 @@ export async function POST(request: Request) {
   async function finalizeTurn(controller: ReadableStreamDefaultController<Uint8Array>) {
     try {
       const finalMessage = await stream.finalMessage();
+      const latenciaMs = Date.now() - turnStartedAt;
       const conversationCost = costUsd(
         CONVERSATION_MODEL,
         finalMessage.usage.input_tokens,
@@ -130,8 +133,24 @@ export async function POST(request: Request) {
         })
         .eq("id", sessionId);
 
+      const admin = createAdminClient();
+      // agent_runs: mesma observabilidade de custo/latência que copiloto e
+      // artefato já têm (SPEC-SOFTWARE.md §7 regra 10) — o diagnóstico só
+      // acumulava custo em diagnostic_sessions até aqui, sem entrar no
+      // Mentor Console (Fase 4, §13: alerta de latência de primeira
+      // resposta usa esta tabela).
+      await admin.from("agent_runs").insert({
+        mentee_id: menteeId,
+        agent_key: "diagnostic",
+        modelo: CONVERSATION_MODEL,
+        input_tokens: finalMessage.usage.input_tokens,
+        output_tokens: finalMessage.usage.output_tokens,
+        custo_usd: conversationCost,
+        latencia_ms: latenciaMs,
+      });
+
       if (classification.concluido) {
-        await synthesizeExecutiveProfile(supabase, { id: sessionId, mentee_id: menteeId });
+        await synthesizeExecutiveProfile(supabase, admin, { id: sessionId, mentee_id: menteeId });
       }
 
       const meta = JSON.stringify({ bloco: classification.bloco, concluido: classification.concluido });
