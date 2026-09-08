@@ -11,6 +11,8 @@ import { menteeStatus } from "@/lib/mentee-status";
 import { ensureJourneyState, ETAPA_ORDER } from "@/lib/agents/journey";
 import { ATTACHMENTS_BUCKET } from "@/lib/attachments/limits";
 import { getPreparacaoEncontro } from "@/lib/mentor-console";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { StatTile } from "@/components/stat-tile";
 import { EtapaStepper } from "../../jornada/etapa-stepper";
 import { ProfileDetail } from "../profile-detail";
 import { ReviewActions } from "../review-actions";
@@ -161,225 +163,232 @@ export default async function MenteeDetailPage(props: PageProps<"/mentor/[mentee
   );
 
   return (
-    <main className="mx-auto max-w-2xl px-6 py-10">
-      <Link href="/mentor" className="text-xs text-muted-foreground hover:text-foreground">
-        ← Meus mentorados
-      </Link>
+    <main className="mx-auto max-w-2xl space-y-10 px-6 py-10">
+      <div>
+        <Link href="/mentor" className="text-xs text-muted-foreground hover:text-foreground">
+          ← Meus mentorados
+        </Link>
 
-      <div className="mt-4 mb-10 flex items-start justify-between gap-4">
-        <div>
-          <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
-            Founding Cohort
-          </p>
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-            {mentee.email}
-          </h1>
-          <p className="mt-1 text-xs text-muted-foreground">
-            mentorado desde {formatDate(mentee.created_at)}
-          </p>
+        <div className="mt-4 flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
+              Founding Cohort
+            </p>
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+              {mentee.email}
+            </h1>
+            <p className="mt-1 text-xs text-muted-foreground">
+              mentorado desde {formatDate(mentee.created_at)}
+            </p>
+          </div>
+          <StatusPill tone={status.tone}>{status.label}</StatusPill>
         </div>
-        <StatusPill tone={status.tone}>{status.label}</StatusPill>
       </div>
 
-      <section className="mb-12">
-        <h2 className="mb-4 text-lg font-semibold tracking-tight text-foreground">Jornada</h2>
-        <p className="mb-4 text-sm text-muted-foreground">
-          {journey.etapa_atual} · mês {journey.mes} de 6
-        </p>
-        <EtapaStepper etapaAtual={journey.etapa_atual} etapasLiberadas={journey.etapas_liberadas} />
-        <div className="mt-4">
-          {nextEtapa ? (
-            <AdvanceButton menteeId={menteeId} label={`Avançar para ${nextEtapa}`} />
+      <Card>
+        <CardHeader>
+          <CardTitle>Jornada</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="mb-4 text-sm text-muted-foreground">
+            {journey.etapa_atual} · mês {journey.mes} de 6
+          </p>
+          <EtapaStepper etapaAtual={journey.etapa_atual} etapasLiberadas={journey.etapas_liberadas} />
+          <div className="mt-4">
+            {nextEtapa ? (
+              <AdvanceButton menteeId={menteeId} label={`Avançar para ${nextEtapa}`} />
+            ) : (
+              <p className="text-xs text-muted-foreground">Já está na última etapa (MOVE).</p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Preparação de encontro</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="mb-6 text-sm text-muted-foreground">
+            {preparacao.ultimaNotaEm
+              ? `Desde a última nota (${formatDate(preparacao.ultimaNotaEm)}): ${preparacao.novosArtefatos} artefato(s) novo(s), etapa atual ${preparacao.etapaAtual ?? "—"}.`
+              : `Nenhuma nota registrada ainda: ${preparacao.novosArtefatos} artefato(s) desde o início, etapa atual ${preparacao.etapaAtual ?? "—"}.`}
+          </p>
+
+          <h3 className="mb-3 text-sm font-semibold text-foreground">Notas</h3>
+          {!notes || notes.length === 0 ? (
+            <p className="mb-6 text-sm text-muted-foreground">Nenhuma nota ainda.</p>
           ) : (
-            <p className="text-xs text-muted-foreground">Já está na última etapa (MOVE).</p>
-          )}
-        </div>
-      </section>
-
-      <section className="mb-12">
-        <h2 className="mb-4 text-lg font-semibold tracking-tight text-foreground">
-          Preparação de encontro
-        </h2>
-        <p className="mb-6 text-sm text-muted-foreground">
-          {preparacao.ultimaNotaEm
-            ? `Desde a última nota (${formatDate(preparacao.ultimaNotaEm)}): ${preparacao.novosArtefatos} artefato(s) novo(s), etapa atual ${preparacao.etapaAtual ?? "—"}.`
-            : `Nenhuma nota registrada ainda: ${preparacao.novosArtefatos} artefato(s) desde o início, etapa atual ${preparacao.etapaAtual ?? "—"}.`}
-        </p>
-
-        <h3 className="mb-3 text-sm font-semibold text-foreground">Notas</h3>
-        {!notes || notes.length === 0 ? (
-          <p className="mb-6 text-sm text-muted-foreground">Nenhuma nota ainda.</p>
-        ) : (
-          <ul className="mb-6 space-y-4">
-            {notes.map((note) => (
-              <li key={note.id} className="border-t border-border pt-4 first:border-t-0 first:pt-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
-                    {note.etapa ?? "—"}
-                  </span>
-                  <span className="text-xs text-muted-foreground">{formatDate(note.criado_em)}</span>
-                  {note.visivel_ao_mentorado && (
-                    <StatusPill tone="good">Visível ao mentorado</StatusPill>
-                  )}
-                </div>
-                <p className="mt-1 text-sm text-foreground">{note.conteudo}</p>
-              </li>
-            ))}
-          </ul>
-        )}
-        <NotesForm menteeId={menteeId} etapaAtual={journey.etapa_atual} />
-      </section>
-
-      <section className="mb-12">
-        <h2 className="mb-4 text-lg font-semibold tracking-tight text-foreground">
-          Executive Diagnostic
-        </h2>
-        {!session ? (
-          <p className="text-sm text-muted-foreground">Ainda não iniciou o diagnóstico.</p>
-        ) : (
-          <>
-            <dl className="mb-6 grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
-              <div>
-                <dt className="text-xs text-muted-foreground">Iniciado em</dt>
-                <dd className="font-medium text-foreground">{formatDate(session.started_at)}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-muted-foreground">Concluído em</dt>
-                <dd className="font-medium text-foreground">
-                  {formatDate(session.completed_at)}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs text-muted-foreground">Tokens</dt>
-                <dd className="font-medium text-foreground">
-                  {(session.input_tokens + session.output_tokens).toLocaleString("pt-BR")}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs text-muted-foreground">Custo</dt>
-                <dd className="font-medium text-foreground">
-                  US$ {Number(session.custo_usd).toFixed(4)}
-                </dd>
-              </div>
-            </dl>
-            <Transcript messages={messages ?? []} />
-          </>
-        )}
-      </section>
-
-      <section>
-        <h2 className="mb-4 text-lg font-semibold tracking-tight text-foreground">
-          Perfil Executivo
-        </h2>
-        {!profiles || profiles.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Ainda não foi sintetizado.</p>
-        ) : (
-          <div className="space-y-10">
-            {profiles.map((item) => {
-              const parsed = ExecutiveProfileSchema.safeParse(item.perfil);
-              return (
-                <div
-                  key={item.id}
-                  className="space-y-4 border-t border-border pt-8 first:border-t-0 first:pt-0"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-semibold text-foreground">
-                        versão {item.version}
-                      </p>
-                      <StatusPill tone={STATUS_TONE[item.status as keyof typeof STATUS_TONE]}>
-                        {STATUS_LABEL[item.status as keyof typeof STATUS_LABEL]}
-                      </StatusPill>
-                    </div>
-                    {item.status === "rascunho_agente" && <ReviewActions profileId={item.id} />}
+            <ul className="mb-6 space-y-4">
+              {notes.map((note) => (
+                <li key={note.id} className="border-t border-border pt-4 first:border-t-0 first:pt-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
+                      {note.etapa ?? "—"}
+                    </span>
+                    <span className="text-xs text-muted-foreground">{formatDate(note.criado_em)}</span>
+                    {note.visivel_ao_mentorado && (
+                      <StatusPill tone="good">Visível ao mentorado</StatusPill>
+                    )}
                   </div>
-                  {item.status === "rejeitado" && item.motivo_rejeicao && (
-                    <p className="text-sm text-bad">Motivo da rejeição: {item.motivo_rejeicao}</p>
-                  )}
-                  {parsed.success ? (
-                    <ProfileDetail perfil={parsed.data} />
+                  <p className="mt-1 text-sm text-foreground">{note.conteudo}</p>
+                </li>
+              ))}
+            </ul>
+          )}
+          <NotesForm menteeId={menteeId} etapaAtual={journey.etapa_atual} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Executive Diagnostic</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {!session ? (
+            <p className="text-sm text-muted-foreground">Ainda não iniciou o diagnóstico.</p>
+          ) : (
+            <>
+              <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
+                <StatTile label="Iniciado em" value={formatDate(session.started_at)} />
+                <StatTile label="Concluído em" value={formatDate(session.completed_at)} />
+                <StatTile
+                  label="Tokens"
+                  value={(session.input_tokens + session.output_tokens).toLocaleString("pt-BR")}
+                />
+                <StatTile label="Custo" value={`US$ ${Number(session.custo_usd).toFixed(4)}`} />
+              </div>
+              <Transcript messages={messages ?? []} />
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Perfil Executivo</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {!profiles || profiles.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Ainda não foi sintetizado.</p>
+          ) : (
+            <div className="space-y-10">
+              {profiles.map((item) => {
+                const parsed = ExecutiveProfileSchema.safeParse(item.perfil);
+                return (
+                  <div
+                    key={item.id}
+                    className="space-y-4 border-t border-border pt-8 first:border-t-0 first:pt-0"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-semibold text-foreground">
+                          versão {item.version}
+                        </p>
+                        <StatusPill tone={STATUS_TONE[item.status as keyof typeof STATUS_TONE]}>
+                          {STATUS_LABEL[item.status as keyof typeof STATUS_LABEL]}
+                        </StatusPill>
+                      </div>
+                      {item.status === "rascunho_agente" && <ReviewActions profileId={item.id} />}
+                    </div>
+                    {item.status === "rejeitado" && item.motivo_rejeicao && (
+                      <p className="text-sm text-bad">Motivo da rejeição: {item.motivo_rejeicao}</p>
+                    )}
+                    {parsed.success ? (
+                      <ProfileDetail perfil={parsed.data} />
+                    ) : (
+                      <p className="text-sm text-destructive">
+                        Este registro não bate com o schema esperado — não valide sem checar
+                        manualmente.
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Artefatos</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-10">
+            {ARTIFACT_TIPOS.map((tipo) => {
+              const versions = artifactsByTipo.get(tipo) ?? [];
+              return (
+                <div key={tipo}>
+                  <p className="mb-4 text-sm font-semibold text-foreground">{ARTIFACT_LABELS[tipo]}</p>
+                  {versions.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Ainda não gerado.</p>
                   ) : (
-                    <p className="text-sm text-destructive">
-                      Este registro não bate com o schema esperado — não valide sem checar
-                      manualmente.
-                    </p>
+                    <div className="space-y-8">
+                      {versions.map((item) => (
+                        <div
+                          key={item.id}
+                          className="space-y-4 border-t border-border pt-6 first:border-t-0 first:pt-0"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm text-foreground">versão {item.versao}</p>
+                              <StatusPill tone={ARTIFACT_STATUS_TONE[item.status]}>
+                                {ARTIFACT_STATUS_LABEL[item.status]}
+                              </StatusPill>
+                            </div>
+                            {item.status === "rascunho_agente" && (
+                              <ReviewActions artifactId={item.id} />
+                            )}
+                          </div>
+                          {item.status === "rejeitado" && item.motivo_rejeicao && (
+                            <p className="text-sm text-bad">Motivo da rejeição: {item.motivo_rejeicao}</p>
+                          )}
+                          <ArtifactDetail tipo={tipo} conteudo={item.conteudo} />
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
               );
             })}
           </div>
-        )}
-      </section>
+        </CardContent>
+      </Card>
 
-      <section className="mt-12">
-        <h2 className="mb-4 text-lg font-semibold tracking-tight text-foreground">Artefatos</h2>
-        <div className="space-y-10">
-          {ARTIFACT_TIPOS.map((tipo) => {
-            const versions = artifactsByTipo.get(tipo) ?? [];
-            return (
-              <div key={tipo}>
-                <p className="mb-4 text-sm font-semibold text-foreground">{ARTIFACT_LABELS[tipo]}</p>
-                {versions.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">Ainda não gerado.</p>
-                ) : (
-                  <div className="space-y-8">
-                    {versions.map((item) => (
-                      <div
-                        key={item.id}
-                        className="space-y-4 border-t border-border pt-6 first:border-t-0 first:pt-0"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <p className="text-sm text-foreground">versão {item.versao}</p>
-                            <StatusPill tone={ARTIFACT_STATUS_TONE[item.status]}>
-                              {ARTIFACT_STATUS_LABEL[item.status]}
-                            </StatusPill>
-                          </div>
-                          {item.status === "rascunho_agente" && <ReviewActions artifactId={item.id} />}
-                        </div>
-                        {item.status === "rejeitado" && item.motivo_rejeicao && (
-                          <p className="text-sm text-bad">Motivo da rejeição: {item.motivo_rejeicao}</p>
-                        )}
-                        <ArtifactDetail tipo={tipo} conteudo={item.conteudo} />
-                      </div>
-                    ))}
+      <Card>
+        <CardHeader>
+          <CardTitle>Anexos</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {attachments.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Nenhum arquivo enviado ainda.</p>
+          ) : (
+            <ul className="divide-y divide-border">
+              {attachments.map((attachment) => (
+                <li key={attachment.id} className="flex items-center justify-between gap-4 py-3">
+                  <div>
+                    <p className="text-sm text-foreground">{attachment.nome_arquivo}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatBytes(attachment.tamanho_bytes)} · {formatDate(attachment.criado_em)}
+                    </p>
                   </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </section>
-
-      <section className="mt-12">
-        <h2 className="mb-4 text-lg font-semibold tracking-tight text-foreground">Anexos</h2>
-        {attachments.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Nenhum arquivo enviado ainda.</p>
-        ) : (
-          <ul className="divide-y divide-border">
-            {attachments.map((attachment) => (
-              <li key={attachment.id} className="flex items-center justify-between gap-4 py-3">
-                <div>
-                  <p className="text-sm text-foreground">{attachment.nome_arquivo}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {formatBytes(attachment.tamanho_bytes)} · {formatDate(attachment.criado_em)}
-                  </p>
-                </div>
-                {attachment.signedUrl && (
-                  <a
-                    href={attachment.signedUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-sm font-medium text-primary outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/50 rounded-sm"
-                  >
-                    Abrir
-                  </a>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+                  {attachment.signedUrl && (
+                    <a
+                      href={attachment.signedUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-sm font-medium text-primary outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/50 rounded-sm"
+                    >
+                      Abrir
+                    </a>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
     </main>
   );
 }
