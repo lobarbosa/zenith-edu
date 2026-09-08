@@ -5,6 +5,7 @@ import { isMentor } from "@/lib/mentor";
 import { ensureMentee } from "@/lib/mentees";
 import { menteeStatus } from "@/lib/mentee-status";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 
 export default async function HomePage() {
   const supabase = await createClient();
@@ -17,22 +18,24 @@ export default async function HomePage() {
 
   return (
     <main className="flex flex-1 items-center justify-center px-6">
-      <div className="w-full max-w-sm space-y-6 text-center">
-        <div className="space-y-2">
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-            Sessão ativa
-          </h1>
-          <p className="text-sm text-muted-foreground">{user?.email}</p>
-        </div>
+      <Card className="w-full max-w-sm">
+        <CardContent className="space-y-6 text-center">
+          <div className="space-y-2">
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+              Sessão ativa
+            </h1>
+            <p className="text-sm text-muted-foreground">{user?.email}</p>
+          </div>
 
-        {mentor ? (
-          <Button asChild>
-            <Link href="/mentor">Ir para o Mentor</Link>
-          </Button>
-        ) : (
-          cta
-        )}
-      </div>
+          {mentor ? (
+            <Button asChild>
+              <Link href="/mentor">Ir para o Mentor</Link>
+            </Button>
+          ) : (
+            cta
+          )}
+        </CardContent>
+      </Card>
     </main>
   );
 }
