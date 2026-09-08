@@ -957,3 +957,38 @@ duas formas de acesso a mais, mantendo o link mágico como estava.
 do passo manual do Google (acima) pra sequer testar o botão SSO. Cadastro
 por senha e redefinição de senha dá pra testar sem depender de nada
 externo.
+
+## 11. Sidebar de navegação (08/09)
+
+Feedback direto do usuário comparando com o artefato de design ("Portal
+T-Shaped Executive"): a experiência real "está bem ruim" — só existia um
+header fino (logo + Conta + Sair), sem navegação persistente; cada tela
+linkava pra próxima no meio do conteúdo.
+
+`(app)/layout.tsx` agora monta uma sidebar fixa (`app-sidebar.tsx` +
+`app-shell.tsx`, substituindo `app-header.tsx`, removido), com os itens
+reais de cada papel — mentorado (Jornada, Diagnóstico enquanto não
+concluído, Copiloto, Biblioteca, Conta) ou mentor (Meus mentorados,
+Conta) — e estado ativo por rota. Em mobile (`<md`), vira um menu
+off-canvas com botão hambúrguer, fechamento por Escape/clique fora/link
+clicado, e foco preso no botão de fechar ao abrir.
+
+**Decisão de stack**: consultei `ui-ux-pro-max`, que recomenda o
+componente `Sidebar` oficial do shadcn/ui pra isso — mas ele puxa
+`@radix-ui/react-dialog`, `@radix-ui/react-tooltip` e
+`@radix-ui/react-separator`, nenhum instalado ainda. Implementei a
+sidebar à mão em cima só do que já existe no projeto (sem lib nova),
+respeitando "não introduza bibliotecas novas sem perguntar" — com
+`role="dialog"`/`aria-modal`, fechamento por teclado e foco gerenciado à
+mão, cobrindo o essencial de acessibilidade sem o Radix Dialog completo.
+
+Cores da sidebar (`--sidebar*` em `globals.css`) reaproveitam a paleta
+já existente do produto (`--primary: #16264d`, que já batia exatamente
+com o artefato de design). Nenhuma variável nova de cor "de verdade" foi
+inventada.
+
+**Nota de escopo**: isso resolve a navegação persistente, que era a
+queixa concreta. Uma repaginada visual mais ampla (tipografia,
+espaçamento, hierarquia em cada tela individual) é trabalho maior e
+separado, se for isso que o usuário quis dizer com "UI/UX pobre" além da
+sidebar.
