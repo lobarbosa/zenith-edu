@@ -11,6 +11,7 @@ import {
 } from "@/lib/agents/artifact-schemas";
 import { StatusPill } from "@/components/status-pill";
 import { ArtifactDetail } from "@/components/artifact-detail";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { GenerateArtifactButton } from "./generate-artifact-button";
 import { EtapaStepper } from "./etapa-stepper";
 
@@ -67,98 +68,111 @@ export default async function JornadaPage() {
   }
 
   return (
-    <main className="mx-auto max-w-2xl px-6 py-10">
-      <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Jornada</p>
-      <h1 className="mb-2 text-2xl font-semibold tracking-tight text-foreground">
-        {journey.etapa_atual}{" "}
-        <span className="font-normal text-muted-foreground">· mês {journey.mes} de 6</span>
-      </h1>
-      <p className="mb-6 text-sm text-muted-foreground">
-        O avanço de etapa é conduzido pelo seu mentor, após cada encontro mensal.
-      </p>
-
-      <EtapaStepper etapaAtual={journey.etapa_atual} etapasLiberadas={journey.etapas_liberadas} />
-
-      <div className="mt-5 flex flex-wrap gap-x-6 gap-y-2">
-        <Link
-          href="/copiloto"
-          className="text-sm font-medium text-primary outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/50 rounded-sm"
-        >
-          Conversar com o copiloto →
-        </Link>
-        <Link
-          href="/biblioteca"
-          className="text-sm font-medium text-primary outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/50 rounded-sm"
-        >
-          Biblioteca →
-        </Link>
+    <main className="mx-auto max-w-2xl space-y-10 px-6 py-10">
+      <div>
+        <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Jornada</p>
+        <h1 className="mb-2 text-2xl font-semibold tracking-tight text-foreground">
+          {journey.etapa_atual}{" "}
+          <span className="font-normal text-muted-foreground">· mês {journey.mes} de 6</span>
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          O avanço de etapa é conduzido pelo seu mentor, após cada encontro mensal.
+        </p>
       </div>
+
+      <Card>
+        <CardContent className="space-y-5">
+          <EtapaStepper etapaAtual={journey.etapa_atual} etapasLiberadas={journey.etapas_liberadas} />
+          <div className="flex flex-wrap gap-x-6 gap-y-2">
+            <Link
+              href="/copiloto"
+              className="text-sm font-medium text-primary outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/50 rounded-sm"
+            >
+              Conversar com o copiloto →
+            </Link>
+            <Link
+              href="/biblioteca"
+              className="text-sm font-medium text-primary outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/50 rounded-sm"
+            >
+              Biblioteca →
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
 
       {notes && notes.length > 0 && (
-        <>
-          <h2 className="mb-6 mt-12 text-lg font-semibold tracking-tight text-foreground">
-            Notas do mentor
-          </h2>
-          <ul className="space-y-4">
-            {notes.map((note) => (
-              <li key={note.id} className="border-t border-border pt-4 first:border-t-0 first:pt-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
-                    {note.etapa ?? "—"}
-                  </span>
-                  <span className="text-xs text-muted-foreground">{formatDate(note.criado_em)}</span>
-                </div>
-                <p className="mt-1 text-sm text-foreground">{note.conteudo}</p>
-              </li>
-            ))}
-          </ul>
-        </>
+        <Card>
+          <CardHeader>
+            <CardTitle>Notas do mentor</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-4">
+              {notes.map((note) => (
+                <li key={note.id} className="border-t border-border pt-4 first:border-t-0 first:pt-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
+                      {note.etapa ?? "—"}
+                    </span>
+                    <span className="text-xs text-muted-foreground">{formatDate(note.criado_em)}</span>
+                  </div>
+                  <p className="mt-1 text-sm text-foreground">{note.conteudo}</p>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
       )}
 
-      <h2 className="mb-6 mt-12 text-lg font-semibold tracking-tight text-foreground">
-        Artefatos desta etapa
-      </h2>
+      <Card>
+        <CardHeader>
+          <CardTitle>Artefatos desta etapa</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-10">
+            {ARTIFACT_TIPOS.filter((tipo) => ARTIFACT_ETAPA[tipo] === journey.etapa_atual).map(
+              (tipo) => {
+                const latest = latestByTipo.get(tipo);
 
-      <div className="space-y-10">
-        {ARTIFACT_TIPOS.filter((tipo) => ARTIFACT_ETAPA[tipo] === journey.etapa_atual).map(
-          (tipo) => {
-            const latest = latestByTipo.get(tipo);
+                return (
+                  <section
+                    key={tipo}
+                    className="space-y-4 border-t border-border pt-8 first:border-t-0 first:pt-0"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-4">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-semibold text-foreground">{ARTIFACT_LABELS[tipo]}</p>
+                        <StatusPill tone={latest ? STATUS_TONE[latest.status] : "neutral"}>
+                          {latest ? STATUS_LABEL[latest.status] : "Ainda não gerado"}
+                        </StatusPill>
+                      </div>
+                      {(!latest ||
+                        latest.status === "validado_mentor" ||
+                        latest.status === "rejeitado") && (
+                        <GenerateArtifactButton
+                          tipo={tipo}
+                          label={latest ? "Gerar nova versão" : "Gerar"}
+                        />
+                      )}
+                    </div>
 
-            return (
-              <section
-                key={tipo}
-                className="space-y-4 border-t border-border pt-8 first:border-t-0 first:pt-0"
-              >
-                <div className="flex flex-wrap items-center justify-between gap-4">
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-semibold text-foreground">{ARTIFACT_LABELS[tipo]}</p>
-                    <StatusPill tone={latest ? STATUS_TONE[latest.status] : "neutral"}>
-                      {latest ? STATUS_LABEL[latest.status] : "Ainda não gerado"}
-                    </StatusPill>
-                  </div>
-                  {(!latest ||
-                    latest.status === "validado_mentor" ||
-                    latest.status === "rejeitado") && (
-                    <GenerateArtifactButton tipo={tipo} label={latest ? "Gerar nova versão" : "Gerar"} />
-                  )}
-                </div>
-
-                {latest?.status === "rejeitado" && latest.motivo_rejeicao && (
-                  <p className="text-sm text-bad">Motivo da rejeição: {latest.motivo_rejeicao}</p>
-                )}
-                {latest?.status === "validado_mentor" && (
-                  <ArtifactDetail tipo={tipo} conteudo={latest.conteudo} />
-                )}
-                {!latest && (
-                  <p className="text-sm text-muted-foreground">
-                    Converse com o copiloto sobre este tema e depois peça pra gerar.
-                  </p>
-                )}
-              </section>
-            );
-          }
-        )}
-      </div>
+                    {latest?.status === "rejeitado" && latest.motivo_rejeicao && (
+                      <p className="text-sm text-bad">Motivo da rejeição: {latest.motivo_rejeicao}</p>
+                    )}
+                    {latest?.status === "validado_mentor" && (
+                      <ArtifactDetail tipo={tipo} conteudo={latest.conteudo} />
+                    )}
+                    {!latest && (
+                      <p className="text-sm text-muted-foreground">
+                        Converse com o copiloto sobre este tema e depois peça pra gerar.
+                      </p>
+                    )}
+                  </section>
+                );
+              }
+            )}
+          </div>
+        </CardContent>
+      </Card>
     </main>
   );
 }
