@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ensureMentee } from "@/lib/mentees";
 import { ensureJourneyState } from "@/lib/agents/journey";
+import { Card, CardContent } from "@/components/ui/card";
 
 const TIPO_LABEL: Record<string, string> = {
   playbook: "Playbook",
@@ -46,21 +47,25 @@ export default async function BibliotecaPage() {
           Nada liberado ainda para a sua etapa atual.
         </p>
       ) : (
-        <ul className="divide-y divide-border">
-          {documents.map((doc) => (
-            <li key={doc.id}>
-              <Link
-                href={`/biblioteca/${doc.id}`}
-                className="flex items-center justify-between gap-4 py-5 outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring/50 rounded-sm"
-              >
-                <span className="text-sm font-medium text-foreground">{doc.titulo}</span>
-                <span className="text-xs text-muted-foreground">
-                  {TIPO_LABEL[doc.tipo] ?? doc.tipo}
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <Card className="py-0">
+          <CardContent className="px-0">
+            <ul>
+              {documents.map((doc) => (
+                <li key={doc.id} className="border-b border-border last:border-b-0">
+                  <Link
+                    href={`/biblioteca/${doc.id}`}
+                    className="flex items-center justify-between gap-4 px-6 py-4 outline-none hover:bg-secondary/50 focus-visible:ring-2 focus-visible:ring-ring/50"
+                  >
+                    <span className="text-sm font-medium text-foreground">{doc.titulo}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {TIPO_LABEL[doc.tipo] ?? doc.tipo}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
       )}
     </main>
   );
