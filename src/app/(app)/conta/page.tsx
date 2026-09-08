@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { Field } from "@/components/field";
 import { DeleteAccountButton } from "@/components/delete-account-button";
+import { ChangePasswordForm } from "@/components/change-password-form";
 
 export default async function ContaPage() {
   const supabase = await createClient();
@@ -16,6 +17,10 @@ export default async function ContaPage() {
 
       <div className="space-y-6">
         <Field label="E-mail">{user?.email}</Field>
+
+        <Field label="Senha">
+          <ChangePasswordForm />
+        </Field>
 
         <Field label="Privacidade">
           <Link

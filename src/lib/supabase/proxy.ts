@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { isMentor } from "@/lib/mentor";
 
-const PUBLIC_PATHS = ["/login", "/auth/callback", "/privacidade"];
+const PUBLIC_PATHS = ["/login", "/auth/callback", "/privacidade", "/redefinir-senha"];
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
