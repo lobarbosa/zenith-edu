@@ -871,3 +871,53 @@ na ordem.
 Checklist completo do que está pendente — incluindo o que só um humano pode
 fazer (credenciais, contas, decisões de produto) — em
 `docs/HUMAN-CHECKLIST.md`.
+
+**Nota (08/09):** as seções acima ficaram desatualizadas — Fase 2 e Fase 3
+foram fechadas por completo depois deste ponto (Value/Leadership/Executive
+Copilot, `/biblioteca`, anexos, LGPD, artefatos INFLUENCE/MOVE). Ver
+`docs/HUMAN-CHECKLIST.md` pro estado real consolidado. Registro da Fase 4
+abaixo, sem reescrever o histórico acima.
+
+## 9. Fase 4 — Mentor Console (`SPEC-SOFTWARE.md` §11 e §13)
+
+Painel em `/mentor`: Pendências (já existia), Sinais, Pulso da turma e
+Custo; `/mentor/[menteeId]` ganhou Preparação de encontro e Notas.
+Fundação toda já existia desde a migration `0004_fase1_schema.sql`
+(`mentor_flags`, `mentor_notes`, `agent_runs`) e já era escrita por
+`signals.ts`, `/api/chat` e `artifact-generation.ts` — a Fase 4 foi
+majoritariamente ler o que já estava sendo gravado, não criar tabela nova.
+
+**Instrumentação que faltava e foi adicionada:**
+- `synthesizeExecutiveProfile` (síntese do perfil, Opus) não gravava em
+  `agent_runs` — só acumulava custo em `diagnostic_sessions`. Agora recebe
+  `admin` (mesmo padrão de `generateArtifact`) e grava `agent_key: "perfil"`
+  com `sucesso`/`latencia_ms`, necessário pro alerta de falha de schema.
+- O turno do diagnóstico (`/api/diagnostic`) também não gravava em
+  `agent_runs`. Agora grava `agent_key: "diagnostic"` com `latencia_ms`.
+- `latencia_ms` (coluna já existia, nunca preenchida) passou a ser medida
+  em volta da chamada principal de modelo em `/api/chat` e
+  `/api/diagnostic` — é o dado que sustenta o alerta de latência.
+
+**Decisão tomada sem devolver pergunta**: o `SPEC-SOFTWARE.md` §13 pede
+Langfuse para traces. Não introduzi — é peça nova de stack
+(`CLAUDE.md`: "não introduza bibliotecas novas sem perguntar"), e os três
+alertas mínimos do §13 são inteiramente cobertos só por `agent_runs`, que
+o próprio spec já cita como suficiente pro Mentor Console sem depender de
+serviço externo. Fica registrado como decisão em aberto, não esquecimento.
+
+**Definições que o spec deixou em aberto e eu fixei como placeholder**:
+- Teto de custo por mentorado pro alerta: US$ 5,00 fixo em
+  `src/lib/mentor-console.ts` (`CUSTO_TETO_USD`) — spec só diz "teto
+  definido", sem valor. Ajustar quando virar decisão de produto explícita.
+- "Desde o último encontro" (Preparação de encontro) usa a `mentor_note`
+  mais recente como marco — não existe tabela de encontros. Sem nota
+  nenhuma ainda, o resumo cobre desde o início.
+- "Custo no período" (§11) foi implementado como custo total acumulado
+  (soma de `agent_runs` + `diagnostic_sessions`), não uma janela de tempo
+  — o spec não define o período, e nenhum outro lugar do produto tem
+  noção de "período" pra reaproveitar.
+
+**Ainda não validado ao vivo** — só `tsc`/`lint`/`build` limpos até aqui;
+falta rodar contra o mentee de teste real (o mesmo usado na validação de
+ponta a ponta de 07/09) e conferir Sinais/Pulso/Custo/Alertas com dado
+de verdade antes de considerar a Fase 4 fechada.

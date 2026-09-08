@@ -5,9 +5,31 @@ import { isMentor } from "@/lib/mentor";
 import { ExecutiveProfileSchema } from "@/lib/agents/executive-profile-schema";
 import { ARTIFACT_LABELS, type ArtifactTipo } from "@/lib/agents/artifact-schemas";
 import { ArtifactDetail } from "@/components/artifact-detail";
+import { StatusPill } from "@/components/status-pill";
+import {
+  getSinaisNaoLidos,
+  getPulsoDaTurma,
+  getCustoPorMentee,
+  getAlertas,
+  type Sinal,
+} from "@/lib/mentor-console";
 import { ProfileDetail } from "./profile-detail";
 import { ReviewActions } from "./review-actions";
+import { SinalActions } from "./sinal-actions";
 import { MenteeRoster, type RosterEntry } from "./mentee-roster";
+
+const SINAL_TIPO_LABEL: Record<Sinal["tipo"], string> = {
+  contradicao: "Contradição",
+  resistencia: "Resistência",
+  risco: "Risco",
+  avanco: "Avanço",
+  fora_de_escopo: "Fora de escopo",
+};
+const SEVERIDADE_TONE = {
+  alta: "bad",
+  media: "warning",
+  baixa: "neutral",
+} as const;
 
 type PendingItem = {
   kind: "perfil" | ArtifactTipo;
@@ -82,6 +104,18 @@ export default async function MentorPage() {
     profile: profiles?.find((p) => p.mentee_id === mentee.id) ?? null,
   }));
 
+  // Painel do Mentor Console (SPEC-SOFTWARE.md §11) — sinais e custo
+  // dependem da lista de mentorados, então rodam depois do Promise.all
+  // acima; custo entra em getAlertas pra não recalcular a soma duas vezes.
+  const menteesLite = mentees ?? [];
+  const [sinais, pulsoDaTurma, custoPorMentee] = await Promise.all([
+    getSinaisNaoLidos(admin),
+    getPulsoDaTurma(admin, menteesLite),
+    getCustoPorMentee(admin, menteesLite),
+  ]);
+  const alertas = await getAlertas(admin, custoPorMentee);
+  const custoTotal = custoPorMentee.reduce((acc, c) => acc + c.custoUsd, 0);
+
   // Fila heterogênea (perfil + 3 tipos de artefato), mais antigo primeiro —
   // mesma ordem que já valia só pra perfis.
   const queue: PendingItem[] = [
@@ -113,6 +147,16 @@ export default async function MentorPage() {
       </h1>
 
       <MenteeRoster roster={roster} />
+
+      {alertas.length > 0 && (
+        <div className="mt-8 space-y-2 rounded-md border border-bad/30 bg-bad-soft px-4 py-3">
+          {alertas.map((alerta, i) => (
+            <p key={i} className="text-sm text-bad">
+              {alerta.descricao}
+            </p>
+          ))}
+        </div>
+      )}
 
       <h2 className="mb-6 mt-12 text-lg font-semibold tracking-tight text-foreground">
         Pendências de validação
@@ -160,6 +204,57 @@ export default async function MentorPage() {
             )}
           </section>
         ))}
+      </div>
+
+      <h2 className="mb-6 mt-12 text-lg font-semibold tracking-tight text-foreground">Sinais</h2>
+      {sinais.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Nenhum sinal pendente.</p>
+      ) : (
+        <div className="divide-y divide-border">
+          {sinais.map((sinal) => (
+            <div key={sinal.id} className="flex items-start justify-between gap-4 py-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <StatusPill tone={SEVERIDADE_TONE[sinal.severidade]}>{sinal.severidade}</StatusPill>
+                  <span className="text-xs text-muted-foreground">{SINAL_TIPO_LABEL[sinal.tipo]}</span>
+                </div>
+                <p className="mt-1 text-sm font-medium text-foreground">{sinal.menteeEmail}</p>
+                <p className="text-sm text-muted-foreground">{sinal.descricao}</p>
+              </div>
+              <SinalActions flagId={sinal.id} />
+            </div>
+          ))}
+        </div>
+      )}
+
+      <h2 className="mb-6 mt-12 text-lg font-semibold tracking-tight text-foreground">
+        Pulso da turma
+      </h2>
+      <div className="divide-y divide-border">
+        {pulsoDaTurma.map((p) => (
+          <div key={p.menteeId} className="flex items-center justify-between gap-4 py-3 text-sm">
+            <span className="font-medium text-foreground">{p.menteeEmail}</span>
+            <span className="text-muted-foreground">{p.etapaAtual ?? "—"}</span>
+            <span className="text-muted-foreground">
+              {p.diasSemAtividade === null ? "sem atividade" : `${p.diasSemAtividade}d sem atividade`}
+            </span>
+            <span className="text-muted-foreground">{p.artefatosConcluidos} artefato(s)</span>
+          </div>
+        ))}
+      </div>
+
+      <h2 className="mb-6 mt-12 text-lg font-semibold tracking-tight text-foreground">Custo</h2>
+      <div className="divide-y divide-border">
+        {custoPorMentee.map((c) => (
+          <div key={c.menteeId} className="flex items-center justify-between gap-4 py-3 text-sm">
+            <span className="text-foreground">{c.menteeEmail}</span>
+            <span className="font-mono text-muted-foreground">US$ {c.custoUsd.toFixed(4)}</span>
+          </div>
+        ))}
+        <div className="flex items-center justify-between gap-4 py-3 text-sm font-semibold">
+          <span className="text-foreground">Total</span>
+          <span className="font-mono text-foreground">US$ {custoTotal.toFixed(4)}</span>
+        </div>
       </div>
     </main>
   );
