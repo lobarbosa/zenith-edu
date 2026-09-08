@@ -10,7 +10,7 @@ export type RosterEntry = {
 
 export function MenteeRoster({ roster }: { roster: RosterEntry[] }) {
   if (roster.length === 0) {
-    return <p className="text-sm text-muted-foreground">Nenhum mentorado ainda.</p>;
+    return <p className="px-6 py-2 text-sm text-muted-foreground">Nenhum mentorado ainda.</p>;
   }
 
   return (
@@ -21,7 +21,7 @@ export function MenteeRoster({ roster }: { roster: RosterEntry[] }) {
           <Link
             key={mentee.id}
             href={`/mentor/${mentee.id}`}
-            className="flex items-center justify-between gap-4 border-b border-border py-3 outline-none last:border-b-0 hover:bg-secondary/50 focus-visible:ring-2 focus-visible:ring-ring/50"
+            className="flex items-center justify-between gap-4 border-b border-border px-6 py-3 outline-none last:border-b-0 hover:bg-secondary/50 focus-visible:ring-2 focus-visible:ring-ring/50"
           >
             <div>
               <p className="text-sm font-medium text-foreground">{mentee.email}</p>

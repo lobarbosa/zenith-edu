@@ -6,6 +6,9 @@ import { ExecutiveProfileSchema } from "@/lib/agents/executive-profile-schema";
 import { ARTIFACT_LABELS, type ArtifactTipo } from "@/lib/agents/artifact-schemas";
 import { ArtifactDetail } from "@/components/artifact-detail";
 import { StatusPill } from "@/components/status-pill";
+import { StatTile } from "@/components/stat-tile";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import {
   getSinaisNaoLidos,
   getPulsoDaTurma,
@@ -138,124 +141,171 @@ export default async function MentorPage() {
   ].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-10">
-      <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
-        Mentor
-      </p>
-      <h1 className="mb-8 text-2xl font-semibold tracking-tight text-foreground">
-        Meus mentorados
-      </h1>
-
-      <MenteeRoster roster={roster} />
+    <main className="mx-auto max-w-4xl space-y-10 px-6 py-10">
+      <div>
+        <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
+          Mentor
+        </p>
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">Meus mentorados</h1>
+      </div>
 
       {alertas.length > 0 && (
-        <div className="mt-8 space-y-2 rounded-md border border-bad/30 bg-bad-soft px-4 py-3">
-          {alertas.map((alerta, i) => (
-            <p key={i} className="text-sm text-bad">
-              {alerta.descricao}
-            </p>
-          ))}
-        </div>
+        <Card className="border-bad/30 bg-bad-soft py-4">
+          <CardContent className="space-y-2">
+            {alertas.map((alerta, i) => (
+              <p key={i} className="text-sm text-bad">
+                {alerta.descricao}
+              </p>
+            ))}
+          </CardContent>
+        </Card>
       )}
 
-      <h2 className="mb-6 mt-12 text-lg font-semibold tracking-tight text-foreground">
-        Pendências de validação
-      </h2>
-
-      {queue.length === 0 && (
-        <p className="text-sm text-muted-foreground">Nada pendente no momento.</p>
-      )}
-
-      <div className="space-y-10">
-        {queue.map((item) => (
-          <section
-            key={`${item.kind}-${item.id}`}
-            className="space-y-4 border-b border-border pb-10 last:border-b-0"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-semibold text-foreground">{item.menteeEmail}</p>
-                <p className="text-xs text-muted-foreground">
-                  {item.kind === "perfil" ? "Perfil Executivo" : ARTIFACT_LABELS[item.kind]} · versão{" "}
-                  {item.version}
-                </p>
-              </div>
-              {item.kind === "perfil" ? (
-                <ReviewActions profileId={item.id} />
-              ) : (
-                <ReviewActions artifactId={item.id} />
-              )}
-            </div>
-
-            {item.kind === "perfil" ? (
-              (() => {
-                const parsed = ExecutiveProfileSchema.safeParse(item.payload);
-                return parsed.success ? (
-                  <ProfileDetail perfil={parsed.data} />
-                ) : (
-                  <p className="text-sm text-destructive">
-                    Este registro não bate com o schema esperado — não valide sem checar
-                    manualmente.
-                  </p>
-                );
-              })()
-            ) : (
-              <ArtifactDetail tipo={item.kind} conteudo={item.payload} />
-            )}
-          </section>
-        ))}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <StatTile label="Pendências de validação" value={queue.length} />
+        <StatTile label="Sinais não lidos" value={sinais.length} />
+        <StatTile label="Custo total" value={`US$ ${custoTotal.toFixed(2)}`} />
       </div>
 
-      <h2 className="mb-6 mt-12 text-lg font-semibold tracking-tight text-foreground">Sinais</h2>
-      {sinais.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Nenhum sinal pendente.</p>
-      ) : (
-        <div className="divide-y divide-border">
-          {sinais.map((sinal) => (
-            <div key={sinal.id} className="flex items-start justify-between gap-4 py-4">
-              <div>
-                <div className="flex items-center gap-2">
-                  <StatusPill tone={SEVERIDADE_TONE[sinal.severidade]}>{sinal.severidade}</StatusPill>
-                  <span className="text-xs text-muted-foreground">{SINAL_TIPO_LABEL[sinal.tipo]}</span>
+      <Card className="py-0">
+        <CardContent className="px-0 py-2">
+          <MenteeRoster roster={roster} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Pendências de validação</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {queue.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Nada pendente no momento.</p>
+          ) : (
+            <div className="space-y-10">
+              {queue.map((item) => (
+                <section
+                  key={`${item.kind}-${item.id}`}
+                  className="space-y-4 border-t border-border pt-8 first:border-t-0 first:pt-0"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">{item.menteeEmail}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {item.kind === "perfil" ? "Perfil Executivo" : ARTIFACT_LABELS[item.kind]} ·
+                        versão {item.version}
+                      </p>
+                    </div>
+                    {item.kind === "perfil" ? (
+                      <ReviewActions profileId={item.id} />
+                    ) : (
+                      <ReviewActions artifactId={item.id} />
+                    )}
+                  </div>
+
+                  {item.kind === "perfil" ? (
+                    (() => {
+                      const parsed = ExecutiveProfileSchema.safeParse(item.payload);
+                      return parsed.success ? (
+                        <ProfileDetail perfil={parsed.data} />
+                      ) : (
+                        <p className="text-sm text-destructive">
+                          Este registro não bate com o schema esperado — não valide sem checar
+                          manualmente.
+                        </p>
+                      );
+                    })()
+                  ) : (
+                    <ArtifactDetail tipo={item.kind} conteudo={item.payload} />
+                  )}
+                </section>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Sinais</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {sinais.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Nenhum sinal pendente.</p>
+          ) : (
+            <div className="divide-y divide-border">
+              {sinais.map((sinal) => (
+                <div key={sinal.id} className="flex items-start justify-between gap-4 py-4 first:pt-0 last:pb-0">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <StatusPill tone={SEVERIDADE_TONE[sinal.severidade]}>{sinal.severidade}</StatusPill>
+                      <span className="text-xs text-muted-foreground">{SINAL_TIPO_LABEL[sinal.tipo]}</span>
+                    </div>
+                    <p className="mt-1 text-sm font-medium text-foreground">{sinal.menteeEmail}</p>
+                    <p className="text-sm text-muted-foreground">{sinal.descricao}</p>
+                  </div>
+                  <SinalActions flagId={sinal.id} />
                 </div>
-                <p className="mt-1 text-sm font-medium text-foreground">{sinal.menteeEmail}</p>
-                <p className="text-sm text-muted-foreground">{sinal.descricao}</p>
-              </div>
-              <SinalActions flagId={sinal.id} />
+              ))}
             </div>
-          ))}
-        </div>
-      )}
+          )}
+        </CardContent>
+      </Card>
 
-      <h2 className="mb-6 mt-12 text-lg font-semibold tracking-tight text-foreground">
-        Pulso da turma
-      </h2>
-      <div className="divide-y divide-border">
-        {pulsoDaTurma.map((p) => (
-          <div key={p.menteeId} className="flex items-center justify-between gap-4 py-3 text-sm">
-            <span className="font-medium text-foreground">{p.menteeEmail}</span>
-            <span className="text-muted-foreground">{p.etapaAtual ?? "—"}</span>
-            <span className="text-muted-foreground">
-              {p.diasSemAtividade === null ? "sem atividade" : `${p.diasSemAtividade}d sem atividade`}
-            </span>
-            <span className="text-muted-foreground">{p.artefatosConcluidos} artefato(s)</span>
-          </div>
-        ))}
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Pulso da turma</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Mentorado</TableHead>
+                <TableHead>Etapa</TableHead>
+                <TableHead>Atividade</TableHead>
+                <TableHead>Artefatos</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {pulsoDaTurma.map((p) => (
+                <TableRow key={p.menteeId}>
+                  <TableCell className="font-medium">{p.menteeEmail}</TableCell>
+                  <TableCell className="text-muted-foreground">{p.etapaAtual ?? "—"}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {p.diasSemAtividade === null ? "sem atividade" : `${p.diasSemAtividade}d sem atividade`}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{p.artefatosConcluidos}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
 
-      <h2 className="mb-6 mt-12 text-lg font-semibold tracking-tight text-foreground">Custo</h2>
-      <div className="divide-y divide-border">
-        {custoPorMentee.map((c) => (
-          <div key={c.menteeId} className="flex items-center justify-between gap-4 py-3 text-sm">
-            <span className="text-foreground">{c.menteeEmail}</span>
-            <span className="font-mono text-muted-foreground">US$ {c.custoUsd.toFixed(4)}</span>
-          </div>
-        ))}
-        <div className="flex items-center justify-between gap-4 py-3 text-sm font-semibold">
-          <span className="text-foreground">Total</span>
-          <span className="font-mono text-foreground">US$ {custoTotal.toFixed(4)}</span>
-        </div>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Custo</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableBody>
+              {custoPorMentee.map((c) => (
+                <TableRow key={c.menteeId}>
+                  <TableCell>{c.menteeEmail}</TableCell>
+                  <TableCell className="text-right font-mono text-muted-foreground">
+                    US$ {c.custoUsd.toFixed(4)}
+                  </TableCell>
+                </TableRow>
+              ))}
+              <TableRow>
+                <TableCell className="font-semibold">Total</TableCell>
+                <TableCell className="text-right font-mono font-semibold text-foreground">
+                  US$ {custoTotal.toFixed(4)}
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </main>
   );
 }
