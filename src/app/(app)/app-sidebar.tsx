@@ -39,7 +39,9 @@ export function AppSidebar({
         </Link>
       </div>
 
-      <nav className="flex-1 space-y-1 px-3">
+      {/* min-h-0 + overflow: em tela baixa a lista rola, em vez de empurrar o
+          rodapé (e-mail, Conta, Sair) pra fora da viewport. */}
+      <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3">
         <p className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
           {roleLabel}
         </p>
@@ -53,7 +55,7 @@ export function AppSidebar({
         })}
       </nav>
 
-      <div className="space-y-2 border-t border-sidebar-border px-3 py-4">
+      <div className="flex-none space-y-2 border-t border-sidebar-border px-3 py-4">
         <p className="truncate px-3 text-xs text-muted-foreground">{userEmail}</p>
         <Link href="/conta" onClick={onNavigate} className={navItemClass(pathname === "/conta")}>
           Conta
