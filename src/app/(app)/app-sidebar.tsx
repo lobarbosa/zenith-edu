@@ -46,7 +46,16 @@ export function AppSidebar({
           {roleLabel}
         </p>
         {navItems.map((item) => {
-          const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+          // Só o item mais específico fica ativo: /mentor/console não pode
+          // acender "Meus mentorados" junto, mas /mentor/<id> ainda acende.
+          const matches = navItems.filter(
+            (candidate) => pathname === candidate.href || pathname.startsWith(`${candidate.href}/`)
+          );
+          const longest = matches.reduce(
+            (best, candidate) => (candidate.href.length > best.href.length ? candidate : best),
+            matches[0] ?? item
+          );
+          const active = matches.length > 0 && longest.href === item.href;
           return (
             <Link key={item.href} href={item.href} onClick={onNavigate} className={navItemClass(active)}>
               {item.label}

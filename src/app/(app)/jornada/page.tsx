@@ -2,7 +2,9 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ensureMentee } from "@/lib/mentees";
-import { ensureJourneyState } from "@/lib/agents/journey";
+import { ensureJourneyState, etapaAgent } from "@/lib/agents/journey";
+import { AGENT_LABELS } from "@/lib/agents/agent-labels";
+import { StatTile } from "@/components/stat-tile";
 import {
   ARTIFACT_TIPOS,
   ARTIFACT_LABELS,
@@ -67,17 +69,39 @@ export default async function JornadaPage() {
     }
   }
 
+  const validados = [...latestByTipo.values()].filter((a) => a.status === "validado_mentor").length;
+  const daEtapa = ARTIFACT_TIPOS.filter((tipo) => ARTIFACT_ETAPA[tipo] === journey.etapa_atual);
+  const daEtapaProntos = daEtapa.filter(
+    (tipo) => latestByTipo.get(tipo)?.status === "validado_mentor"
+  ).length;
+
   return (
     <main className="mx-auto max-w-2xl space-y-10 px-6 py-10">
       <div>
         <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Jornada</p>
         <h1 className="mb-2 text-2xl font-semibold tracking-tight text-foreground">
-          {journey.etapa_atual}{" "}
-          <span className="font-normal text-muted-foreground">· mês {journey.mes} de 6</span>
+          Etapa atual: {journey.etapa_atual}
         </h1>
-        <p className="text-sm text-muted-foreground">
+        <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-muted-foreground">
+          <span>
+            Mês <span className="font-medium text-foreground">{journey.mes} de 6</span>
+          </span>
+          <span>
+            Copiloto ativo{" "}
+            <span className="font-medium text-foreground">
+              {AGENT_LABELS[etapaAgent(journey.etapa_atual)]}
+            </span>
+          </span>
+        </div>
+        <p className="mt-3 text-sm text-muted-foreground">
           O avanço de etapa é conduzido pelo seu mentor, após cada encontro mensal.
         </p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+        <StatTile label="Artefatos validados" value={`${validados} de ${ARTIFACT_TIPOS.length}`} />
+        <StatTile label="Etapas liberadas" value={`${journey.etapas_liberadas.length} de 6`} />
+        <StatTile label="Artefatos desta etapa" value={`${daEtapaProntos} de ${daEtapa.length}`} />
       </div>
 
       <Card>
@@ -89,6 +113,12 @@ export default async function JornadaPage() {
               className="text-sm font-medium text-primary outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/50 rounded-sm"
             >
               Conversar com o copiloto →
+            </Link>
+            <Link
+              href="/mapas"
+              className="text-sm font-medium text-primary outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/50 rounded-sm"
+            >
+              Ver todos os mapas →
             </Link>
             <Link
               href="/biblioteca"
