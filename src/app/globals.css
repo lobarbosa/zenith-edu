@@ -105,3 +105,20 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Duas larguras de conteúdo, como no artefato validado: painel (grids de
+   tiles, tabelas, master-detail) e leitura (conversa, texto corrido,
+   formulário de campo único). Usar uma medida estreita num painel deixa
+   metade da tela vazia; usar a larga num texto quebra a linha de leitura. */
+@layer components {
+  .shell {
+    width: 100%;
+    max-width: 1080px;
+    margin-inline: auto;
+  }
+  .shell-narrow {
+    width: 100%;
+    max-width: 680px;
+    margin-inline: auto;
+  }
+}

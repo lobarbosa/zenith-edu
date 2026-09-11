@@ -54,7 +54,7 @@ export default async function MapasPage({
   const selected = items.find((item) => item.tipo === tipoParam) ?? items[0];
 
   return (
-    <main className="mx-auto w-full max-w-5xl space-y-8 px-6 py-10">
+    <main className="shell space-y-8 px-6 py-10">
       <div>
         <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Mapas</p>
         <h1 className="mb-2 text-2xl font-semibold tracking-tight text-foreground">

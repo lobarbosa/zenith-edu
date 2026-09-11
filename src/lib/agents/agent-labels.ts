@@ -8,3 +8,13 @@ export const AGENT_LABELS: Record<string, string> = {
   leadership: "Copiloto de Liderança",
   executive: "Copiloto Executivo",
 };
+
+// Versão curta para espaços apertados — a timeline da jornada tem seis
+// colunas lado a lado, onde "Copiloto de Liderança" não cabe.
+export const AGENT_SHORT_LABELS: Record<string, string> = {
+  career: "Carreira",
+  business: "Negócio",
+  value: "Valor",
+  leadership: "Liderança",
+  executive: "Executivo",
+};

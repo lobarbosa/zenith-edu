@@ -12,7 +12,7 @@ export default async function ContaPage() {
   } = await supabase.auth.getUser();
 
   return (
-    <main className="mx-auto max-w-2xl px-6 py-10">
+    <main className="shell-narrow px-6 py-10">
       <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Conta</p>
       <h1 className="mb-8 text-2xl font-semibold tracking-tight text-foreground">Sua conta</h1>
 

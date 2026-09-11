@@ -32,7 +32,7 @@ export default async function BibliotecaDocumentPage(props: PageProps<"/bibliote
   }
 
   return (
-    <main className="mx-auto max-w-2xl px-6 py-10">
+    <main className="shell-narrow px-6 py-10">
       <Link
         href="/biblioteca"
         className="text-xs text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 rounded-sm"
