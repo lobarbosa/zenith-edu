@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { isMentor } from "@/lib/mentor";
 import { AppShell } from "./app-shell";
+import { CopilotoWidget } from "@/components/copiloto-widget";
 import type { NavItem } from "./app-sidebar";
 
 const MENTOR_NAV: NavItem[] = [{ href: "/mentor", label: "Meus mentorados" }];
@@ -47,8 +48,19 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const navItems = mentor ? MENTOR_NAV : await menteeNav(supabase, user.id);
 
   return (
-    <AppShell navItems={navItems} roleLabel={mentor ? "Mentor" : "Portal do mentorado"} userEmail={user.email ?? ""}>
-      {children}
-    </AppShell>
+    <>
+      <AppShell
+        navItems={navItems}
+        roleLabel={mentor ? "Mentor" : "Portal do mentorado"}
+        userEmail={user.email ?? ""}
+        reserveBottomSpace={!mentor}
+      >
+        {children}
+      </AppShell>
+      {/* O copiloto acompanha o mentorado em qualquer tela — é assistente,
+          não destino de navegação. A tela /copiloto continua existindo: o
+          widget é o caminho curto, ela é a conversa em tela cheia. */}
+      {!mentor && <CopilotoWidget />}
+    </>
   );
 }

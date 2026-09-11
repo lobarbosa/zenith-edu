@@ -22,11 +22,16 @@ export function AppShell({
   navItems,
   roleLabel,
   userEmail,
+  // Reserva espaço no fim do conteúdo quando o copiloto flutuante está
+  // montado: sem isso o FAB cobre o último elemento da página — inclusive
+  // o foco do teclado (WCAG 2.2 "Focus Not Obscured", AA).
+  reserveBottomSpace = false,
   children,
 }: {
   navItems: NavItem[];
   roleLabel: string;
   userEmail: string;
+  reserveBottomSpace?: boolean;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -72,7 +77,9 @@ export function AppShell({
 
         {/* Cada página já traz seu próprio <main> — este é só o container
             de rolagem, pra não duplicar a landmark "main" na árvore. */}
-        <div className="flex flex-1 flex-col overflow-y-auto">{children}</div>
+        <div className={`flex flex-1 flex-col overflow-y-auto ${reserveBottomSpace ? "pb-24" : ""}`}>
+          {children}
+        </div>
       </div>
 
       {open && (
