@@ -5,6 +5,8 @@ import { ensureMentee } from "@/lib/mentees";
 import { ensureJourneyState, etapaAgent } from "@/lib/agents/journey";
 import { AGENT_LABELS } from "@/lib/agents/agent-labels";
 import { StatTile } from "@/components/stat-tile";
+import { buildEtapaAtividades } from "@/lib/agents/activities";
+import { EtapaAtividadesList } from "./etapa-atividades";
 import {
   ARTIFACT_TIPOS,
   ARTIFACT_LABELS,
@@ -35,6 +37,25 @@ const STATUS_TONE = { rascunho_agente: "warning", validado_mentor: "good", rejei
 
 function formatDate(value: string) {
   return new Date(value).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+// proximo_encontro é `date` (YYYY-MM-DD, sem hora). Comparar em UTC evita o
+// off-by-one que apareceria convertendo pro fuso local.
+function diasAteEncontro(value: string): number {
+  const alvo = Date.UTC(
+    Number(value.slice(0, 4)),
+    Number(value.slice(5, 7)) - 1,
+    Number(value.slice(8, 10))
+  );
+  const hoje = new Date();
+  const inicioDeHoje = Date.UTC(hoje.getUTCFullYear(), hoje.getUTCMonth(), hoje.getUTCDate());
+  return Math.round((alvo - inicioDeHoje) / 86_400_000);
+}
+
+function encontroLabel(dias: number): string {
+  if (dias < 0) return "Encontro passou";
+  if (dias === 0) return "Hoje";
+  return `${dias} ${dias === 1 ? "dia" : "dias"}`;
 }
 
 export default async function JornadaPage() {
@@ -69,6 +90,26 @@ export default async function JornadaPage() {
     }
   }
 
+  // Quantas trocas o mentorado teve com cada copiloto — alimenta a
+  // atividade "Conversar com o X" do mapa geral. RLS já escopa.
+  const { data: msgRows } = await supabase
+    .from("messages")
+    .select("agent_key")
+    .not("conversation_id", "is", null);
+
+  const mensagensPorAgente = new Map<string, number>();
+  for (const row of (msgRows ?? []) as { agent_key: string | null }[]) {
+    if (!row.agent_key) continue;
+    mensagensPorAgente.set(row.agent_key, (mensagensPorAgente.get(row.agent_key) ?? 0) + 1);
+  }
+
+  const etapasAtividades = buildEtapaAtividades({
+    etapasLiberadas: journey.etapas_liberadas,
+    etapaAtual: journey.etapa_atual,
+    artifactByTipo: latestByTipo,
+    mensagensPorAgente,
+  });
+
   const validados = [...latestByTipo.values()].filter((a) => a.status === "validado_mentor").length;
   const daEtapa = ARTIFACT_TIPOS.filter((tipo) => ARTIFACT_ETAPA[tipo] === journey.etapa_atual);
   const daEtapaProntos = daEtapa.filter(
@@ -92,6 +133,14 @@ export default async function JornadaPage() {
               {AGENT_LABELS[etapaAgent(journey.etapa_atual)]}
             </span>
           </span>
+          {journey.proximo_encontro && (
+            <span>
+              Próximo encontro{" "}
+              <span className="font-medium text-foreground">
+                {formatDate(journey.proximo_encontro)}
+              </span>
+            </span>
+          )}
         </div>
         <p className="mt-3 text-sm text-muted-foreground">
           O avanço de etapa é conduzido pelo seu mentor, após cada encontro mensal.
@@ -101,7 +150,14 @@ export default async function JornadaPage() {
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
         <StatTile label="Artefatos validados" value={`${validados} de ${ARTIFACT_TIPOS.length}`} />
         <StatTile label="Etapas liberadas" value={`${journey.etapas_liberadas.length} de 6`} />
-        <StatTile label="Artefatos desta etapa" value={`${daEtapaProntos} de ${daEtapa.length}`} />
+        {journey.proximo_encontro ? (
+          <StatTile
+            label="Dias até o encontro"
+            value={encontroLabel(diasAteEncontro(journey.proximo_encontro))}
+          />
+        ) : (
+          <StatTile label="Artefatos desta etapa" value={`${daEtapaProntos} de ${daEtapa.length}`} />
+        )}
       </div>
 
       <Card>
@@ -152,6 +208,15 @@ export default async function JornadaPage() {
           </CardContent>
         </Card>
       )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Mapa geral de atividades</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <EtapaAtividadesList etapas={etapasAtividades} />
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
