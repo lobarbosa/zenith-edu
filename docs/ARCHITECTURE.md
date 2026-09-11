@@ -1006,3 +1006,61 @@ queixa concreta. Uma repaginada visual mais ampla (tipografia,
 espaçamento, hierarquia em cada tela individual) é trabalho maior e
 separado, se for isso que o usuário quis dizer com "UI/UX pobre" além da
 sidebar.
+
+## 10. Roteamento por etapa (auditoria do LLM Council)
+
+O roteador foi levado ao LLM Council com a pergunta de como deveria
+funcionar o roteamento entre os cinco copilotos. A rodada de revisão
+cruzada, com os revisores lendo o código, expôs três defeitos de uma
+raiz só: **o roteamento era decidido por copiloto, mas a liberação é por
+etapa**, e `executive` cobre duas (INFLUENCE e MOVE).
+
+1. **O gate vazava.** `isEtapaLiberada` usava `.some()` sobre as etapas
+   do agente — liberar INFLUENCE (mês 5) abria MOVE (mês 6) junto. O
+   artefato `executive_movement_plan` seguia travado em MOVE via
+   `ARTIFACT_ETAPA`, mas a *conversa* sobre movimentação não: o
+   mentorado discutia plano de saída antes de o mentor autorizar. Era o
+   único dos três que é risco de produto, não de engenharia — fere o
+   contrato "o agente diagnostica, o mentor prescreve".
+2. **A ponte mentia o mês.** `agentEtapa("executive")` devolvia sempre a
+   primeira etapa do agente, então uma pergunta de MOVE bloqueada era
+   anunciada como "abre no mês 5".
+3. **A falha era silenciosa.** O `catch` do roteador caía em `career`,
+   que está sempre liberado — sem ponte, sem sinal, indistinguível de um
+   acerto. Uma queda da API no mês 5 saía respondida pelo copiloto do
+   mês 1, com RAG filtrado em CAREER.
+
+**Correção**: o roteador classifica por etapa (`ROUTER_SYSTEM_PROMPT`
+lista as seis), o gate virou `etapas_liberadas.includes(etapaPedida)`, e
+o copiloto sai da etapa por `etapaAgent()`. `ensureJourneyState` passou
+a rodar antes do roteador, que recebe a etapa atual como destino de
+falha. `confianca` e `intencao_clara` deixaram de ser calculados e
+descartados: sem leitura clara do tema, a conversa fica na etapa atual.
+`isEtapaLiberada` e `agentEtapa` saíram — sem uso depois disso.
+
+**Descartado de propósito:**
+
+- **Deletar o roteador e colapsar em um agente só.** A tese era que a
+  arquitetura estilhaça o estado em cinco threads que não se enxergam.
+  É falso no código: `/api/chat` carrega o histórico filtrando apenas
+  `conversation_id is not null` — o contexto já atravessa os cinco
+  territórios, e o RAG já filtra por etapas liberadas. O que muda entre
+  copilotos é o system prompt e o pilar do RAG. Os cinco revisores
+  apontaram a mesma falha de premissa, independentemente.
+- **Restringir o roteador só às etapas liberadas.** Cortaria chamadas
+  Haiku, mas apagaria o sinal de que o mentorado perguntou fora da
+  etapa — que é exatamente o que gera a ponte e o que o mentor precisa
+  saber.
+- **Seletor de copiloto na interface e eval rotulado do classificador.**
+  Ambos defensáveis, ambos mais caros que os bugs, e nenhum ataca o que
+  estava quebrado. Revisitar depois do teste ao vivo, com dado real.
+
+**Ainda em aberto, sem código:** `agent_runs` registra custo por agente
+mas não distingue a etapa *pedida* da *efetiva* — sem isso não dá pra
+medir taxa de ponte nem acurácia do roteador. É uma coluna, quando
+houver conversa real pra medir.
+
+**O bloqueante permanece humano**: `value`, `leadership` e `executive`
+nunca trocaram uma mensagem com uma pessoa. O caso novo mais importante
+a exercitar é o mês 5 — o copiloto `executive` precisa recusar o assunto
+de MOVE e fazer a ponte, sendo ele mesmo o dono das duas etapas.

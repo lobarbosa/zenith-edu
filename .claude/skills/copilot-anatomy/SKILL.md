@@ -29,24 +29,35 @@ o prompt do sistema não pode ser recuperável pelo usuário.
 
 ## Como o roteamento decide
 
-1. `routeMessage` (Haiku, `router.ts`) classifica a mensagem contra as seis
-   últimas trocas e devolve `agent_key`. Falha de parse cai em `career`
-   com confiança baixa — nunca lança.
-2. `isEtapaLiberada(etapas_liberadas, agentKey)` decide se aquele
-   território está aberto para este mentorado.
-3. Liberado: responde o copiloto pedido. Não liberado: responde o copiloto
-   da **etapa atual**, com `territoryBridgeInstruction` anexada — ele
-   reconhece a pergunta, diz em que etapa aquilo abre e faz a ponte para
-   um trabalho concreto da etapa corrente. Recusa seca quebra a
-   experiência premium (SPEC-AGENTS.md §4).
-4. A conversa é contínua por território: `conversations` é reaproveitada
-   por `agent_key`.
-5. `AGENT_PILAR[agente]` filtra o RAG — o copiloto só recupera trecho do
-   próprio pilar.
+**O roteador classifica por ETAPA, não por copiloto.** Essa é a regra que
+mantém tudo consistente: a liberação é por etapa, e `executive` cobre
+duas (INFLUENCE e MOVE). Rotear por copiloto fazia o mês 5 abrir o mês 6
+junto. O copiloto sai da etapa por `etapaAgent()`.
 
-`executive` cobre duas etapas (INFLUENCE e MOVE); `isEtapaLiberada` abre
-se qualquer uma das duas liberou. Quem avança etapa é o mentor, via
-`POST /api/mentor/advance`, uma por vez na ordem de `ETAPA_ORDER`.
+1. `ensureJourneyState` **antes** do roteador — ele precisa da etapa atual
+   como destino de falha.
+2. `routeMessage` (Haiku, `router.ts`) classifica contra as seis últimas
+   trocas e devolve `{etapa, confianca, intencao_clara}`. Qualquer falha
+   (parse, enum inválido, API fora) cai na **etapa atual**, nunca numa
+   etapa fixa — cair em FIND tornava a falha indistinguível de um acerto,
+   porque FIND está sempre liberado.
+3. Confiança `baixa` ou `intencao_clara: false` → fica na etapa atual em
+   vez de chutar destino. É o caso de saudação e dúvida sobre o programa.
+4. `etapas_liberadas.includes(etapaPedida)` decide. Liberada: responde o
+   copiloto dono dela. Não liberada: responde o copiloto da **etapa
+   atual** com `territoryBridgeInstruction` — reconhece a pergunta, diz em
+   que mês aquilo abre, faz a ponte. Recusa seca quebra a experiência
+   premium (SPEC-AGENTS.md §4).
+5. A conversa é contínua por território: `conversations` reaproveitada por
+   `agent_key`, com `etapa` gravando a etapa efetiva.
+6. `AGENT_PILAR[agente]` filtra o RAG — só trecho do próprio pilar.
+
+Quem avança etapa é o mentor, via `POST /api/mentor/advance`, uma por vez
+na ordem de `ETAPA_ORDER`, cumulativamente.
+
+**Ao mexer aqui, cheque os dois lados do descasamento:** o roteador decide
+por etapa (`ETAPA_ORDER`), o prompt e o RAG por copiloto (`AGENT_PILAR`).
+`ARTIFACT_ETAPA` segue a mesma lógica do roteador, pela mesma razão.
 
 ## Regra travada
 
