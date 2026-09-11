@@ -29,7 +29,7 @@ export function ValidationQueue({ items }: { items: QueueItem[] }) {
       {items.map((item) => (
         <Link
           key={`${item.kind}-${item.id}`}
-          href={`/mentor/${item.menteeId}#${item.kind === "perfil" ? "perfil" : "artefatos"}`}
+          href={`/mentor/${item.menteeId}?tab=${item.kind === "perfil" ? "perfil" : "artefatos"}`}
           className="flex items-center justify-between gap-4 border-b border-border px-6 py-3 outline-none last:border-b-0 hover:bg-secondary/50 focus-visible:ring-2 focus-visible:ring-ring/50"
         >
           <div className="min-w-0">
