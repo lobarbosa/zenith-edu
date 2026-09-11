@@ -15,6 +15,7 @@ import {
   type Sinal,
 } from "@/lib/mentor-console";
 import { SinalActions } from "../sinal-actions";
+import { MENTEE_IDENTITY_COLUMNS } from "@/lib/mentees";
 
 const SINAL_TIPO_LABEL: Record<Sinal["tipo"], string> = {
   contradicao: "Contradição",
@@ -39,7 +40,7 @@ export default async function MentorConsolePage() {
 
   const { data: mentees } = await admin
     .from("mentees")
-    .select("id, email")
+    .select(MENTEE_IDENTITY_COLUMNS)
     .order("created_at", { ascending: true });
   const menteesLite = mentees ?? [];
 
@@ -78,7 +79,7 @@ export default async function MentorConsolePage() {
       )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatTile label="Mentorados" value={menteesLite.length} />
+        <StatTile label="Pessoas" value={menteesLite.length} />
         <StatTile label="Sinais não lidos" value={sinais.length} />
         <StatTile label="Custo total" value={`US$ ${custoTotal.toFixed(2)}`} />
       </div>
@@ -99,7 +100,7 @@ export default async function MentorConsolePage() {
                       <StatusPill tone={SEVERIDADE_TONE[sinal.severidade]}>{sinal.severidade}</StatusPill>
                       <span className="text-xs text-muted-foreground">{SINAL_TIPO_LABEL[sinal.tipo]}</span>
                     </div>
-                    <p className="mt-1 text-sm font-medium text-foreground">{sinal.menteeEmail}</p>
+                    <p className="mt-1 text-sm font-medium text-foreground">{sinal.menteeNome}</p>
                     <p className="text-sm text-muted-foreground">{sinal.descricao}</p>
                   </div>
                   <SinalActions flagId={sinal.id} />
@@ -118,7 +119,7 @@ export default async function MentorConsolePage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Mentorado</TableHead>
+                <TableHead>Pessoa</TableHead>
                 <TableHead>Etapa</TableHead>
                 <TableHead>Atividade</TableHead>
                 <TableHead>Artefatos</TableHead>
@@ -127,7 +128,7 @@ export default async function MentorConsolePage() {
             <TableBody>
               {pulsoDaTurma.map((p) => (
                 <TableRow key={p.menteeId}>
-                  <TableCell className="font-medium">{p.menteeEmail}</TableCell>
+                  <TableCell className="font-medium">{p.menteeNome}</TableCell>
                   <TableCell className="text-muted-foreground">{p.etapaAtual ?? "—"}</TableCell>
                   <TableCell className="text-muted-foreground">
                     {p.diasSemAtividade === null ? "sem atividade" : `${p.diasSemAtividade}d sem atividade`}
@@ -149,7 +150,7 @@ export default async function MentorConsolePage() {
             <TableBody>
               {custoPorMentee.map((c) => (
                 <TableRow key={c.menteeId}>
-                  <TableCell>{c.menteeEmail}</TableCell>
+                  <TableCell>{c.menteeNome}</TableCell>
                   <TableCell className="text-right font-mono text-muted-foreground">
                     US$ {c.custoUsd.toFixed(4)}
                   </TableCell>

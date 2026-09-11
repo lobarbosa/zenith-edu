@@ -1,14 +1,16 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { menteeDisplayName, type MenteeIdentity } from "@/lib/mentees";
 
 // SPEC-SOFTWARE.md §11: painel em /mentor, "prioridade é atenção, não
 // métrica". §13: alertas mínimos. Tudo aqui lê tabelas que já existem desde
 // a Fase 1 (0004_fase1_schema.sql) e já são gravadas por signals.ts,
 // /api/chat, /api/diagnostic e artifact-generation.ts — Fase 4 é só expor.
 
-export type MenteeLite = { id: string; email: string };
+export type MenteeLite = MenteeIdentity & { id: string };
 
-function extractEmail(mentees: { email: string }[] | { email: string } | null): string {
-  return (Array.isArray(mentees) ? mentees[0] : mentees)?.email ?? "—";
+function extractNome(mentees: MenteeIdentity[] | MenteeIdentity | null): string {
+  const row = Array.isArray(mentees) ? mentees[0] : mentees;
+  return row ? menteeDisplayName(row) : "—";
 }
 
 // Sinais ---------------------------------------------------------------
@@ -16,7 +18,7 @@ function extractEmail(mentees: { email: string }[] | { email: string } | null): 
 export type Sinal = {
   id: string;
   menteeId: string;
-  menteeEmail: string;
+  menteeNome: string;
   tipo: "contradicao" | "resistencia" | "risco" | "avanco" | "fora_de_escopo";
   severidade: "baixa" | "media" | "alta";
   descricao: string;
@@ -30,7 +32,7 @@ const SEVERIDADE_ORDER: Record<string, number> = { alta: 0, media: 1, baixa: 2 }
 export async function getSinaisNaoLidos(admin: SupabaseClient): Promise<Sinal[]> {
   const { data } = await admin
     .from("mentor_flags")
-    .select("id, mentee_id, tipo, severidade, descricao, criado_em, mentees(email)")
+    .select("id, mentee_id, tipo, severidade, descricao, criado_em, mentees(email, nome, sobrenome)")
     .eq("lido", false)
     .order("criado_em", { ascending: true });
 
@@ -38,7 +40,7 @@ export async function getSinaisNaoLidos(admin: SupabaseClient): Promise<Sinal[]>
     .map((row) => ({
       id: row.id as string,
       menteeId: row.mentee_id as string,
-      menteeEmail: extractEmail(row.mentees as never),
+      menteeNome: extractNome(row.mentees as never),
       tipo: row.tipo as Sinal["tipo"],
       severidade: row.severidade as Sinal["severidade"],
       descricao: row.descricao as string,
@@ -53,7 +55,7 @@ export async function getSinaisNaoLidos(admin: SupabaseClient): Promise<Sinal[]>
 
 export type PulsoMentee = {
   menteeId: string;
-  menteeEmail: string;
+  menteeNome: string;
   etapaAtual: string | null;
   diasSemAtividade: number | null;
   artefatosConcluidos: number;
@@ -111,7 +113,7 @@ export async function getPulsoDaTurma(
     const last = lastActivityByMentee.get(m.id);
     return {
       menteeId: m.id,
-      menteeEmail: m.email,
+      menteeNome: menteeDisplayName(m),
       etapaAtual: etapaByMentee.get(m.id) ?? null,
       diasSemAtividade: last ? Math.floor((now - last) / 86_400_000) : null,
       artefatosConcluidos: artifactCountByMentee.get(m.id) ?? 0,
@@ -121,7 +123,7 @@ export async function getPulsoDaTurma(
 
 // Custo -------------------------------------------------------------------
 
-export type CustoMentee = { menteeId: string; menteeEmail: string; custoUsd: number };
+export type CustoMentee = { menteeId: string; menteeNome: string; custoUsd: number };
 
 // Soma agent_runs (copiloto, artefato, perfil, roteador, sinais) +
 // diagnostic_sessions (diagnóstico) — "custo por mentorado" no
@@ -147,7 +149,7 @@ export async function getCustoPorMentee(
   for (const s of sessions ?? []) add(s.mentee_id, s.custo_usd);
 
   return mentees
-    .map((m) => ({ menteeId: m.id, menteeEmail: m.email, custoUsd: totals.get(m.id) ?? 0 }))
+    .map((m) => ({ menteeId: m.id, menteeNome: menteeDisplayName(m), custoUsd: totals.get(m.id) ?? 0 }))
     .sort((a, b) => b.custoUsd - a.custoUsd);
 }
 
@@ -187,19 +189,19 @@ export async function getAlertas(
     if (c.custoUsd > CUSTO_TETO_USD) {
       alertas.push({
         tipo: "custo_teto",
-        descricao: `${c.menteeEmail} passou do teto de US$ ${CUSTO_TETO_USD.toFixed(2)} — US$ ${c.custoUsd.toFixed(2)} até agora.`,
+        descricao: `${c.menteeNome} passou do teto de US$ ${CUSTO_TETO_USD.toFixed(2)} — US$ ${c.custoUsd.toFixed(2)} até agora.`,
       });
     }
   }
 
   const { data: lentos } = await admin
     .from("agent_runs")
-    .select("mentee_id, mentees(email)")
+    .select("mentee_id, mentees(email, nome, sobrenome)")
     .gt("latencia_ms", LATENCIA_ALERTA_MS)
     .order("criado_em", { ascending: false })
     .limit(20);
   const menteesComLatencia = new Set(
-    (lentos ?? []).map((r) => extractEmail(r.mentees as never))
+    (lentos ?? []).map((r) => extractNome(r.mentees as never))
   );
   if (menteesComLatencia.size > 0) {
     alertas.push({

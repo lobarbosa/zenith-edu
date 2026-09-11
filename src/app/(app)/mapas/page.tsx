@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { ensureMentee } from "@/lib/mentees";
+import { requireProgram } from "@/lib/mentee-access";
 import { ARTIFACT_LABELS, ARTIFACT_ETAPA, type ArtifactTipo } from "@/lib/agents/artifact-schemas";
 import { StatusPill } from "@/components/status-pill";
 import { ArtifactDetail } from "@/components/artifact-detail";
@@ -32,7 +32,7 @@ export default async function MapasPage({
     data: { user },
   } = await supabase.auth.getUser();
 
-  const mentee = await ensureMentee(supabase, user!);
+  const mentee = await requireProgram(supabase, user!);
 
   // Diferente de /jornada, que mostra só a etapa corrente: aqui o mentorado
   // vê o acervo inteiro — o Career Map do mês 1 continua alcançável no mês 5.

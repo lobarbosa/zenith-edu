@@ -8,9 +8,13 @@ import { StatTile } from "@/components/stat-tile";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { MenteeRoster, type RosterEntry } from "./mentee-roster";
 import { ValidationQueue, type QueueItem } from "./validation-queue";
+import { MENTEE_IDENTITY_COLUMNS, menteeDisplayName, type MenteeIdentity } from "@/lib/mentees";
 
-function extractMenteeEmail(mentees: { email: string }[] | { email: string } | null) {
-  return (Array.isArray(mentees) ? mentees[0] : mentees)?.email ?? "—";
+type EmbeddedMentee = MenteeIdentity | MenteeIdentity[] | null;
+
+function nomeDoMentee(mentees: EmbeddedMentee) {
+  const row = Array.isArray(mentees) ? mentees[0] : mentees;
+  return row ? menteeDisplayName(row) : "—";
 }
 
 export default async function MentorPage() {
@@ -36,17 +40,19 @@ export default async function MentorPage() {
   ] = await Promise.all([
     admin
       .from("executive_profiles")
-      .select("id, mentee_id, version, created_at, mentees(email)")
+      .select("id, mentee_id, version, created_at, mentees(email, nome, sobrenome)")
       .eq("status", "rascunho_agente")
       .order("created_at", { ascending: true }),
     admin
       .from("artifacts")
       // artifacts tem duas FKs pra mentees (mentee_id e validado_por) —
       // sem o hint, o PostgREST não sabe qual embutir e retorna 300.
-      .select("id, mentee_id, tipo, versao, criado_em, mentees!artifacts_mentee_id_fkey(email)")
+      .select(
+        "id, mentee_id, tipo, versao, criado_em, mentees!artifacts_mentee_id_fkey(email, nome, sobrenome)"
+      )
       .eq("status", "rascunho_agente")
       .order("criado_em", { ascending: true }),
-    admin.from("mentees").select("id, email").order("created_at", { ascending: true }),
+    admin.from("mentees").select(MENTEE_IDENTITY_COLUMNS).order("created_at", { ascending: true }),
     admin
       .from("diagnostic_sessions")
       .select("mentee_id, status, current_block, started_at")
@@ -84,7 +90,7 @@ export default async function MentorPage() {
       kind: "perfil" as const,
       id: item.id,
       menteeId: item.mentee_id,
-      menteeEmail: extractMenteeEmail(item.mentees),
+      menteeNome: nomeDoMentee(item.mentees),
       version: item.version,
       createdAt: item.created_at,
     })),
@@ -92,7 +98,7 @@ export default async function MentorPage() {
       kind: item.tipo as ArtifactTipo,
       id: item.id,
       menteeId: item.mentee_id,
-      menteeEmail: extractMenteeEmail(item.mentees),
+      menteeNome: nomeDoMentee(item.mentees),
       version: item.versao,
       createdAt: item.criado_em,
     })),
@@ -115,7 +121,7 @@ export default async function MentorPage() {
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        <StatTile label="Mentorados" value={roster.length} />
+        <StatTile label="Pessoas" value={roster.length} />
         <StatTile label="Pendências de validação" value={queue.length} />
       </div>
 

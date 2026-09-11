@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { ensureMentee } from "@/lib/mentees";
+import { requireProgram } from "@/lib/mentee-access";
 import { ensureJourneyState } from "@/lib/agents/journey";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -19,7 +19,7 @@ export default async function BibliotecaPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const mentee = await ensureMentee(supabase, user!);
+  const mentee = await requireProgram(supabase, user!);
   const admin = createAdminClient();
   const journey = await ensureJourneyState(admin, mentee.id);
 

@@ -20,6 +20,8 @@ import { Transcript } from "../transcript";
 import { AdvanceButton } from "./advance-button";
 import { EncontroForm } from "./encontro-form";
 import { MenteeTabs, isMenteeTab, type MenteeTab } from "./mentee-tabs";
+import { AcceptButton } from "./accept-button";
+import { menteeDisplayName, menteeSubtitle } from "@/lib/mentees";
 import { NotesForm } from "./notes-form";
 
 function formatBytes(value: number) {
@@ -53,6 +55,23 @@ const ARTIFACT_STATUS_TONE = {
 const STATUS_LABEL = { rascunho_agente: "Rascunho do agente", validado: "Validado", rejeitado: "Rejeitado" };
 const STATUS_TONE = { rascunho_agente: "warning", validado: "good", rejeitado: "bad" } as const;
 
+function anosDesde(ano: number | null) {
+  if (!ano) return null;
+  const anos = new Date().getFullYear() - ano;
+  return `${ano} · ${anos} ${anos === 1 ? "ano" : "anos"} de carreira`;
+}
+
+function formatNascimento(value: string | null) {
+  if (!value) return null;
+  const nascimento = new Date(`${value}T00:00:00Z`);
+  const hoje = new Date();
+  let idade = hoje.getUTCFullYear() - nascimento.getUTCFullYear();
+  const mesDia = hoje.getUTCMonth() * 100 + hoje.getUTCDate();
+  const mesDiaNascimento = nascimento.getUTCMonth() * 100 + nascimento.getUTCDate();
+  if (mesDia < mesDiaNascimento) idade -= 1;
+  return `${nascimento.toLocaleDateString("pt-BR", { timeZone: "UTC" })} · ${idade} anos`;
+}
+
 function formatDate(value: string | null) {
   if (!value) return "—";
   return new Date(value).toLocaleDateString("pt-BR", {
@@ -84,13 +103,28 @@ export default async function MenteeDetailPage(props: PageProps<"/mentor/[mentee
 
   const { data: mentee } = await admin
     .from("mentees")
-    .select("id, email, created_at")
+    .select(
+      "id, email, created_at, papel, aceito_em, nome, sobrenome, data_nascimento, cargo, empresa, linkedin, telefone, carreira_inicio_ano, cohorts(nome)"
+    )
     .eq("id", menteeId)
     .maybeSingle();
 
   if (!mentee) {
     notFound();
   }
+
+  const aceito = mentee.papel !== "prospect";
+  const turma = (Array.isArray(mentee.cohorts) ? mentee.cohorts[0] : mentee.cohorts)?.nome ?? null;
+
+  // Fica no painel lateral, não em mais uma seção empilhada: é consulta de
+  // um segundo antes do encontro, não conteúdo pra ler.
+  const IDENTIDADE_CAMPOS: { label: string; value: string | null }[] = [
+    { label: "E-mail", value: mentee.email },
+    { label: "Nascimento", value: formatNascimento(mentee.data_nascimento) },
+    { label: "Carreira desde", value: anosDesde(mentee.carreira_inicio_ano) },
+    { label: "LinkedIn", value: mentee.linkedin },
+    { label: "Telefone", value: mentee.telefone },
+  ];
 
   const { data: session } = await admin
     .from("diagnostic_sessions")
@@ -110,9 +144,14 @@ export default async function MenteeDetailPage(props: PageProps<"/mentor/[mentee
         .order("created_at", { ascending: true })
     : { data: [] };
 
-  const journey = await ensureJourneyState(admin, menteeId);
-  const journeyIndex = ETAPA_ORDER.indexOf(journey.etapa_atual as (typeof ETAPA_ORDER)[number]);
-  const nextEtapa = journeyIndex < ETAPA_ORDER.length - 1 ? ETAPA_ORDER[journeyIndex + 1] : null;
+  // Só cria o estado da jornada de quem já foi aceito: abrir a tela de um
+  // prospect não pode ser o que coloca ele em FIND.
+  const journey = aceito ? await ensureJourneyState(admin, menteeId) : null;
+  const journeyIndex = journey
+    ? ETAPA_ORDER.indexOf(journey.etapa_atual as (typeof ETAPA_ORDER)[number])
+    : -1;
+  const nextEtapa =
+    journey && journeyIndex < ETAPA_ORDER.length - 1 ? ETAPA_ORDER[journeyIndex + 1] : null;
 
   const [preparacao, { data: notes }] = await Promise.all([
     getPreparacaoEncontro(admin, menteeId),
@@ -176,27 +215,36 @@ export default async function MenteeDetailPage(props: PageProps<"/mentor/[mentee
         </Link>
 
         <div className="mt-4 flex items-start justify-between gap-4">
-          <div>
+          <div className="min-w-0">
             <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
-              Founding Cohort
+              {aceito ? (turma ?? "Sem turma") : "Prospect"}
             </p>
             <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-              {mentee.email}
+              {menteeDisplayName(mentee)}
             </h1>
+            {menteeSubtitle(mentee) && (
+              <p className="mt-1 text-sm text-foreground">{menteeSubtitle(mentee)}</p>
+            )}
             <p className="mt-1 text-xs text-muted-foreground">
-              mentorado desde {formatDate(mentee.created_at)} · {journey.etapa_atual}, mês{" "}
-              {journey.mes} de 6
+              {aceito
+                ? `no programa desde ${formatDate(mentee.aceito_em ?? mentee.created_at)} · ${journey!.etapa_atual}, mês ${journey!.mes} de 6`
+                : `cadastro em ${formatDate(mentee.created_at)} · ainda não aceito no programa`}
             </p>
           </div>
           <StatusPill tone={status.tone}>{status.label}</StatusPill>
         </div>
       </div>
 
-      <Card>
-        <CardContent>
-          <EtapaStepper etapaAtual={journey.etapa_atual} etapasLiberadas={journey.etapas_liberadas} />
-        </CardContent>
-      </Card>
+      {aceito && journey && (
+        <Card>
+          <CardContent>
+            <EtapaStepper
+              etapaAtual={journey.etapa_atual}
+              etapasLiberadas={journey.etapas_liberadas}
+            />
+          </CardContent>
+        </Card>
+      )}
 
       {/* Duas colunas: o que o mentor consulta (abas) à esquerda, o que ele
           opera (avançar etapa, marcar encontro, preparar) sempre à vista na
@@ -365,7 +413,7 @@ export default async function MenteeDetailPage(props: PageProps<"/mentor/[mentee
                       ))}
                     </ul>
                   )}
-                  <NotesForm menteeId={menteeId} etapaAtual={journey.etapa_atual} />
+                  <NotesForm menteeId={menteeId} etapaAtual={journey?.etapa_atual ?? null} />
                 </CardContent>
               </Card>
 
@@ -415,16 +463,42 @@ export default async function MenteeDetailPage(props: PageProps<"/mentor/[mentee
               <CardTitle>Conduzir</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div>
-                {nextEtapa ? (
-                  <AdvanceButton menteeId={menteeId} label={`Avançar para ${nextEtapa}`} />
-                ) : (
-                  <p className="text-xs text-muted-foreground">Já está na última etapa (MOVE).</p>
-                )}
-              </div>
-              <div className="border-t border-border pt-6">
-                <EncontroForm menteeId={menteeId} proximoEncontro={journey.proximo_encontro} />
-              </div>
+              {!aceito || !journey ? (
+                <AcceptButton menteeId={menteeId} />
+              ) : (
+                <>
+                  <div>
+                    {nextEtapa ? (
+                      <AdvanceButton menteeId={menteeId} label={`Avançar para ${nextEtapa}`} />
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        Já está na última etapa (MOVE).
+                      </p>
+                    )}
+                  </div>
+                  <div className="border-t border-border pt-6">
+                    <EncontroForm menteeId={menteeId} proximoEncontro={journey.proximo_encontro} />
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Quem é</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <dl className="space-y-3 text-sm">
+                {IDENTIDADE_CAMPOS.map(({ label, value }) => (
+                  <div key={label}>
+                    <dt className="text-xs uppercase tracking-widest text-muted-foreground">
+                      {label}
+                    </dt>
+                    <dd className="truncate text-foreground">{value ?? "—"}</dd>
+                  </div>
+                ))}
+              </dl>
             </CardContent>
           </Card>
 

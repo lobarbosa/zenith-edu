@@ -19,9 +19,11 @@ export default function PrivacidadePage() {
             Quais dados coletamos
           </h2>
           <p>
-            E-mail de acesso; as mensagens trocadas com o agente de diagnóstico e com os
-            copilotos; o Perfil Executivo e os artefatos gerados a partir dessas conversas; e
-            metadados de progresso na jornada do programa.
+            Dados de identificação que você informa no início do diagnóstico — nome,
+            sobrenome, cargo e, se quiser preencher, data de nascimento, empresa, LinkedIn,
+            telefone e ano de início da carreira; e-mail de acesso; as mensagens trocadas com o
+            agente de diagnóstico e com os copilotos; o Perfil Executivo e os artefatos gerados
+            a partir dessas conversas; e metadados de progresso na jornada do programa.
           </p>
         </section>
 

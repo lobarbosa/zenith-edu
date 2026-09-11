@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { isMentor } from "@/lib/mentor";
+import { isInProgram } from "@/lib/mentee-access";
 import { AppShell } from "./app-shell";
 import { CopilotoWidget } from "@/components/copiloto-widget";
 import type { NavItem } from "./app-sidebar";
@@ -11,12 +12,15 @@ const MENTOR_NAV: NavItem[] = [
 ];
 
 async function menteeNav(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
-  const items: NavItem[] = [{ href: "/jornada", label: "Jornada" }];
+  // Só pergunta pelo estado — nunca cria a linha de mentee aqui (layout
+  // roda em toda navegação, não é lugar pra efeito colateral de escrita).
+  // Sem linha ainda = diagnóstico não começou.
+  const { data: mentee } = await supabase
+    .from("mentees")
+    .select("id, papel")
+    .eq("user_id", userId)
+    .maybeSingle();
 
-  // Só pergunta pelo estado do diagnóstico — nunca cria a linha de mentee
-  // aqui (layout roda em toda navegação, não é lugar pra efeito colateral
-  // de escrita). Sem linha ainda = diagnóstico não começou.
-  const { data: mentee } = await supabase.from("mentees").select("id").eq("user_id", userId).maybeSingle();
   const diagnosticoConcluido = mentee
     ? (
         await supabase
@@ -28,6 +32,15 @@ async function menteeNav(supabase: Awaited<ReturnType<typeof createClient>>, use
           .maybeSingle()
       ).data?.status === "concluida"
     : false;
+
+  // Prospect: só o diagnóstico. Jornada, Mapas e Biblioteca são do
+  // programa e as páginas recusam o acesso (requireProgram) — o menu não
+  // pode oferecer porta que não abre.
+  if (!mentee || !isInProgram(mentee)) {
+    return diagnosticoConcluido ? [] : [{ href: "/diagnostico", label: "Diagnóstico" }];
+  }
+
+  const items: NavItem[] = [{ href: "/jornada", label: "Jornada" }];
 
   if (!diagnosticoConcluido) {
     items.push({ href: "/diagnostico", label: "Diagnóstico" });
@@ -52,21 +65,25 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   const mentor = isMentor(user.email);
   const navItems = mentor ? MENTOR_NAV : await menteeNav(supabase, user.id);
+  // O copiloto pertence ao programa: prospect não vê o widget, do mesmo
+  // jeito que /api/chat recusa a conversa.
+  const inProgram =
+    !mentor && navItems.some((item) => item.href === "/jornada");
 
   return (
     <>
       <AppShell
         navItems={navItems}
-        roleLabel={mentor ? "Mentor" : "Portal do mentorado"}
+        roleLabel={mentor ? "Mentor" : inProgram ? "Portal do mentorado" : "Executive Diagnostic"}
         userEmail={user.email ?? ""}
-        reserveBottomSpace={!mentor}
+        reserveBottomSpace={inProgram}
       >
         {children}
       </AppShell>
       {/* O copiloto acompanha o mentorado em qualquer tela — é assistente,
           não destino de navegação. A tela /copiloto continua existindo: o
           widget é o caminho curto, ela é a conversa em tela cheia. */}
-      {!mentor && <CopilotoWidget />}
+      {inProgram && <CopilotoWidget />}
     </>
   );
 }

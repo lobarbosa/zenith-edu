@@ -3,6 +3,7 @@ import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { isMentor } from "@/lib/mentor";
 import { ensureMentee } from "@/lib/mentees";
+import { isInProgram } from "@/lib/mentee-access";
 import { menteeStatus } from "@/lib/mentee-status";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -63,6 +64,18 @@ async function menteeCta(supabase: SupabaseClient, user: User) {
   const status = menteeStatus(session, profile);
 
   if (profile?.status === "validado") {
+    // Perfil validado não é o mesmo que aceito: o mentor ainda decide se
+    // esta pessoa entra na turma. Mandar pra /jornada aqui daria porta
+    // fechada, porque a página recusa quem não foi aceito.
+    if (!isInProgram(mentee)) {
+      return (
+        <p className="text-sm text-muted-foreground">
+          Seu Perfil Executivo está pronto e validado. Seu mentor vai retomar contato para
+          falar sobre a entrada no programa.
+        </p>
+      );
+    }
+
     return (
       <Button asChild>
         <Link href="/jornada">Ir para a Jornada</Link>

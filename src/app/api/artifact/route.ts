@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ensureMentee } from "@/lib/mentees";
+import { isInProgram } from "@/lib/mentee-access";
 import { ARTIFACT_TIPOS, ARTIFACT_ETAPA, type ArtifactTipo } from "@/lib/agents/artifact-schemas";
 import { generateArtifact } from "@/lib/agents/artifact-generation";
 import { ensureJourneyState } from "@/lib/agents/journey";
@@ -23,6 +24,11 @@ export async function POST(request: Request) {
   }
 
   const mentee = await ensureMentee(supabase, user);
+
+  if (!isInProgram(mentee)) {
+    return new Response("Disponível depois do aceite no programa.", { status: 403 });
+  }
+
   const admin = createAdminClient();
 
   const journey = await ensureJourneyState(admin, mentee.id);

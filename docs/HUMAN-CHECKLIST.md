@@ -169,3 +169,42 @@ malformado, porque o valor antigo já vazou pra fora do Vercel.
 
 Versão interativa (com checkbox e progresso), ainda refletindo o estado
 antes desta validação: `https://claude.ai/code/artifact/026d902f-b850-421e-8b27-049e716b9d52`.
+
+## 5. Bloqueante — migration `0007` antes de mesclar pra `main`
+
+A entrega "identificação do mentorado + aceite no programa" adiciona
+colunas em `mentees`. O código lê essas colunas. **Se a branch for
+mesclada pra `main` antes da migration rodar, a produção quebra** —
+`/mentor`, `/mentor/console`, `/diagnostico` e `/conta` passam a
+consultar coluna que não existe.
+
+Ordem obrigatória:
+
+1. [ ] Rodar `supabase/migrations/0007_perfil_mentee_e_aceite.sql` no SQL
+       Editor do projeto (Dashboard → SQL Editor → colar → Run).
+2. [ ] Conferir: `select nome, papel, cohort_id from mentees limit 5;`
+       deve responder sem erro, com as cinco linhas existentes ainda em
+       `papel = 'mentorado'`.
+3. [ ] Conferir: `select nome, status from cohorts;` deve trazer a
+       Founding Cohort.
+4. [ ] Só então abrir e mesclar o PR pra `main`.
+
+Depois de mesclado, o que mudou para quem usa:
+
+- **Cadastro novo nasce `prospect`.** Faz o diagnóstico e nada mais até
+  você clicar "Aceitar no programa" em `/mentor/<id>`. O botão só aparece
+  depois que você valida o Perfil Executivo.
+- **As contas de teste que já existem continuam como `mentorado`** — nada
+  a refazer nelas.
+- **O diagnóstico agora começa com um formulário curto** (nome, sobrenome
+  e cargo obrigatórios). Quem já concluiu os oito blocos não é devolvido
+  pro começo; completa os dados em `/conta`.
+
+### Pendências que isso abre
+
+- [ ] **Revisão jurídica da `/privacidade`** — a página agora lista data
+      de nascimento e telefone entre os dados coletados. A revisão por
+      advogado já estava pendente; este item entra nela.
+- [ ] **Decidir se a data de nascimento é mesmo necessária.** Foi pedida
+      explicitamente, mas é o dado mais sensível da lista e o único sem
+      uso operacional claro hoje. É opcional no formulário.
