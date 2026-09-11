@@ -47,7 +47,18 @@ async function streamReply(
   }
 }
 
-export function CopilotoChat({ initialMessages }: { initialMessages: Message[] }) {
+// "page" é a tela /copiloto; "panel" é o mesmo chat dentro do widget
+// flutuante (SPEC visual: o copiloto acompanha o mentorado em qualquer
+// tela). Só o enquadramento muda — streaming, anexos e erro são um código
+// só, pra não existirem duas conversas que divergem.
+export function CopilotoChat({
+  initialMessages,
+  variant = "page",
+}: {
+  initialMessages: Message[];
+  variant?: "page" | "panel";
+}) {
+  const isPanel = variant === "panel";
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
@@ -146,14 +157,22 @@ export function CopilotoChat({ initialMessages }: { initialMessages: Message[] }
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-6">
-      <header className="py-10">
-        <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
-          Copiloto
-        </p>
-      </header>
+    <div
+      className={
+        isPanel
+          ? "flex min-h-0 w-full flex-1 flex-col px-4"
+          : "mx-auto flex w-full max-w-2xl flex-1 flex-col px-6"
+      }
+    >
+      {!isPanel && (
+        <header className="py-10">
+          <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
+            Copiloto
+          </p>
+        </header>
+      )}
 
-      <div className="flex-1 space-y-8 pb-8">
+      <div className={isPanel ? "min-h-0 flex-1 space-y-5 overflow-y-auto py-4" : "flex-1 space-y-8 pb-8"}>
         {messages.length === 0 && (
           <p className="text-sm text-muted-foreground">
             Traga uma situação concreta — a próxima cadeira que você mira, uma competência que
@@ -169,7 +188,11 @@ export function CopilotoChat({ initialMessages }: { initialMessages: Message[] }
                 ? "Você"
                 : (message.agentKey && AGENT_LABELS[message.agentKey]) || "Copiloto"}
             </p>
-            <p className="whitespace-pre-wrap text-base leading-relaxed text-foreground">
+            <p
+              className={`whitespace-pre-wrap leading-relaxed text-foreground ${
+                isPanel ? "text-sm" : "text-base"
+              }`}
+            >
               {message.content || (isStreaming && index === messages.length - 1 ? "..." : "")}
             </p>
           </div>
@@ -189,7 +212,11 @@ export function CopilotoChat({ initialMessages }: { initialMessages: Message[] }
           event.preventDefault();
           submitMessage();
         }}
-        className="sticky bottom-0 space-y-3 border-t border-border bg-background py-6"
+        className={
+          isPanel
+            ? "flex-none space-y-2 border-t border-border bg-background py-3"
+            : "sticky bottom-0 space-y-3 border-t border-border bg-background py-6"
+        }
       >
         {pendingAttachments.length > 0 && (
           <ul className="flex flex-wrap gap-2">
@@ -225,7 +252,7 @@ export function CopilotoChat({ initialMessages }: { initialMessages: Message[] }
               }
             }}
             disabled={isStreaming}
-            rows={2}
+            rows={isPanel ? 1 : 2}
             placeholder="Escreva aqui..."
             aria-label="Sua mensagem para o copiloto"
             className="flex-1 resize-none rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/50 disabled:opacity-50"
@@ -244,12 +271,13 @@ export function CopilotoChat({ initialMessages }: { initialMessages: Message[] }
           <Button
             type="button"
             variant="outline"
+            size={isPanel ? "sm" : "default"}
             disabled={isStreaming || isUploading || pendingAttachments.length >= MAX_FILES_PER_MESSAGE}
             onClick={() => fileInputRef.current?.click()}
           >
             {isUploading ? "Enviando..." : "Anexar"}
           </Button>
-          <Button type="submit" disabled={isStreaming || !input.trim()}>
+          <Button type="submit" size={isPanel ? "sm" : "default"} disabled={isStreaming || !input.trim()}>
             Enviar
           </Button>
         </div>

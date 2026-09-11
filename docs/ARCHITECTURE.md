@@ -1064,3 +1064,55 @@ houver conversa real pra medir.
 nunca trocaram uma mensagem com uma pessoa. O caso novo mais importante
 a exercitar é o mês 5 — o copiloto `executive` precisa recusar o assunto
 de MOVE e fazer a ponte, sendo ele mesmo o dono das duas etapas.
+
+## 11. Copiloto flutuante — divergência do artefato, corrigida
+
+O artefato validado ("Portal T-Shaped Executive") define o copiloto como
+**widget flutuante**: um FAB de 52px fixo no canto inferior direito que
+abre um painel de 380px, disponível em qualquer tela do mentorado. O
+próprio artefato é explícito no comentário do componente: *"o copiloto não
+é uma 'página' separada, é um assistente disponível em qualquer tela"*.
+
+A implementação divergiu disso. `/copiloto` nasceu como tela na Fase 1
+(commit `4055518`, "as 3 telas"), antes de a sidebar existir; quando a
+navegação persistente entrou (`b8351da`), o Copiloto virou item de menu — e
+o desvio ficou consolidado. **O FAB nunca chegou a ser escrito em código**
+(confirmado com `git log -S`): não foi removido em nenhum momento, apenas
+nunca implementado.
+
+**Correção, complementar por decisão explícita do usuário** — nada foi
+apagado:
+
+- `/copiloto` continua existindo, com a conversa em tela cheia.
+- O item "Copiloto" continua na sidebar.
+- `CopilotoWidget` (`src/components/copiloto-widget.tsx`) foi adicionado e
+  montado no layout `(app)`, só para mentorado — o mentor não tem copiloto.
+
+Para não existirem duas conversas que divergem, o widget **reusa o mesmo
+`CopilotoChat`** da página, via uma prop `variant` que muda só o
+enquadramento (container, tamanho de fonte, densidade do formulário).
+Streaming, anexos e tratamento de erro continuam em um código só.
+
+O histórico é carregado na primeira abertura do painel, pelo client do
+Supabase (RLS já escopa as linhas) — não no layout, que roda em toda
+navegação e não pode pagar essa query.
+
+**Acessibilidade** (consultada em `ui-ux-pro-max` antes de escrever):
+
+- O FAB tem 52px, acima do alvo mínimo; `aria-label` e `aria-expanded`.
+- O painel é `role="dialog"` com nome acessível, fecha por Escape e devolve
+  o foco ao FAB.
+- `z-40` fica **abaixo** do menu off-canvas (`z-50`): com o menu aberto o
+  widget não disputa o toque nem cobre o foco dentro do drawer.
+- `AppShell` reserva espaço no fim do conteúdo (`reserveBottomSpace`)
+  quando o widget está montado. Sem isso o FAB cobriria o último elemento
+  da página — incluindo o foco do teclado, o que viola o critério WCAG 2.2
+  AA "Focus Not Obscured (Minimum)", que cita explicitamente chat widgets.
+
+Medido com Playwright contra o componente real em 320, 375, 768 e 1280 de
+largura: FAB 52×52 sempre dentro da viewport, painel sempre cabendo
+(327×527 em 375px, 380×600 no tablet), Escape fechando em todos.
+
+**Lição de processo**: a divergência passou por várias entregas sem ser
+notada porque nenhuma delas comparou a tela construída com o artefato lado
+a lado — o artefato foi consultado na origem e não revisitado depois.
