@@ -1278,3 +1278,29 @@ menos animação.
 Efeito colateral: a query da fila deixou de trazer `perfil` e `conteudo`
 (os JSON grandes) e passou a trazer só o cabeçalho mais `mentee_id`. A
 tela que lista não precisa do conteúdo que só a tela de detalhe mostra.
+
+## 16. Detalhe do mentorado: abas e coluna de operação
+
+A tela tinha **sete seções empilhadas** — jornada, preparação, diagnóstico
+com a transcrição inteira, todas as versões do perfil, todas as versões de
+todos os artefatos, anexos e notas. Medido: **3700px, quatro telas de
+rolagem** para um mentorado com um único perfil.
+
+O artefato validado já resolvia isso e a implementação não tinha seguido:
+`MenteeDetailScreen` usa uma `tabbar` e um grid `1fr 300px`.
+
+**Abas** (`mentee-tabs.tsx`): Perfil Executivo, Diagnóstico, Artefatos,
+Notas e anexos — por **query param**, não estado de cliente. A página
+continua server component, cada aba tem URL própria, o voltar do navegador
+funciona, e a fila de validação em `/mentor` aponta direto para a aba certa
+(`?tab=perfil`), o que substituiu as âncoras de §15. Cada aba mostra a
+contagem do que tem dentro.
+
+**Coluna de 300px**: separa o que o mentor *consulta* do que ele *opera*.
+Avançar etapa e marcar o próximo encontro ficam sempre à vista, em vez de
+exigir rolagem até a seção certa; a preparação de encontro fica ao lado do
+conteúdo que ela resume.
+
+Resultado medido nas quatro abas: de 3700px para **863–1503px**, uma a
+1,7 telas. A aba de artefatos passou a esconder os tipos sem nenhuma
+versão gerada, em vez de listar oito "Ainda não gerado".
