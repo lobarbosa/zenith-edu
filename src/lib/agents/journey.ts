@@ -43,6 +43,7 @@ export type JourneyState = {
   etapa_atual: string;
   mes: number;
   etapas_liberadas: string[];
+  proximo_encontro: string | null;
 };
 
 // Nenhuma policy de insert pra mentorado (avanço de etapa é ação do mentor
@@ -56,7 +57,7 @@ export async function ensureJourneyState(
 ): Promise<JourneyState> {
   const { data: existing } = await admin
     .from("journey_state")
-    .select("id, etapa_atual, mes, etapas_liberadas")
+    .select("id, etapa_atual, mes, etapas_liberadas, proximo_encontro")
     .eq("mentee_id", menteeId)
     .maybeSingle();
 
@@ -65,7 +66,7 @@ export async function ensureJourneyState(
   const { data: created, error } = await admin
     .from("journey_state")
     .insert({ mentee_id: menteeId })
-    .select("id, etapa_atual, mes, etapas_liberadas")
+    .select("id, etapa_atual, mes, etapas_liberadas, proximo_encontro")
     .single();
 
   if (error) throw error;

@@ -18,6 +18,7 @@ import { ProfileDetail } from "../profile-detail";
 import { ReviewActions } from "../review-actions";
 import { Transcript } from "../transcript";
 import { AdvanceButton } from "./advance-button";
+import { EncontroForm } from "./encontro-form";
 import { NotesForm } from "./notes-form";
 
 function formatBytes(value: number) {
@@ -200,6 +201,9 @@ export default async function MenteeDetailPage(props: PageProps<"/mentor/[mentee
             ) : (
               <p className="text-xs text-muted-foreground">Já está na última etapa (MOVE).</p>
             )}
+          </div>
+          <div className="mt-6 border-t border-border pt-6">
+            <EncontroForm menteeId={menteeId} proximoEncontro={journey.proximo_encontro} />
           </div>
         </CardContent>
       </Card>

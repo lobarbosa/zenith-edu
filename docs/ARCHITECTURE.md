@@ -1168,3 +1168,53 @@ carregaram em HTTP 200 com o conteúdo esperado.
 
 **Lição registrada em §11 e que vale repetir**: o artefato precisa ser
 revisitado a cada entrega de UI, não só consultado na origem da tela.
+
+## 13. As duas pendências do artefato, resolvidas
+
+### Mapa de atividades por etapa — derivado, sem tabela
+
+O artefato mostra atividades concretas por etapa, e a leitura inicial foi
+que isso exigiria uma tabela nova. Olhando o conteúdo delas ("Consolidar o
+Career Map", "Validar o Next Chair Map com o mentor"), são **deriváveis do
+que já existe**: a conversa com o copiloto da etapa e o estado de cada
+artefato dela.
+
+`src/lib/agents/activities.ts` monta, para cada etapa:
+
+- "Conversar com o \<copiloto\>" — concluída quando há mensagens com aquele
+  `agent_key`;
+- uma entrada por artefato da etapa — pendente (não existe), em andamento
+  (rascunho ou rejeitado) ou concluída (validado pelo mentor).
+
+Uma tabela de atividades exigiria alguém alimentando à mão e nasceria
+vazia em produção; derivada, ela reflete progresso real desde a primeira
+mensagem. A expansão usa `<details>`/`<summary>` nativo — acessível por
+teclado, sem client component.
+
+**Achado ao validar**: não existe *nenhuma* mensagem de copiloto no banco
+(`conversation_id is not null` retorna vazio), mas existem artefatos. São
+órfãos — resíduo do teste de Fase 1, cuja limpeza apagou as mensagens e
+deixou os artefatos. A tela expõe isso corretamente, marcando "Conversar
+com o copiloto" como pendente mesmo havendo artefato gerado.
+
+### Próximo encontro — `0006_proximo_encontro.sql`
+
+`journey_state.proximo_encontro date`, nullable. Fica em `journey_state` e
+não em `cohorts` porque o encontro do programa é individual: cada
+mentorado tem sua agenda com o mentor, e a turma só compartilha o
+calendário de etapas.
+
+Quem escreve é o mentor, em `/mentor/[menteeId]`, via
+`POST /api/mentor/encontro` — `service_role` depois de `isMentor()`, mesma
+regra do avanço de etapa (`journey_state` não tem policy de escrita para
+mentorado). String vazia limpa a data: desmarcar é ação legítima.
+
+Na Jornada a data aparece no header e o terceiro stat tile passa a ser
+"Dias até o encontro" — mais acionável que "artefatos desta etapa", que já
+aparece no mapa de atividades logo abaixo. Sem data marcada, o tile volta
+ao que era. O cálculo de dias é feito em UTC: `date` não tem hora, e
+converter pro fuso local produziria off-by-one.
+
+Validado ponta a ponta com duas sessões reais no browser: o mentor marcou
+a data em `/mentor/[menteeId]`, e a Jornada do mentorado passou a mostrar
+"Próximo encontro 23 de set. de 2026" e "12 dias".
