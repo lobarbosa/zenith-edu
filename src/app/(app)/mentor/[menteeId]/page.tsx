@@ -268,7 +268,7 @@ export default async function MenteeDetailPage(props: PageProps<"/mentor/[mentee
         </CardContent>
       </Card>
 
-      <Card>
+      <Card id="perfil" className="scroll-mt-6">
         <CardHeader>
           <CardTitle>Perfil Executivo</CardTitle>
         </CardHeader>
@@ -314,7 +314,7 @@ export default async function MenteeDetailPage(props: PageProps<"/mentor/[mentee
         </CardContent>
       </Card>
 
-      <Card>
+      <Card id="artefatos" className="scroll-mt-6">
         <CardHeader>
           <CardTitle>Artefatos</CardTitle>
         </CardHeader>

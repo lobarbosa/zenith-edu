@@ -1252,3 +1252,29 @@ Liderança" não cabe numa das seis colunas.
 inteiro expandido para cards resumidos em duas colunas, com link para
 `/mapas` — que é a tela dedicada ao detalhe desde §12. Repetir o conteúdo
 completo na Jornada fazia a tela crescer sem fim e duplicava a leitura.
+
+## 15. Fila de validação: lista, não acordeão aberto
+
+`/mentor` mostrava cada pendência com o conteúdo **inteiro** expandido —
+perfil ou artefato completo, um embaixo do outro. Com mais de um item a
+tela virava um rolo ilegível, e o mentor precisava rolar por tudo para
+achar o que ia revisar.
+
+A fila passou a seguir o mesmo padrão do roster logo acima dela: linha
+compacta (item, versão, mentorado, data, pill), item inteiro como alvo de
+clique, detalhe na tela do mentorado. `ValidationQueue` espelha
+`MenteeRoster` de propósito — duas listas na mesma tela com
+comportamentos diferentes era o que tornava a leitura confusa.
+
+O destino não precisou ser criado: `/mentor/[menteeId]` já tinha o detalhe
+e as ações de validar e rejeitar, tanto para perfil quanto para artefato.
+As seções ganharam `id="perfil"` e `id="artefatos"`, e o link da fila
+aponta para a âncora certa — o mentor cai direto no que ia revisar.
+
+A rolagem suave fica no container do `AppShell`, não no `html` (é ele quem
+tem o `overflow-y-auto`), e sob `motion-safe:` para respeitar quem pediu
+menos animação.
+
+Efeito colateral: a query da fila deixou de trazer `perfil` e `conteudo`
+(os JSON grandes) e passou a trazer só o cabeçalho mais `mentee_id`. A
+tela que lista não precisa do conteúdo que só a tela de detalhe mostra.

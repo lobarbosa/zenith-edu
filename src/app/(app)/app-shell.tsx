@@ -77,7 +77,14 @@ export function AppShell({
 
         {/* Cada página já traz seu próprio <main> — este é só o container
             de rolagem, pra não duplicar a landmark "main" na árvore. */}
-        <div className={`flex flex-1 flex-col overflow-y-auto ${reserveBottomSpace ? "pb-24" : ""}`}>
+        {/* motion-safe: âncoras (a fila de validação aponta pra uma seção do
+            mentorado) rolam suave, sem forçar movimento em quem pediu menos
+            animação. O scroll vive aqui, não no html — por isso a classe. */}
+        <div
+          className={`flex flex-1 flex-col overflow-y-auto motion-safe:scroll-smooth ${
+            reserveBottomSpace ? "pb-24" : ""
+          }`}
+        >
           {children}
         </div>
       </div>
