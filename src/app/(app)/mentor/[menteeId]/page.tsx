@@ -58,7 +58,7 @@ const STATUS_TONE = { rascunho_agente: "warning", validado: "good", rejeitado: "
 function anosDesde(ano: number | null) {
   if (!ano) return null;
   const anos = new Date().getFullYear() - ano;
-  return `${ano} · ${anos} ${anos === 1 ? "ano" : "anos"} de carreira`;
+  return `${ano} · ${anos} ${anos === 1 ? "ano" : "anos"}`;
 }
 
 function formatNascimento(value: string | null) {
@@ -118,7 +118,7 @@ export default async function MenteeDetailPage(props: PageProps<"/mentor/[mentee
 
   // Fica no painel lateral, não em mais uma seção empilhada: é consulta de
   // um segundo antes do encontro, não conteúdo pra ler.
-  const IDENTIDADE_CAMPOS: { label: string; value: string | null }[] = [
+  const identificacao: { label: string; value: string | null }[] = [
     { label: "E-mail", value: mentee.email },
     { label: "Nascimento", value: formatNascimento(mentee.data_nascimento) },
     { label: "Carreira desde", value: anosDesde(mentee.carreira_inicio_ano) },
@@ -490,7 +490,7 @@ export default async function MenteeDetailPage(props: PageProps<"/mentor/[mentee
             </CardHeader>
             <CardContent>
               <dl className="space-y-3 text-sm">
-                {IDENTIDADE_CAMPOS.map(({ label, value }) => (
+                {identificacao.map(({ label, value }) => (
                   <div key={label}>
                     <dt className="text-xs uppercase tracking-widest text-muted-foreground">
                       {label}
