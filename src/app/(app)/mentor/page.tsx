@@ -3,23 +3,11 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isMentor } from "@/lib/mentor";
-import { ExecutiveProfileSchema } from "@/lib/agents/executive-profile-schema";
-import { ARTIFACT_LABELS, type ArtifactTipo } from "@/lib/agents/artifact-schemas";
-import { ArtifactDetail } from "@/components/artifact-detail";
+import { type ArtifactTipo } from "@/lib/agents/artifact-schemas";
 import { StatTile } from "@/components/stat-tile";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { ProfileDetail } from "./profile-detail";
-import { ReviewActions } from "./review-actions";
 import { MenteeRoster, type RosterEntry } from "./mentee-roster";
-
-type PendingItem = {
-  kind: "perfil" | ArtifactTipo;
-  id: string;
-  menteeEmail: string;
-  version: number;
-  createdAt: string;
-  payload: unknown;
-};
+import { ValidationQueue, type QueueItem } from "./validation-queue";
 
 function extractMenteeEmail(mentees: { email: string }[] | { email: string } | null) {
   return (Array.isArray(mentees) ? mentees[0] : mentees)?.email ?? "—";
@@ -48,14 +36,14 @@ export default async function MentorPage() {
   ] = await Promise.all([
     admin
       .from("executive_profiles")
-      .select("id, version, perfil, created_at, mentees(email)")
+      .select("id, mentee_id, version, created_at, mentees(email)")
       .eq("status", "rascunho_agente")
       .order("created_at", { ascending: true }),
     admin
       .from("artifacts")
       // artifacts tem duas FKs pra mentees (mentee_id e validado_por) —
       // sem o hint, o PostgREST não sabe qual embutir e retorna 300.
-      .select("id, tipo, versao, conteudo, criado_em, mentees!artifacts_mentee_id_fkey(email)")
+      .select("id, mentee_id, tipo, versao, criado_em, mentees!artifacts_mentee_id_fkey(email)")
       .eq("status", "rascunho_agente")
       .order("criado_em", { ascending: true }),
     admin.from("mentees").select("id, email").order("created_at", { ascending: true }),
@@ -88,24 +76,25 @@ export default async function MentorPage() {
   // Sinais, pulso e custo migraram para /mentor/console (visão de turma) —
   // aqui fica a fila de validação, que é o fluxo de trabalho do mentor.
 
-  // Fila heterogênea (perfil + 3 tipos de artefato), mais antigo primeiro —
-  // mesma ordem que já valia só pra perfis.
-  const queue: PendingItem[] = [
+  // Fila heterogênea (perfil + tipos de artefato), mais antigo primeiro.
+  // Só o cabeçalho de cada item: o conteúdo para revisar abre na tela do
+  // mentorado, que já tem o detalhe e as ações de validar e rejeitar.
+  const queue: QueueItem[] = [
     ...(pendingProfiles ?? []).map((item) => ({
       kind: "perfil" as const,
       id: item.id,
+      menteeId: item.mentee_id,
       menteeEmail: extractMenteeEmail(item.mentees),
       version: item.version,
       createdAt: item.created_at,
-      payload: item.perfil,
     })),
     ...(pendingArtifacts ?? []).map((item) => ({
       kind: item.tipo as ArtifactTipo,
       id: item.id,
+      menteeId: item.mentee_id,
       menteeEmail: extractMenteeEmail(item.mentees),
       version: item.versao,
       createdAt: item.criado_em,
-      payload: item.conteudo,
     })),
   ].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 
@@ -136,57 +125,16 @@ export default async function MentorPage() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
+      {/* gap-3 em vez do gap-6 padrão do Card: com a lista encostando nas
+          bordas, o vão do título ficava grande demais. */}
+      <Card className="gap-3 py-0">
+        <CardHeader className="px-6 pt-5">
           <CardTitle>Pendências de validação</CardTitle>
         </CardHeader>
-        <CardContent>
-          {queue.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nada pendente no momento.</p>
-          ) : (
-            <div className="space-y-10">
-              {queue.map((item) => (
-                <section
-                  key={`${item.kind}-${item.id}`}
-                  className="space-y-4 border-t border-border pt-8 first:border-t-0 first:pt-0"
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">{item.menteeEmail}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {item.kind === "perfil" ? "Perfil Executivo" : ARTIFACT_LABELS[item.kind]} ·
-                        versão {item.version}
-                      </p>
-                    </div>
-                    {item.kind === "perfil" ? (
-                      <ReviewActions profileId={item.id} />
-                    ) : (
-                      <ReviewActions artifactId={item.id} />
-                    )}
-                  </div>
-
-                  {item.kind === "perfil" ? (
-                    (() => {
-                      const parsed = ExecutiveProfileSchema.safeParse(item.payload);
-                      return parsed.success ? (
-                        <ProfileDetail perfil={parsed.data} />
-                      ) : (
-                        <p className="text-sm text-destructive">
-                          Este registro não bate com o schema esperado — não valide sem checar
-                          manualmente.
-                        </p>
-                      );
-                    })()
-                  ) : (
-                    <ArtifactDetail tipo={item.kind} conteudo={item.payload} />
-                  )}
-                </section>
-              ))}
-            </div>
-          )}
+        <CardContent className="px-0 pb-2">
+          <ValidationQueue items={queue} />
         </CardContent>
       </Card>
-
     </main>
   );
 }
