@@ -5,7 +5,10 @@ import { AppShell } from "./app-shell";
 import { CopilotoWidget } from "@/components/copiloto-widget";
 import type { NavItem } from "./app-sidebar";
 
-const MENTOR_NAV: NavItem[] = [{ href: "/mentor", label: "Meus mentorados" }];
+const MENTOR_NAV: NavItem[] = [
+  { href: "/mentor", label: "Meus mentorados" },
+  { href: "/mentor/console", label: "Console da turma" },
+];
 
 async function menteeNav(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
   const items: NavItem[] = [{ href: "/jornada", label: "Jornada" }];
@@ -30,7 +33,10 @@ async function menteeNav(supabase: Awaited<ReturnType<typeof createClient>>, use
     items.push({ href: "/diagnostico", label: "Diagnóstico" });
   }
 
-  items.push({ href: "/copiloto", label: "Copiloto" }, { href: "/biblioteca", label: "Biblioteca" });
+  // "Copiloto" não entra aqui de propósito: é assistente disponível em
+  // qualquer tela (CopilotoWidget), não destino de navegação — decisão do
+  // artefato validado. A rota /copiloto continua existindo e acessível.
+  items.push({ href: "/mapas", label: "Mapas" }, { href: "/biblioteca", label: "Biblioteca" });
   return items;
 }
 

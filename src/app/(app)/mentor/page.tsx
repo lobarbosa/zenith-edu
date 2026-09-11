@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -5,34 +6,11 @@ import { isMentor } from "@/lib/mentor";
 import { ExecutiveProfileSchema } from "@/lib/agents/executive-profile-schema";
 import { ARTIFACT_LABELS, type ArtifactTipo } from "@/lib/agents/artifact-schemas";
 import { ArtifactDetail } from "@/components/artifact-detail";
-import { StatusPill } from "@/components/status-pill";
 import { StatTile } from "@/components/stat-tile";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
-import {
-  getSinaisNaoLidos,
-  getPulsoDaTurma,
-  getCustoPorMentee,
-  getAlertas,
-  type Sinal,
-} from "@/lib/mentor-console";
 import { ProfileDetail } from "./profile-detail";
 import { ReviewActions } from "./review-actions";
-import { SinalActions } from "./sinal-actions";
 import { MenteeRoster, type RosterEntry } from "./mentee-roster";
-
-const SINAL_TIPO_LABEL: Record<Sinal["tipo"], string> = {
-  contradicao: "Contradição",
-  resistencia: "Resistência",
-  risco: "Risco",
-  avanco: "Avanço",
-  fora_de_escopo: "Fora de escopo",
-};
-const SEVERIDADE_TONE = {
-  alta: "bad",
-  media: "warning",
-  baixa: "neutral",
-} as const;
 
 type PendingItem = {
   kind: "perfil" | ArtifactTipo;
@@ -107,17 +85,8 @@ export default async function MentorPage() {
     profile: profiles?.find((p) => p.mentee_id === mentee.id) ?? null,
   }));
 
-  // Painel do Mentor Console (SPEC-SOFTWARE.md §11) — sinais e custo
-  // dependem da lista de mentorados, então rodam depois do Promise.all
-  // acima; custo entra em getAlertas pra não recalcular a soma duas vezes.
-  const menteesLite = mentees ?? [];
-  const [sinais, pulsoDaTurma, custoPorMentee] = await Promise.all([
-    getSinaisNaoLidos(admin),
-    getPulsoDaTurma(admin, menteesLite),
-    getCustoPorMentee(admin, menteesLite),
-  ]);
-  const alertas = await getAlertas(admin, custoPorMentee);
-  const custoTotal = custoPorMentee.reduce((acc, c) => acc + c.custoUsd, 0);
+  // Sinais, pulso e custo migraram para /mentor/console (visão de turma) —
+  // aqui fica a fila de validação, que é o fluxo de trabalho do mentor.
 
   // Fila heterogênea (perfil + 3 tipos de artefato), mais antigo primeiro —
   // mesma ordem que já valia só pra perfis.
@@ -147,24 +116,18 @@ export default async function MentorPage() {
           Mentor
         </p>
         <h1 className="text-2xl font-semibold tracking-tight text-foreground">Meus mentorados</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Sinais, pulso da turma e custo ficam no{" "}
+          <Link href="/mentor/console" className="font-medium text-primary hover:underline">
+            Console da turma
+          </Link>
+          .
+        </p>
       </div>
 
-      {alertas.length > 0 && (
-        <Card className="border-bad/30 bg-bad-soft py-4">
-          <CardContent className="space-y-2">
-            {alertas.map((alerta, i) => (
-              <p key={i} className="text-sm text-bad">
-                {alerta.descricao}
-              </p>
-            ))}
-          </CardContent>
-        </Card>
-      )}
-
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-4">
+        <StatTile label="Mentorados" value={roster.length} />
         <StatTile label="Pendências de validação" value={queue.length} />
-        <StatTile label="Sinais não lidos" value={sinais.length} />
-        <StatTile label="Custo total" value={`US$ ${custoTotal.toFixed(2)}`} />
       </div>
 
       <Card className="py-0">
@@ -224,88 +187,6 @@ export default async function MentorPage() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Sinais</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {sinais.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhum sinal pendente.</p>
-          ) : (
-            <div className="divide-y divide-border">
-              {sinais.map((sinal) => (
-                <div key={sinal.id} className="flex items-start justify-between gap-4 py-4 first:pt-0 last:pb-0">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <StatusPill tone={SEVERIDADE_TONE[sinal.severidade]}>{sinal.severidade}</StatusPill>
-                      <span className="text-xs text-muted-foreground">{SINAL_TIPO_LABEL[sinal.tipo]}</span>
-                    </div>
-                    <p className="mt-1 text-sm font-medium text-foreground">{sinal.menteeEmail}</p>
-                    <p className="text-sm text-muted-foreground">{sinal.descricao}</p>
-                  </div>
-                  <SinalActions flagId={sinal.id} />
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Pulso da turma</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Mentorado</TableHead>
-                <TableHead>Etapa</TableHead>
-                <TableHead>Atividade</TableHead>
-                <TableHead>Artefatos</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {pulsoDaTurma.map((p) => (
-                <TableRow key={p.menteeId}>
-                  <TableCell className="font-medium">{p.menteeEmail}</TableCell>
-                  <TableCell className="text-muted-foreground">{p.etapaAtual ?? "—"}</TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {p.diasSemAtividade === null ? "sem atividade" : `${p.diasSemAtividade}d sem atividade`}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">{p.artefatosConcluidos}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Custo</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableBody>
-              {custoPorMentee.map((c) => (
-                <TableRow key={c.menteeId}>
-                  <TableCell>{c.menteeEmail}</TableCell>
-                  <TableCell className="text-right font-mono text-muted-foreground">
-                    US$ {c.custoUsd.toFixed(4)}
-                  </TableCell>
-                </TableRow>
-              ))}
-              <TableRow>
-                <TableCell className="font-semibold">Total</TableCell>
-                <TableCell className="text-right font-mono font-semibold text-foreground">
-                  US$ {custoTotal.toFixed(4)}
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
     </main>
   );
 }

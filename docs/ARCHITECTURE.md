@@ -1116,3 +1116,55 @@ largura: FAB 52×52 sempre dentro da viewport, painel sempre cabendo
 **Lição de processo**: a divergência passou por várias entregas sem ser
 notada porque nenhuma delas comparou a tela construída com o artefato lado
 a lado — o artefato foi consultado na origem e não revisitado depois.
+
+## 12. Auditoria do artefato validado — telas alinhadas
+
+Depois do achado do copiloto flutuante (§11), o artefato foi comparado tela
+a tela com a implementação. Seis divergências, quatro fechadas aqui.
+
+**Fechadas:**
+
+1. **Tela Mapas** (`/mapas`) — o artefato tem uma tela dedicada, master-
+   detail, com **todos** os artefatos do mentorado. A implementação só
+   mostrava os da etapa corrente em `/jornada`, então o Career Map validado
+   no mês 1 sumia da vista no mês 2. Server component puro, seleção por
+   query param (`?tipo=`), reusando `ArtifactDetail`.
+2. **Header da Jornada** — "Etapa atual: X" com mês e copiloto ativo, no
+   lugar de "UNDERSTAND · mês 2 de 6".
+3. **Stat tiles da Jornada** — três, como no artefato, mas com métricas que
+   derivam de dado real: artefatos validados, etapas liberadas e artefatos
+   da etapa atual.
+4. **Copiloto fora da navegação** — decisão do usuário, seguindo o artefato
+   (*"Copiloto não é uma página — é um assistente disponível em qualquer
+   tela, por isso saiu da navegação lateral"*). A rota `/copiloto`
+   **continua existindo** e linkada da Jornada; só saiu do menu. A nav do
+   mentorado é Jornada, Diagnóstico, Mapas, Biblioteca.
+5. **Console da turma** (`/mentor/console`) — o artefato separa "Meus
+   mentorados" (roster + fila) de "Console da turma" (sinais, pulso,
+   custo, alertas). Estavam na mesma tela.
+
+   *Desvio consciente do artefato*: ele coloca as pendências de **artefato**
+   no Console, deixando só perfis em "Meus mentorados". Mantive a fila
+   unificada em "Meus mentorados" — fragmentar a fila de validação em duas
+   telas atrapalha o fluxo real do mentor, e o artefato é anterior à fila
+   heterogênea existir.
+
+   `app-sidebar.tsx` passou a acender só o item mais específico: sem isso
+   `/mentor/console` acenderia "Meus mentorados" junto.
+
+**Bloqueadas por falta de dado — não implementadas de propósito:**
+
+6. **Mapa geral de atividades por etapa.** O artefato mostra cada etapa
+   expansível com atividades concretas ("Mapear o motor econômico", status
+   concluída/em andamento/pendente). Não existe tabela para isso —
+   `STAGE_ACTIVITIES` é mock. Exigiria schema novo e uma UI de mentor para
+   cadastrar atividades: é produto novo, não restauração do artefato.
+7. **"Próximo encontro" e "dias até o encontro".** Não há campo de data de
+   encontro em `cohorts` nem em `journey_state`. Mesma situação.
+
+Validado com sessão real injetada no browser (tokens via Admin API, cookie
+no formato do `@supabase/ssr`), contra dados reais: as quatro telas
+carregaram em HTTP 200 com o conteúdo esperado.
+
+**Lição registrada em §11 e que vale repetir**: o artefato precisa ser
+revisitado a cada entrega de UI, não só consultado na origem da tela.
