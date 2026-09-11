@@ -764,11 +764,25 @@ diagnóstico → perfil sintetizado pelo Opus → `/mentor` → roster → detal
   código e pela configuração de Redirect URLs, mas vale um clique real
   de confirmação quando for prático.
 
-Em aberto, fora da ordem das entregas: revisão da organização dos
-agentes — hoje cada peça (prompt, classificador, precificação, síntese
-de perfil) é um módulo TypeScript comum sob `src/lib/agents/`; está em
-avaliação migrar as execuções que fizerem sentido para o formato de
-Skills, para alinhar com a prática recomendada de organização de agentes.
+**Organização dos agentes em Skills — resolvido.** Cada peça do agente
+(prompt, classificador, precificação, síntese de perfil) continua sendo
+um módulo TypeScript sob `src/lib/agents/`, e assim fica.
+
+O que foi migrado para Skills (`.claude/skills/`) é a **execução de
+desenvolvimento**, não o runtime do produto: `validate-delivery` (os três
+comandos na ordem certa mais o checklist travado do CLAUDE.md),
+`new-artifact` (os três arquivos e os cinco mapeamentos de um tipo de
+artefato) e `copilot-anatomy` (as seis camadas de um copiloto e como o
+roteamento decide).
+
+Migrar prompt ou schema de runtime para Skill foi avaliado e descartado:
+`.claude/skills/` é um diretório do Claude Code CLI, não é lido pela
+aplicação Next.js na Vercel. Um prompt ali ou seria lido em runtime por
+I/O frágil e sem type-safety, ou viraria documentação duplicada com risco
+de divergir do `.ts` — e o ganho suposto (editar prompt sem deploy) não
+existe, porque arquivo no repositório precisa de commit e deploy igual.
+O prompt do sistema é fonte de verdade travada; tirá-lo do type system
+seria perder garantia, não ganhar flexibilidade.
 
 **Deploy**: PR #1 foi mergeado em `main`; deploy na Vercel + domínio
 próprio em andamento, conduzido pelo usuário (fora do escopo desta sessão
