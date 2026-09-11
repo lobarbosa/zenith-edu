@@ -115,7 +115,7 @@ export function DiagnosticChat({
   );
 
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-6">
+    <div className="shell-narrow flex flex-1 flex-col px-6">
       <header className="py-10">
         <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
           Executive Diagnostic

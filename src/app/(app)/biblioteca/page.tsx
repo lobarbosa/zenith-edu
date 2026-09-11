@@ -34,7 +34,7 @@ export default async function BibliotecaPage() {
     .order("criado_em", { ascending: true });
 
   return (
-    <main className="mx-auto max-w-2xl px-6 py-10">
+    <main className="shell px-6 py-10">
       <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
         Biblioteca
       </p>

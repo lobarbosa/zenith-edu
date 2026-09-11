@@ -1218,3 +1218,37 @@ converter pro fuso local produziria off-by-one.
 Validado ponta a ponta com duas sessões reais no browser: o mentor marcou
 a data em `/mentor/[menteeId]`, e a Jornada do mentorado passou a mostrar
 "Próximo encontro 23 de set. de 2026" e "12 dias".
+
+## 14. Duas larguras e a timeline da jornada
+
+Feedback do usuário depois de usar a plataforma: as telas não batiam com o
+artefato validado e a UI estava ruim. Comparando o mesmo cenário do
+artefato (mentorado em UNDERSTAND, mês 2), duas causas concretas:
+
+**1. Largura.** O artefato tem duas medidas — `.screen` (1080px) para
+painel e `.screen-narrow` (680px) para leitura. A implementação usava
+`max-w-2xl` (672px) em quase tudo, inclusive nas telas de painel: numa
+tela de 1280px, quase metade ficava vazia e os grids de três colunas
+apertavam. Agora há `.shell` e `.shell-narrow` em `globals.css`, aplicadas
+por tipo de tela:
+
+| Largura | Telas |
+|---|---|
+| `.shell` (1080) | jornada, mapas, mentor, mentor/console, mentor/[menteeId], biblioteca |
+| `.shell-narrow` (680) | copiloto, diagnóstico, biblioteca/[id], conta |
+
+A regra de 65-75 caracteres por linha (confirmada em `ui-ux-pro-max`) vale
+para o texto dentro dos blocos, não para o container de um painel com
+tiles e tabelas — usar a medida de leitura num painel foi o erro.
+
+**2. Timeline da jornada.** O artefato mostra seis colunas, cada uma com
+rótulo, uma barra de 6px e "Mês N · Copiloto". A implementação usava pills
+numa linha só, que quebravam em duas fileiras e perdiam a leitura de
+progresso — que é o trabalho da peça. `EtapaStepper` foi reescrito como o
+trilho de barras; `AGENT_SHORT_LABELS` existe porque "Copiloto de
+Liderança" não cabe numa das seis colunas.
+
+**3. Artefatos da jornada.** Passaram de lista vertical com o conteúdo
+inteiro expandido para cards resumidos em duas colunas, com link para
+`/mapas` — que é a tela dedicada ao detalhe desde §12. Repetir o conteúdo
+completo na Jornada fazia a tela crescer sem fim e duplicava a leitura.

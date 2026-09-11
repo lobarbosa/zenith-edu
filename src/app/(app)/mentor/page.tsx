@@ -110,7 +110,7 @@ export default async function MentorPage() {
   ].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 
   return (
-    <main className="mx-auto max-w-4xl space-y-10 px-6 py-10">
+    <main className="shell space-y-10 px-6 py-10">
       <div>
         <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
           Mentor

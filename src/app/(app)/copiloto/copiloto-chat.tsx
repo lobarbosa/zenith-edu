@@ -161,7 +161,7 @@ export function CopilotoChat({
       className={
         isPanel
           ? "flex min-h-0 w-full flex-1 flex-col px-4"
-          : "mx-auto flex w-full max-w-2xl flex-1 flex-col px-6"
+          : "shell-narrow flex flex-1 flex-col px-6"
       }
     >
       {!isPanel && (

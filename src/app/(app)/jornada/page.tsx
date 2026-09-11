@@ -14,7 +14,6 @@ import {
   type ArtifactTipo,
 } from "@/lib/agents/artifact-schemas";
 import { StatusPill } from "@/components/status-pill";
-import { ArtifactDetail } from "@/components/artifact-detail";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { GenerateArtifactButton } from "./generate-artifact-button";
 import { EtapaStepper } from "./etapa-stepper";
@@ -117,7 +116,7 @@ export default async function JornadaPage() {
   ).length;
 
   return (
-    <main className="mx-auto max-w-2xl space-y-10 px-6 py-10">
+    <main className="shell space-y-10 px-6 py-10">
       <div>
         <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Jornada</p>
         <h1 className="mb-2 text-2xl font-semibold tracking-tight text-foreground">
@@ -223,45 +222,55 @@ export default async function JornadaPage() {
           <CardTitle>Artefatos desta etapa</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-10">
+          {/* Resumo em duas colunas; o conteúdo inteiro de cada artefato vive
+              em /mapas, que é a tela dedicada a ele. Repetir o detalhe aqui
+              fazia a Jornada crescer sem fim e duplicava a leitura. */}
+          <div className="grid gap-4 sm:grid-cols-2">
             {ARTIFACT_TIPOS.filter((tipo) => ARTIFACT_ETAPA[tipo] === journey.etapa_atual).map(
               (tipo) => {
                 const latest = latestByTipo.get(tipo);
+                const podeGerar =
+                  !latest || latest.status === "validado_mentor" || latest.status === "rejeitado";
 
                 return (
-                  <section
+                  <div
                     key={tipo}
-                    className="space-y-4 border-t border-border pt-8 first:border-t-0 first:pt-0"
+                    className="flex flex-col gap-3 rounded-lg border border-border p-4"
                   >
-                    <div className="flex flex-wrap items-center justify-between gap-4">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-semibold text-foreground">{ARTIFACT_LABELS[tipo]}</p>
-                        <StatusPill tone={latest ? STATUS_TONE[latest.status] : "neutral"}>
-                          {latest ? STATUS_LABEL[latest.status] : "Ainda não gerado"}
-                        </StatusPill>
-                      </div>
-                      {(!latest ||
-                        latest.status === "validado_mentor" ||
-                        latest.status === "rejeitado") && (
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="text-sm font-semibold text-foreground">{ARTIFACT_LABELS[tipo]}</p>
+                      <StatusPill tone={latest ? STATUS_TONE[latest.status] : "neutral"}>
+                        {latest ? STATUS_LABEL[latest.status] : "Ainda não gerado"}
+                      </StatusPill>
+                    </div>
+
+                    <p className="text-xs text-muted-foreground">
+                      {latest
+                        ? `${ARTIFACT_ETAPA[tipo]} · versão ${latest.versao}`
+                        : "Converse com o copiloto sobre este tema e depois peça pra gerar."}
+                    </p>
+
+                    {latest?.status === "rejeitado" && latest.motivo_rejeicao && (
+                      <p className="text-sm text-bad">Motivo da rejeição: {latest.motivo_rejeicao}</p>
+                    )}
+
+                    <div className="mt-auto flex flex-wrap items-center gap-4 pt-1">
+                      {podeGerar && (
                         <GenerateArtifactButton
                           tipo={tipo}
                           label={latest ? "Gerar nova versão" : "Gerar"}
                         />
                       )}
+                      {latest && (
+                        <Link
+                          href={`/mapas?tipo=${tipo}`}
+                          className="rounded-sm text-sm font-medium text-primary outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/50"
+                        >
+                          Abrir mapa →
+                        </Link>
+                      )}
                     </div>
-
-                    {latest?.status === "rejeitado" && latest.motivo_rejeicao && (
-                      <p className="text-sm text-bad">Motivo da rejeição: {latest.motivo_rejeicao}</p>
-                    )}
-                    {latest?.status === "validado_mentor" && (
-                      <ArtifactDetail tipo={tipo} conteudo={latest.conteudo} />
-                    )}
-                    {!latest && (
-                      <p className="text-sm text-muted-foreground">
-                        Converse com o copiloto sobre este tema e depois peça pra gerar.
-                      </p>
-                    )}
-                  </section>
+                  </div>
                 );
               }
             )}

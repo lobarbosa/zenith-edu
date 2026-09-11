@@ -52,7 +52,7 @@ export default async function MentorConsolePage() {
   const custoTotal = custoPorMentee.reduce((acc, c) => acc + c.custoUsd, 0);
 
   return (
-    <main className="mx-auto max-w-4xl space-y-10 px-6 py-10">
+    <main className="shell space-y-10 px-6 py-10">
       <div>
         <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Mentor</p>
         <h1 className="text-2xl font-semibold tracking-tight text-foreground">Console da turma</h1>
