@@ -82,13 +82,16 @@ export function AppShell({
             onClick={() => setOpen(false)}
             aria-hidden="true"
           />
+          {/* flex-col + min-h-0: a barra do botão fechar consome altura, e a
+              sidebar (h-full) precisa ocupar só o que sobra. Sem isso ela
+              transborda e o rodapé — onde fica o Sair — sai da tela. */}
           <div
             role="dialog"
             aria-modal="true"
             aria-label="Menu de navegação"
-            className="absolute inset-y-0 left-0 w-72 max-w-[85vw] bg-sidebar shadow-xl"
+            className="absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col bg-sidebar shadow-xl"
           >
-            <div className="flex justify-end p-3">
+            <div className="flex flex-none justify-end p-3">
               <button
                 ref={closeButtonRef}
                 type="button"
@@ -99,12 +102,14 @@ export function AppShell({
                 <CloseIcon />
               </button>
             </div>
-            <AppSidebar
-              navItems={navItems}
-              roleLabel={roleLabel}
-              userEmail={userEmail}
-              onNavigate={() => setOpen(false)}
-            />
+            <div className="min-h-0 flex-1">
+              <AppSidebar
+                navItems={navItems}
+                roleLabel={roleLabel}
+                userEmail={userEmail}
+                onNavigate={() => setOpen(false)}
+              />
+            </div>
           </div>
         </div>
       )}
