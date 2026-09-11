@@ -5,7 +5,7 @@ import type { ArtifactTipo } from "./artifact-schemas";
 // agente) — mesma situação de profile-prompt.ts: regras semânticas
 // verbatim + texto de conexão mínimo. Nunca importe de um client
 // component.
-const GENERATION_RULES = `Você organiza o material de uma conversa entre um mentorado e o copiloto de carreira do T-Shaped Executive em um artefato estruturado.
+const GENERATION_RULES = `Você organiza o material de uma conversa entre um mentorado e um copiloto do T-Shaped Executive em um artefato estruturado.
 
 REGRAS
 - Todo campo deve rastrear a uma fala do mentorado na conversa abaixo, ou a

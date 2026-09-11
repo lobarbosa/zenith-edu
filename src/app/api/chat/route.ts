@@ -18,7 +18,6 @@ import {
   LEADERSHIP_SYSTEM_PROMPT,
   EXECUTIVE_SYSTEM_PROMPT,
   territoryBridgeInstruction,
-  notImplementedInstruction,
 } from "@/lib/agents/copilot-prompt";
 import { buildContextBlock, summarizePerfil, summarizeArtifacts } from "@/lib/agents/context";
 import { searchKnowledge } from "@/lib/knowledge/retrieval";
@@ -36,8 +35,9 @@ const MAX_MESSAGE_LENGTH = 4000;
 const HISTORY_LIMIT = 40;
 const ROUTER_HISTORY_LIMIT = 6;
 
-// Os 5 copilotos implementados — a lista completa da spec.
-const SYSTEM_PROMPTS: Partial<Record<AgentKey, string>> = {
+// Record total (não Partial): a spec tem 5 copilotos e os 5 existem — se um
+// AgentKey novo entrar, o type erra aqui antes de virar fallback silencioso.
+const SYSTEM_PROMPTS: Record<AgentKey, string> = {
   career: CAREER_SYSTEM_PROMPT,
   business: BUSINESS_SYSTEM_PROMPT,
   value: VALUE_SYSTEM_PROMPT,
@@ -91,26 +91,16 @@ export async function POST(request: Request) {
   const route = await routeMessage(anthropic, routerHistoryText, rawMessage);
   const journey = await ensureJourneyState(admin, mentee.id);
 
+  // Território pedido ainda não liberado: quem responde é o copiloto da
+  // etapa atual, fazendo a ponte em vez de recusar seco (SPEC-AGENTS.md §4).
   const liberado = isEtapaLiberada(journey.etapas_liberadas, route.agentKey);
-  const requestedImplemented = Boolean(SYSTEM_PROMPTS[route.agentKey]);
-  const currentAgent = etapaAgent(journey.etapa_atual);
-  const effectiveAgent: AgentKey =
-    liberado && requestedImplemented
-      ? route.agentKey
-      : SYSTEM_PROMPTS[currentAgent]
-        ? currentAgent
-        : "career";
-  const basePrompt = SYSTEM_PROMPTS[effectiveAgent] ?? CAREER_SYSTEM_PROMPT;
+  const effectiveAgent: AgentKey = liberado ? route.agentKey : etapaAgent(journey.etapa_atual);
+  const basePrompt = SYSTEM_PROMPTS[effectiveAgent];
 
-  let systemPrompt = basePrompt;
-  if (effectiveAgent !== route.agentKey) {
-    if (!liberado) {
-      const unlockEtapa = agentEtapa(route.agentKey);
-      systemPrompt = `${basePrompt}\n\n${territoryBridgeInstruction(route.agentKey, unlockEtapa, ETAPA_MES[unlockEtapa])}`;
-    } else {
-      systemPrompt = `${basePrompt}\n\n${notImplementedInstruction(route.agentKey)}`;
-    }
-  }
+  const unlockEtapa = liberado ? null : agentEtapa(route.agentKey);
+  let systemPrompt = unlockEtapa
+    ? `${basePrompt}\n\n${territoryBridgeInstruction(route.agentKey, unlockEtapa, ETAPA_MES[unlockEtapa])}`
+    : basePrompt;
 
   const [profileResult, artifactsResult, ragTrechos] = await Promise.all([
     supabase
