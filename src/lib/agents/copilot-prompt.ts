@@ -227,6 +227,6 @@ export const EXECUTIVE_SYSTEM_PROMPT = `${COPILOT_BASE_PROMPT}\n\n${EXECUTIVE_PR
 // SPEC-AGENTS.md §4: recusa seca quebra a experiência premium — o próprio
 // copiloto da etapa atual gera a ponte, com o contexto do que foi
 // perguntado, em vez de uma mensagem canônica fixa.
-export function territoryBridgeInstruction(askedAgentKey: string, unlockEtapa: string, unlockMes: number) {
-  return `NOTA INTERNA (não é fala do mentorado): a mensagem dele pertence ao território "${askedAgentKey}", que abre na etapa ${unlockEtapa} (mês ${unlockMes}) — ainda não liberada. Não responda o conteúdo daquele território. Reconheça a pergunta, explique que esse território abre nessa etapa futura, e faça a ponte para um trabalho concreto de carreira que precede aquilo, usando o que ele acabou de perguntar como gancho.`;
+export function territoryBridgeInstruction(etapaPedida: string, mesDaEtapa: number) {
+  return `NOTA INTERNA (não é fala do mentorado): a mensagem dele pertence à etapa ${etapaPedida} (mês ${mesDaEtapa}), ainda não liberada. Não responda o conteúdo daquela etapa. Reconheça a pergunta, explique que esse tema abre nessa etapa futura, e faça a ponte para um trabalho concreto da etapa em que ele está agora, usando o que ele acabou de perguntar como gancho.`;
 }

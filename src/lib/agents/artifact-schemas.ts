@@ -255,14 +255,12 @@ export const ARTIFACT_AGENT: Record<ArtifactTipo, AgentKey> = {
   executive_movement_plan: "executive",
 };
 
-// Etapa específica de cada artefato — não confundir com `agentEtapa`
-// (etapa em que o AGENTE abre pela primeira vez). Para os copilotos de
-// etapa única as duas coincidem; "executive" cobre INFLUENCE e MOVE com um
-// artefato específico para cada uma, então precisa do mapeamento direto:
-// sem ele, os dois artefatos ficariam presos à primeira etapa do agente
-// (INFLUENCE) — liberando os dois cedo demais e nunca mostrando o
-// executive_movement_plan quando o mentorado já estiver em MOVE. Usado
-// pelo gate de geração (`/api/artifact`) e pelo filtro de `/jornada`.
+// Etapa específica de cada artefato, não a do copiloto que o gera:
+// "executive" cobre INFLUENCE e MOVE com um artefato para cada uma. Sem
+// este mapeamento os dois ficariam presos à primeira etapa do agente,
+// liberando o executive_movement_plan um mês cedo demais. Usado pelo gate
+// de geração (`/api/artifact`) e pelo filtro de `/jornada` — mesma razão
+// pela qual o roteador classifica por etapa (router-prompt.ts).
 export const ARTIFACT_ETAPA: Record<ArtifactTipo, string> = {
   career_map: "FIND",
   competency_map: "FIND",

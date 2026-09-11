@@ -6,10 +6,10 @@ import { routeMessage } from "@/lib/agents/router";
 import { AGENT_PILAR, type AgentKey } from "@/lib/agents/router-prompt";
 import {
   ensureJourneyState,
-  isEtapaLiberada,
-  agentEtapa,
   etapaAgent,
+  isEtapa,
   ETAPA_MES,
+  type Etapa,
 } from "@/lib/agents/journey";
 import {
   CAREER_SYSTEM_PROMPT,
@@ -88,19 +88,26 @@ export async function POST(request: Request) {
     .map((m) => `${m.role === "user" ? "Mentorado" : "Copiloto"}: ${m.content}`)
     .join("\n");
 
-  const route = await routeMessage(anthropic, routerHistoryText, rawMessage);
+  // A jornada vem antes do roteador: sem a etapa atual ele não tem destino
+  // seguro pra onde cair quando a classificação falha.
   const journey = await ensureJourneyState(admin, mentee.id);
+  const etapaAtual: Etapa = isEtapa(journey.etapa_atual) ? journey.etapa_atual : "FIND";
+  const route = await routeMessage(anthropic, routerHistoryText, rawMessage, etapaAtual);
 
-  // Território pedido ainda não liberado: quem responde é o copiloto da
-  // etapa atual, fazendo a ponte em vez de recusar seco (SPEC-AGENTS.md §4).
-  const liberado = isEtapaLiberada(journey.etapas_liberadas, route.agentKey);
-  const effectiveAgent: AgentKey = liberado ? route.agentKey : etapaAgent(journey.etapa_atual);
+  // Sem leitura clara do tema — saudação, dúvida sobre o programa — fica na
+  // etapa atual em vez de chutar um destino.
+  const etapaPedida = route.intencaoClara && route.confianca !== "baixa" ? route.etapa : etapaAtual;
+
+  // Etapa pedida ainda não liberada: quem responde é o copiloto da etapa
+  // atual, fazendo a ponte em vez de recusar seco (SPEC-AGENTS.md §4).
+  const liberada = journey.etapas_liberadas.includes(etapaPedida);
+  const etapaEfetiva = liberada ? etapaPedida : etapaAtual;
+  const effectiveAgent: AgentKey = etapaAgent(etapaEfetiva);
   const basePrompt = SYSTEM_PROMPTS[effectiveAgent];
 
-  const unlockEtapa = liberado ? null : agentEtapa(route.agentKey);
-  let systemPrompt = unlockEtapa
-    ? `${basePrompt}\n\n${territoryBridgeInstruction(route.agentKey, unlockEtapa, ETAPA_MES[unlockEtapa])}`
-    : basePrompt;
+  let systemPrompt = liberada
+    ? basePrompt
+    : `${basePrompt}\n\n${territoryBridgeInstruction(etapaPedida, ETAPA_MES[etapaPedida])}`;
 
   const [profileResult, artifactsResult, ragTrechos] = await Promise.all([
     supabase
@@ -189,7 +196,7 @@ export async function POST(request: Request) {
   if (!conversationId) {
     const { data: created, error: createError } = await supabase
       .from("conversations")
-      .insert({ mentee_id: mentee.id, agent_key: effectiveAgent, etapa: agentEtapa(effectiveAgent) })
+      .insert({ mentee_id: mentee.id, agent_key: effectiveAgent, etapa: etapaEfetiva })
       .select("id")
       .single();
 
