@@ -14,7 +14,13 @@ export const ETAPA_MES: Record<string, number> = {
 
 export const ETAPA_ORDER = ["FIND", "UNDERSTAND", "CREATE", "LEAD", "INFLUENCE", "MOVE"] as const;
 
-const AGENT_ETAPAS: Record<AgentKey, string[]> = {
+export type Etapa = (typeof ETAPA_ORDER)[number];
+
+export function isEtapa(value: string): value is Etapa {
+  return (ETAPA_ORDER as readonly string[]).includes(value);
+}
+
+const AGENT_ETAPAS: Record<AgentKey, Etapa[]> = {
   career: ["FIND"],
   business: ["UNDERSTAND"],
   value: ["CREATE"],
@@ -22,23 +28,14 @@ const AGENT_ETAPAS: Record<AgentKey, string[]> = {
   executive: ["INFLUENCE", "MOVE"],
 };
 
-export function agentEtapa(agentKey: AgentKey): string {
-  return AGENT_ETAPAS[agentKey][0];
-}
-
-// Inverso de AGENT_ETAPAS — qual copiloto é "dono" da etapa atual do
-// mentorado. Usado como gerador da ponte quando o território pedido está
-// bloqueado (SPEC-AGENTS.md §4): a ponte é sempre gerada pelo copiloto da
-// etapa atual, não por um copiloto fixo.
+// Qual copiloto é "dono" de uma etapa. A liberação é sempre decidida pela
+// etapa, nunca pelo copiloto: `executive` cobre INFLUENCE e MOVE, e abrir
+// o mês 5 não pode abrir o mês 6 junto.
 export function etapaAgent(etapa: string): AgentKey {
-  const entry = (Object.entries(AGENT_ETAPAS) as [AgentKey, string[]][]).find(([, etapas]) =>
-    etapas.includes(etapa)
+  const entry = (Object.entries(AGENT_ETAPAS) as [AgentKey, Etapa[]][]).find(([, etapas]) =>
+    (etapas as string[]).includes(etapa)
   );
   return entry ? entry[0] : "career";
-}
-
-export function isEtapaLiberada(etapasLiberadas: string[], agentKey: AgentKey): boolean {
-  return AGENT_ETAPAS[agentKey].some((etapa) => etapasLiberadas.includes(etapa));
 }
 
 export type JourneyState = {

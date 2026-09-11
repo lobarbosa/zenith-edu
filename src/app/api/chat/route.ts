@@ -6,10 +6,10 @@ import { routeMessage } from "@/lib/agents/router";
 import { AGENT_PILAR, type AgentKey } from "@/lib/agents/router-prompt";
 import {
   ensureJourneyState,
-  isEtapaLiberada,
-  agentEtapa,
   etapaAgent,
+  isEtapa,
   ETAPA_MES,
+  type Etapa,
 } from "@/lib/agents/journey";
 import {
   CAREER_SYSTEM_PROMPT,
@@ -18,7 +18,6 @@ import {
   LEADERSHIP_SYSTEM_PROMPT,
   EXECUTIVE_SYSTEM_PROMPT,
   territoryBridgeInstruction,
-  notImplementedInstruction,
 } from "@/lib/agents/copilot-prompt";
 import { buildContextBlock, summarizePerfil, summarizeArtifacts } from "@/lib/agents/context";
 import { searchKnowledge } from "@/lib/knowledge/retrieval";
@@ -36,8 +35,9 @@ const MAX_MESSAGE_LENGTH = 4000;
 const HISTORY_LIMIT = 40;
 const ROUTER_HISTORY_LIMIT = 6;
 
-// Os 5 copilotos implementados — a lista completa da spec.
-const SYSTEM_PROMPTS: Partial<Record<AgentKey, string>> = {
+// Record total (não Partial): a spec tem 5 copilotos e os 5 existem — se um
+// AgentKey novo entrar, o type erra aqui antes de virar fallback silencioso.
+const SYSTEM_PROMPTS: Record<AgentKey, string> = {
   career: CAREER_SYSTEM_PROMPT,
   business: BUSINESS_SYSTEM_PROMPT,
   value: VALUE_SYSTEM_PROMPT,
@@ -88,29 +88,26 @@ export async function POST(request: Request) {
     .map((m) => `${m.role === "user" ? "Mentorado" : "Copiloto"}: ${m.content}`)
     .join("\n");
 
-  const route = await routeMessage(anthropic, routerHistoryText, rawMessage);
+  // A jornada vem antes do roteador: sem a etapa atual ele não tem destino
+  // seguro pra onde cair quando a classificação falha.
   const journey = await ensureJourneyState(admin, mentee.id);
+  const etapaAtual: Etapa = isEtapa(journey.etapa_atual) ? journey.etapa_atual : "FIND";
+  const route = await routeMessage(anthropic, routerHistoryText, rawMessage, etapaAtual);
 
-  const liberado = isEtapaLiberada(journey.etapas_liberadas, route.agentKey);
-  const requestedImplemented = Boolean(SYSTEM_PROMPTS[route.agentKey]);
-  const currentAgent = etapaAgent(journey.etapa_atual);
-  const effectiveAgent: AgentKey =
-    liberado && requestedImplemented
-      ? route.agentKey
-      : SYSTEM_PROMPTS[currentAgent]
-        ? currentAgent
-        : "career";
-  const basePrompt = SYSTEM_PROMPTS[effectiveAgent] ?? CAREER_SYSTEM_PROMPT;
+  // Sem leitura clara do tema — saudação, dúvida sobre o programa — fica na
+  // etapa atual em vez de chutar um destino.
+  const etapaPedida = route.intencaoClara && route.confianca !== "baixa" ? route.etapa : etapaAtual;
 
-  let systemPrompt = basePrompt;
-  if (effectiveAgent !== route.agentKey) {
-    if (!liberado) {
-      const unlockEtapa = agentEtapa(route.agentKey);
-      systemPrompt = `${basePrompt}\n\n${territoryBridgeInstruction(route.agentKey, unlockEtapa, ETAPA_MES[unlockEtapa])}`;
-    } else {
-      systemPrompt = `${basePrompt}\n\n${notImplementedInstruction(route.agentKey)}`;
-    }
-  }
+  // Etapa pedida ainda não liberada: quem responde é o copiloto da etapa
+  // atual, fazendo a ponte em vez de recusar seco (SPEC-AGENTS.md §4).
+  const liberada = journey.etapas_liberadas.includes(etapaPedida);
+  const etapaEfetiva = liberada ? etapaPedida : etapaAtual;
+  const effectiveAgent: AgentKey = etapaAgent(etapaEfetiva);
+  const basePrompt = SYSTEM_PROMPTS[effectiveAgent];
+
+  let systemPrompt = liberada
+    ? basePrompt
+    : `${basePrompt}\n\n${territoryBridgeInstruction(etapaPedida, ETAPA_MES[etapaPedida])}`;
 
   const [profileResult, artifactsResult, ragTrechos] = await Promise.all([
     supabase
@@ -199,7 +196,7 @@ export async function POST(request: Request) {
   if (!conversationId) {
     const { data: created, error: createError } = await supabase
       .from("conversations")
-      .insert({ mentee_id: mentee.id, agent_key: effectiveAgent, etapa: agentEtapa(effectiveAgent) })
+      .insert({ mentee_id: mentee.id, agent_key: effectiveAgent, etapa: etapaEfetiva })
       .select("id")
       .single();
 

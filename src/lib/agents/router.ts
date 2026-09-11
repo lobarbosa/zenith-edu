@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { costUsd } from "./pricing";
-import { ROUTER_SYSTEM_PROMPT, AGENT_KEYS, type AgentKey } from "./router-prompt";
+import { ROUTER_SYSTEM_PROMPT } from "./router-prompt";
+import { isEtapa, type Etapa } from "./journey";
 
 // Mesmo padrão do classificador de bloco (diagnostic-block-classifier.ts):
 // Haiku, JSON puro pedido no prompt, mas às vezes vem em code fence — extrai
@@ -8,7 +9,7 @@ import { ROUTER_SYSTEM_PROMPT, AGENT_KEYS, type AgentKey } from "./router-prompt
 const ROUTER_MODEL = "claude-haiku-4-5";
 
 export type RouteResult = {
-  agentKey: AgentKey;
+  etapa: Etapa;
   confianca: "alta" | "media" | "baixa";
   intencaoClara: boolean;
   inputTokens: number;
@@ -16,13 +17,18 @@ export type RouteResult = {
   custoUsd: number;
 };
 
+// `etapaAtual` é o destino de toda falha — parse quebrado, JSON fora do
+// enum, Haiku fora do ar. Cair numa etapa fixa faria a falha ser
+// indistinguível de um acerto: FIND está sempre liberado, então a resposta
+// sairia sem ponte e sem sinal nenhum de que o roteamento falhou.
 export async function routeMessage(
   anthropic: Anthropic,
   recentHistory: string,
-  message: string
+  message: string,
+  etapaAtual: Etapa
 ): Promise<RouteResult> {
   const fallback: RouteResult = {
-    agentKey: "career",
+    etapa: etapaAtual,
     confianca: "baixa",
     intencaoClara: false,
     inputTokens: 0,
@@ -48,11 +54,11 @@ export async function routeMessage(
     const parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
     const usage = response.usage;
 
-    const agentKey = AGENT_KEYS.includes(parsed?.agent_key) ? parsed.agent_key : "career";
+    const etapa = typeof parsed?.etapa === "string" && isEtapa(parsed.etapa) ? parsed.etapa : etapaAtual;
     const confianca = ["alta", "media", "baixa"].includes(parsed?.confianca) ? parsed.confianca : "baixa";
 
     return {
-      agentKey,
+      etapa,
       confianca,
       intencaoClara: Boolean(parsed?.intencao_clara),
       inputTokens: usage.input_tokens,
