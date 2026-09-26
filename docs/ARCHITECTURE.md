@@ -1492,3 +1492,52 @@ um caso concreto para citar.
 Corrigido de quebra, no mesmo commit: a linha do roster repetia o e-mail
 duas vezes quando a pessoa não tinha nome, porque `menteeDisplayName` já
 cai no e-mail e o subtítulo mostrava o mesmo valor.
+
+
+## 21. Três skills novas, e a que falhou (26/09)
+
+Revisão do que no projeto vale virar skill, a partir do que custou tempo
+de verdade nesta sessão.
+
+**`test-as-user`.** A injeção de cookie de sessão foi redescoberta pelo
+menos duas vezes: grant de senha via Admin API, formato `base64-` do
+`@supabase/ssr`, fatiamento em 3180 chars, caminho do Chromium do
+container. Agora está escrita, com as três contas e o que procurar —
+inclusive que erro de render de server component aparece no log do dev
+server, não no console do browser.
+
+**`ship-migration`.** A ordem migration → conferir → mesclar, e o que
+fazer quando o MCP do Supabase aponta para outra conta (conferir o `ref`
+contra o `.env.local`; não existindo caminho automatizado, parar e pedir).
+Registra também o estado intermediário que enganou na `0007`: banco à
+frente do código publicado por dois dias, com cadastro novo nascendo
+prospect e recebendo acesso total na tela.
+
+**`refresh-docs`.** O pipeline de `docs/site/`, e duas armadilhas que
+custaram iteração: extrair figuras para conferir **sem** os tokens de cor
+do `:root` faz `var(--navy)` virar preto e leva a "corrigir" o que não
+está errado; e print sem dimensão intrínseca desloca a página, fazendo
+captura de elemento pegar região errada.
+
+**`validate-delivery` mudou.** Ela dizia, no fim, que não substitui teste
+ao vivo — e isso não impediu nada, porque era rodapé. Virou o passo 2, com
+gatilhos objetivos (função mudou de módulo, módulo ganhou `"use client"`,
+a alteração tem `if` que separa estados, mexeu em gate de papel) e uma
+tabela com os quatro bugs reais do projeto que passaram pelos três
+comandos. Nenhum deles era erro de tipo.
+
+**O que continua fora.** Prompt de runtime não vira skill — decisão da §8,
+inalterada: `.claude/skills/` é diretório do CLI e a aplicação na Vercel
+nunca lê aquilo.
+
+### Achados de MCP, que são do usuário
+
+- **O MCP do Supabase aponta para outra conta.** `list_projects` devolve
+  só `phvxhahignvsgnhozxrr`; o app usa `vyoqtlkklmcdcjpivtgv`. É a razão
+  de a `0007` ter ficado dois dias parada.
+- **Não há monitoramento de erro em produção.** 21 `console.error` nos
+  Runtime Logs da Vercel e nenhum teste. O bug da §20 ficou vivo em
+  produção e só apareceu porque uma conta de teste foi criada para print.
+  Sentry está disponível como conector e não está instalado.
+- Prontos que valem: `supabase/agent-skills` (oficial, MIT — RLS, auth,
+  migrations, security audit), Playwright MCP, context7.
