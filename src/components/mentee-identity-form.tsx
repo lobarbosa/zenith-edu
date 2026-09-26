@@ -5,33 +5,9 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import type { MenteeIdentityValues } from "@/lib/mentee-identity";
 
-export type MenteeIdentityValues = {
-  nome: string | null;
-  sobrenome: string | null;
-  data_nascimento: string | null;
-  cargo: string | null;
-  empresa: string | null;
-  linkedin: string | null;
-  telefone: string | null;
-  carreira_inicio_ano: number | null;
-};
-
-// As colunas vêm todas nullable do banco (0007) e o formulário trabalha com
-// string. Este normaliza a linha lida — inclusive `null`, para quem ainda
-// não tem linha — no formato que o formulário espera.
-export function toIdentityValues(row: Partial<MenteeIdentityValues> | null): MenteeIdentityValues {
-  return {
-    nome: row?.nome ?? null,
-    sobrenome: row?.sobrenome ?? null,
-    data_nascimento: row?.data_nascimento ?? null,
-    cargo: row?.cargo ?? null,
-    empresa: row?.empresa ?? null,
-    linkedin: row?.linkedin ?? null,
-    telefone: row?.telefone ?? null,
-    carreira_inicio_ano: row?.carreira_inicio_ano ?? null,
-  };
-}
+export type { MenteeIdentityValues };
 
 type Campo = {
   name: keyof MenteeIdentityValues;

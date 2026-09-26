@@ -5,7 +5,7 @@ import { getOrCreateDiagnosticSession } from "@/lib/diagnostic-sessions";
 import { DiagnosticChat } from "./diagnostic-chat";
 import { DiagnosticComplete } from "./diagnostic-complete";
 import { DiagnosticOnboarding } from "./onboarding";
-import { toIdentityValues } from "@/components/mentee-identity-form";
+import { toIdentityValues } from "@/lib/mentee-identity";
 
 export default async function DiagnosticoPage() {
   const supabase = await createClient();

@@ -6,7 +6,8 @@ import { ChangePasswordForm } from "@/components/change-password-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { isMentor } from "@/lib/mentor";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { MenteeIdentityForm, toIdentityValues } from "@/components/mentee-identity-form";
+import { MenteeIdentityForm } from "@/components/mentee-identity-form";
+import { toIdentityValues } from "@/lib/mentee-identity";
 
 export default async function ContaPage() {
   const supabase = await createClient();

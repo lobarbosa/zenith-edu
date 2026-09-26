@@ -53,6 +53,8 @@ daquela pessoa.
 A fila é ordenada por antiguidade de propósito. O item mais velho é o que
 está travando alguém há mais tempo.
 
+![Meus mentorados: o roster em cima, a fila de validação embaixo. Cada linha da fila leva direto à aba certa da ficha.](images/mentor-roster.png)
+
 ### `/mentor/[menteeId]` — a ficha
 
 O cabeçalho diz turma (ou "Prospect"), nome, cargo e empresa, e desde
@@ -79,6 +81,8 @@ Depois, duas colunas. **À esquerda, o que você consulta**, em abas:
   telefone.
 - **Preparação de encontro** — o que mudou desde a sua última nota.
 
+![A ficha do mentorado. À esquerda o que você consulta, em abas; à direita a coluna de operação, sempre à vista.](images/mentor-ficha.png)
+
 ### `/mentor/console` — Console da turma
 
 Leitura da turma inteira, para quando você quer olhar o conjunto e não uma
@@ -89,6 +93,8 @@ pessoa.
 - **Pulso da turma** — por pessoa: etapa, dias sem atividade, artefatos
   concluídos.
 - **Custo** — por pessoa e total.
+
+![O Console da turma. Sinais, pulso e custo da turma inteira numa tela.](images/mentor-console.png)
 
 ---
 
@@ -116,6 +122,8 @@ Abra a ficha, aba Perfil Executivo. Leia. Duas ações:
 
 **Rejeitar, com motivo.** O motivo é exibido ao mentorado. Escreva
 pensando que ele vai ler.
+
+<!-- FIGURA: ciclo-artefato -->
 
 > **Validar é publicar.** No instante em que você valida, o perfil fica
 > legível para o mentorado em `/perfil`. Antes disso a tela dele diz
@@ -166,6 +174,8 @@ de ritmo que você tem.
 Avançar libera o copiloto daquela etapa, os artefatos dela e o conteúdo
 correspondente na Biblioteca. Não fecha a etapa anterior: tudo que já foi
 liberado continua acessível.
+
+<!-- FIGURA: ciclo-de-vida -->
 
 ### 7. Marcar o próximo encontro
 

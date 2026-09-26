@@ -47,3 +47,6 @@ __pycache__/
 
 # Artefatos do CLI do Supabase
 supabase/.temp/
+
+# Saída gerada da versão visual dos documentos
+docs/site/*.html
