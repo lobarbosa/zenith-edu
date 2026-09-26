@@ -14,7 +14,7 @@ import { getPreparacaoEncontro } from "@/lib/mentor-console";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { StatTile } from "@/components/stat-tile";
 import { EtapaStepper } from "../../jornada/etapa-stepper";
-import { ProfileDetail } from "../profile-detail";
+import { ProfileDetail } from "@/components/profile-detail";
 import { ReviewActions } from "../review-actions";
 import { Transcript } from "../transcript";
 import { AdvanceButton } from "./advance-button";
@@ -290,7 +290,7 @@ export default async function MenteeDetailPage(props: PageProps<"/mentor/[mentee
                             <p className="text-sm text-bad">Motivo da rejeição: {item.motivo_rejeicao}</p>
                           )}
                           {parsed.success ? (
-                            <ProfileDetail perfil={parsed.data} />
+                            <ProfileDetail perfil={parsed.data} audiencia="mentor" />
                           ) : (
                             <p className="text-sm text-destructive">
                               Este registro não bate com o schema esperado — não valide sem checar

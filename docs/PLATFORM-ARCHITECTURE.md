@@ -202,6 +202,7 @@ parser.
 | --- | --- | --- |
 | `/` | Sessão ativa, com o próximo passo certo para o estado da pessoa | todos |
 | `/diagnostico` | Identificação e os 8 blocos, em streaming | prospect e mentorado |
+| `/perfil` | O Perfil Executivo validado, sem os sinais do mentor | prospect e mentorado |
 | `/conta` | Dados pessoais, senha, privacidade, exclusão de conta | todos |
 | `/jornada` | Etapa atual, atividades, artefatos da etapa, notas do mentor | só mentorado |
 | `/mapas` | Todos os artefatos, de todas as etapas, master-detail | só mentorado |
@@ -302,18 +303,29 @@ confianca_do_diagnostico      alta|media|baixa
 
 Nasce em `rascunho_agente`, versão 1.
 
-**O mentorado nunca vê o conteúdo do próprio Perfil Executivo na
-plataforma.** `ProfileDetail` só é montado em `/mentor/[menteeId]`; a
-única tela do mentorado que toca `executive_profiles` é a home, e só lê
-`status`, `version` e `motivo_rejeicao`. O perfil circula de duas outras
-formas: como contexto injetado nas conversas com os copilotos
-(`summarizePerfil`), e como o documento que o mentor lê para conduzir a
-devolutiva ao vivo.
+**O mentorado lê o próprio Perfil Executivo em `/perfil`, mas só depois de
+validado.** A validação do mentor é o gate: enquanto o perfil for rascunho
+ou estiver rejeitado, a tela diz que a devolutiva vem do mentor e não
+mostra conteúdo nenhum. Não há como o mentorado ler os três gaps antes de
+o mentor decidir liberá-los.
 
-Isso é consistente com "o agente diagnostica, o mentor prescreve" — mas
-não está escrito em lugar nenhum da spec como decisão deliberada. Se a
-intenção for a devolutiva permanecer exclusivamente humana, vale registrar
-como regra. Se não for, falta uma tela.
+Um campo nunca atravessa: `sinais_para_o_mentor`. `ProfileDetail` recebe
+`audiencia: "mentor" | "mentorado"` como **prop obrigatória** — esquecer
+dela é erro de tipo, não vazamento silencioso — e o bloco de sinais só
+renderiza para `"mentor"`.
+
+A leitura usa o client comum (RLS), nunca o admin: a policy
+`executive_profiles_select_own` já restringe ao próprio mentorado, e usar
+admin aqui seria dar bypass onde a policy resolve.
+
+O perfil circula em mais dois lugares: como contexto injetado nas
+conversas com os copilotos (`summarizePerfil`), e como documento que o
+mentor lê para conduzir a devolutiva.
+
+> Esta tela não existia até 26/09. O achado — o mentorado nunca via o
+> próprio perfil — apareceu ao escrever os manuais, e a correção foi
+> decidida em seguida. O gate de validação preserva a devolutiva como
+> momento do mentor: ele decide quando a tela ganha conteúdo.
 
 ### 6.5 O aceite no programa
 
@@ -419,9 +431,9 @@ Na maioria dos turnos não há sinal nenhum. O sinal vai para
 | --- | --- |
 | `/jornada`, `/copiloto`, `/mapas`, `/biblioteca`, `/biblioteca/[id]` | `requireProgram` → redirect para `/` |
 | `POST /api/chat`, `POST /api/artifact` | `isInProgram` → 403 |
-| Sidebar | prospect vê só Diagnóstico, mais Conta no rodapé |
+| Sidebar | prospect vê Diagnóstico e Perfil Executivo, mais Conta no rodapé |
 | Widget do copiloto | não monta para prospect |
-| CTA da home com perfil validado | "seu mentor vai retomar contato", não link para `/jornada` |
+| CTA da home com perfil validado | "seu mentor vai retomar contato", com link para `/perfil` e não para `/jornada` |
 
 Páginas redirecionam, rotas de API devolvem 403: um redirect dentro de um
 `fetch()` entregaria HTML onde o cliente espera JSON.
@@ -526,7 +538,11 @@ Testar na URL de preview antes de mesclar, para não tocar em produção.
    **recusa** enquanto o perfil não estiver validado.
 4. **Validar o perfil, depois aceitar.** Confirmar que a mesma conta ganha
    Jornada, Mapas, Biblioteca e copiloto, em FIND, mês 1.
-5. **Conferir que as contas antigas não foram rebaixadas.**
+5. **Ler o perfil pelos dois lados.** Antes de validar, `/perfil` do
+   mentorado precisa dizer que a devolutiva vem do mentor, sem conteúdo.
+   Depois de validar, precisa mostrar o perfil **sem** o bloco "Sinais
+   para o mentor" — que continua aparecendo na sua ficha.
+6. **Conferir que as contas antigas não foram rebaixadas.**
 
 ### Portão 2 — os cinco copilotos
 

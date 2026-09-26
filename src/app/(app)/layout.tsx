@@ -21,29 +21,53 @@ async function menteeNav(supabase: Awaited<ReturnType<typeof createClient>>, use
     .eq("user_id", userId)
     .maybeSingle();
 
-  const diagnosticoConcluido = mentee
-    ? (
-        await supabase
+  // Duas perguntas de estado, em paralelo: o diagnóstico já fechou, e já
+  // existe perfil validado. A segunda decide se "Perfil Executivo" entra
+  // no menu — link só aparece quando tem conteúdo do outro lado.
+  const [sessionResult, perfilResult] = mentee
+    ? await Promise.all([
+        supabase
           .from("diagnostic_sessions")
           .select("status")
           .eq("mentee_id", mentee.id)
           .order("started_at", { ascending: false })
           .limit(1)
-          .maybeSingle()
-      ).data?.status === "concluida"
-    : false;
+          .maybeSingle(),
+        supabase
+          .from("executive_profiles")
+          .select("id")
+          .eq("mentee_id", mentee.id)
+          .eq("status", "validado")
+          .limit(1)
+          .maybeSingle(),
+      ])
+    : [{ data: null }, { data: null }];
 
-  // Prospect: só o diagnóstico. Jornada, Mapas e Biblioteca são do
-  // programa e as páginas recusam o acesso (requireProgram) — o menu não
-  // pode oferecer porta que não abre.
+  const diagnosticoConcluido = sessionResult.data?.status === "concluida";
+  const temPerfilValidado = Boolean(perfilResult.data);
+
+  // Prospect: diagnóstico e o próprio perfil, nada mais. Jornada, Mapas e
+  // Biblioteca são do programa e as páginas recusam o acesso
+  // (requireProgram) — o menu não pode oferecer porta que não abre.
   if (!mentee || !isInProgram(mentee)) {
-    return diagnosticoConcluido ? [] : [{ href: "/diagnostico", label: "Diagnóstico" }];
+    const prospectItems: NavItem[] = [];
+    if (!diagnosticoConcluido) {
+      prospectItems.push({ href: "/diagnostico", label: "Diagnóstico" });
+    }
+    if (temPerfilValidado) {
+      prospectItems.push({ href: "/perfil", label: "Perfil Executivo" });
+    }
+    return prospectItems;
   }
 
   const items: NavItem[] = [{ href: "/jornada", label: "Jornada" }];
 
   if (!diagnosticoConcluido) {
     items.push({ href: "/diagnostico", label: "Diagnóstico" });
+  }
+
+  if (temPerfilValidado) {
+    items.push({ href: "/perfil", label: "Perfil Executivo" });
   }
 
   // "Copiloto" não entra aqui de propósito: é assistente disponível em

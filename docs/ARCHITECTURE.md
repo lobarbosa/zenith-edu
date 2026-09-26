@@ -1427,3 +1427,38 @@ devolutiva ser um momento humano — mas não está registrado em nenhuma spec
 como decisão deliberada, e ninguém decidiu isso explicitamente. Ou vira
 regra escrita, ou é uma tela que falta. Documentado nos três documentos
 como está hoje, sem mudar código.
+
+## 19. O Perfil Executivo chega ao mentorado (26/09)
+
+Correção do achado da §18. O mentorado passa a ler o próprio Perfil
+Executivo em `/perfil`.
+
+**A validação do mentor é o gate.** A tela lê só `status = 'validado'`.
+Rascunho e perfil rejeitado não aparecem — mostrar rascunho quebraria a
+regra de que nada é exibido como validado sem ação do mentor, e entregaria
+os três gaps antes da devolutiva. Como a validação é ato explícito do
+mentor, ele controla quando a tela ganha conteúdo: validar depois do
+encontro preserva a devolutiva como momento dele, e isso está escrito nos
+dois manuais.
+
+**`sinais_para_o_mentor` não atravessa, e não por disciplina.**
+`ProfileDetail` saiu de `(app)/mentor/` para `src/components/` — mesma
+pasta de `artifact-detail.tsx`, que já era compartilhado — e ganhou
+`audiencia: "mentor" | "mentorado"` como prop **obrigatória**. Uma prop
+opcional com default seguro ainda deixaria alguém montar o componente sem
+pensar; obrigatória, esquecer é erro de tipo. O bloco de sinais renderiza
+só para `"mentor"`.
+
+**Client comum, não admin.** `executive_profiles_select_own` (0001) já
+restringe ao próprio mentorado. Usar `createAdminClient()` aqui seria
+bypass de RLS onde a policy resolve — o admin continua reservado para o
+que a policy não cobre.
+
+**Prospect também vê.** Coerente com a decisão do aceite: antes de entrar
+no programa a pessoa enxerga o diagnóstico e o próprio perfil. O item de
+menu só aparece quando existe versão validada, então nunca há link para
+tela vazia. O CTA da home de quem tem perfil validado mas não foi aceito
+deixou de ser só um aviso de espera e ganhou o link para a leitura.
+
+Versões anteriores ficam acessíveis em `<details>`, pelo mesmo motivo de
+sempre: perfil é versionado, nunca sobrescrito.

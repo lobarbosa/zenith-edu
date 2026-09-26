@@ -69,10 +69,15 @@ async function menteeCta(supabase: SupabaseClient, user: User) {
     // fechada, porque a página recusa quem não foi aceito.
     if (!isInProgram(mentee)) {
       return (
-        <p className="text-sm text-muted-foreground">
-          Seu Perfil Executivo está pronto e validado. Seu mentor vai retomar contato para
-          falar sobre a entrada no programa.
-        </p>
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Seu Perfil Executivo está validado. Seu mentor vai retomar contato para falar
+            sobre a entrada no programa.
+          </p>
+          <Button asChild variant="outline">
+            <Link href="/perfil">Ler meu Perfil Executivo</Link>
+          </Button>
+        </div>
       );
     }
 

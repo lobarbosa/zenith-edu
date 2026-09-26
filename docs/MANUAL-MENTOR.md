@@ -117,19 +117,20 @@ Abra a ficha, aba Perfil Executivo. Leia. Duas ações:
 **Rejeitar, com motivo.** O motivo é exibido ao mentorado. Escreva
 pensando que ele vai ler.
 
-> **O mentorado não lê o próprio Perfil Executivo.** Em nenhum estado —
-> nem depois de validado. A tela dele mostra apenas o status ("aguardando
-> validação", "perfil validado", "rejeitado" com motivo). O conteúdo
-> existe em dois lugares: na sua ficha, e como contexto que os copilotos
-> usam para não dar resposta genérica.
+> **Validar é publicar.** No instante em que você valida, o perfil fica
+> legível para o mentorado em `/perfil`. Antes disso a tela dele diz
+> apenas que a devolutiva vem de você — rascunho e perfil rejeitado não
+> aparecem.
 >
-> Na prática isso significa que **a devolutiva é sua, ao vivo, e é a
-> primeira vez que ele ouve os três gaps.** Se você quiser que ele leia o
-> documento, hoje é você quem entrega — a plataforma não faz isso.
+> Na prática, **valide depois da devolutiva, não antes**, se quiser que os
+> três gaps sejam ouvidos de você primeiro. A validação é o gate, e o
+> ritmo é seu.
 >
-> O campo `sinais_para_o_mentor` é o mais sensível do schema: é onde o
-> modelo registra o que percebeu e que não caberia devolver diretamente à
-> pessoa. Ele aparece na sua tela e em nenhum lugar acessível a ela.
+> O campo `sinais_para_o_mentor` nunca atravessa. É onde o modelo registra
+> o que percebeu e que não caberia devolver diretamente à pessoa; aparece
+> na sua ficha e em nenhum lugar acessível a ela. A tela do mentorado
+> recebe o perfil por um componente que exige declarar a audiência, então
+> não há caminho em que esse bloco escape por esquecimento.
 
 ### 4. Você aceita no programa
 
@@ -312,8 +313,12 @@ Mapas faz o mesmo.
 
 **Um prospect não deve entrar na turma.**
 Simplesmente não aceite. Ele fica com o diagnóstico feito e o perfil
-validado, sem acesso ao programa. A tela inicial dele diz que você vai
-retomar contato.
+validado — que ele consegue ler —, sem acesso ao programa. A tela inicial
+dele diz que você vai retomar contato.
+
+**Quero conduzir a devolutiva antes de ele ler o perfil.**
+Valide depois do encontro. Enquanto o perfil for rascunho, a tela dele não
+mostra conteúdo nenhum.
 
 ---
 

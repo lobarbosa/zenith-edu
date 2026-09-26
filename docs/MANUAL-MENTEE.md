@@ -117,12 +117,17 @@ três gaps com evidência e impacto, as suas evidências de preparo, os seus
 stakeholders e o custo de não mudar. Ele nasce como rascunho e vai para a
 fila do seu mentor.
 
-**Esse documento não é exibido para você na plataforma**, nem depois de
-validado. A sua tela mostra o status — aguardando validação, validado, ou
-rejeitado com o motivo — e nada além disso. A leitura do perfil acontece
-na devolutiva com o seu mentor, ao vivo. Ele continua trabalhando nos
-bastidores: é o que faz o copiloto conhecer a sua situação concreta em vez
-de responder de forma genérica.
+**Você lê esse documento em Perfil Executivo, no menu — depois que o seu
+mentor valida.** Até lá a tela diz apenas que a devolutiva vem dele. Não é
+segredo: é sequência. O seu mentor conduz a devolutiva ao vivo, e o
+documento fica disponível para você reler quando quiser.
+
+Um trecho do perfil não é exibido para você: as anotações que o modelo
+registra para o mentor. Elas existem para a condução do programa, não para
+a sua leitura.
+
+O perfil também trabalha nos bastidores: é o que faz o copiloto conhecer a
+sua situação concreta em vez de responder de forma genérica.
 
 ---
 
@@ -131,9 +136,9 @@ de responder de forma genérica.
 Concluído o diagnóstico, você espera. Seu mentor lê o Perfil Executivo,
 valida ou pede ajuste, e decide sobre a sua entrada na turma.
 
-Até esse aceite acontecer, a plataforma mostra a você o Diagnóstico e a
-sua Conta. Jornada, Mapas, Biblioteca e copiloto ainda não existem para
-você — não porque estão escondidos, mas porque são o programa, e o
+Até esse aceite acontecer, a plataforma mostra a você o Diagnóstico, o seu
+Perfil Executivo assim que ele for validado, e a sua Conta. Jornada,
+Mapas, Biblioteca e copiloto ainda não existem para você — não porque estão escondidos, mas porque são o programa, e o
 programa começa quando o mentor diz que começa.
 
 A tela inicial sempre diz em que ponto você está.
@@ -254,6 +259,20 @@ etapas que você já liberou. O que ainda não abriu não aparece.
 
 ---
 
+## O seu Perfil Executivo
+
+No menu, assim que o seu mentor validar. Traz a leitura que saiu do
+diagnóstico: trajetória, momento atual, a próxima cadeira declarada com
+uma avaliação de nitidez, os **três gaps** com evidência e impacto, as
+suas evidências de preparo, as competências a evoluir, como você é
+percebido hoje e a distância disso para a próxima cadeira, os seus
+stakeholders, e o custo de não mudar em 12 meses.
+
+Se o seu mentor pedir ajuste e uma versão nova for gerada, a anterior
+continua acessível. Um perfil nunca é sobrescrito.
+
+---
+
 ## A Conta
 
 - **Seus dados** — a mesma identificação do começo do diagnóstico,
@@ -308,8 +327,9 @@ também registra sinais automáticos para ele — contradições, riscos,
 avanços — que ajudam a priorizar a atenção dele.
 
 **Posso ler o meu Perfil Executivo?**
-Não pela plataforma. A leitura acontece na devolutiva com o seu mentor. Se
-quiser o documento em mãos depois, peça a ele.
+Sim, em **Perfil Executivo**, no menu — assim que o seu mentor validar. O
+item só aparece quando há o que ler. Se uma revisão gerar uma versão nova,
+a anterior continua disponível: um perfil nunca é sobrescrito.
 
 **Por que o copiloto não respondeu o que eu perguntei?**
 Provavelmente o assunto pertence a uma etapa ainda não liberada. Ele faz a
