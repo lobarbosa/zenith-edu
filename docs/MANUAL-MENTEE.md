@@ -44,6 +44,8 @@ redefinição.
 
 Contas novas precisam confirmar o e-mail antes do primeiro acesso.
 
+![A identificação, antes do primeiro bloco. Nome, sobrenome e cargo são obrigatórios; o resto é opcional e editável depois em Conta.](images/prospect-onboarding.png)
+
 ---
 
 ## Antes de tudo: quem é você
@@ -160,6 +162,8 @@ Seis etapas, uma por mês, cada uma com um copiloto próprio:
 | 5 | INFLUENCE | Executivo | Comunicação executiva, percepção, stakeholders |
 | 6 | MOVE | Executivo | Plano de movimentação com marcos verificáveis |
 
+<!-- FIGURA: jornada -->
+
 A linha do tempo no topo mostra as seis etapas, qual está liberada e onde
 você está. **Quem libera a próxima etapa é o mentor**, no encontro. Não há
 avanço automático por tempo nem por ter terminado os artefatos.
@@ -174,6 +178,8 @@ Na Jornada você encontra:
 - **Notas do mentor** que ele marcou como visíveis para você.
 - **Próximo encontro**, com a contagem de dias, quando ele estiver marcado.
 
+![A Jornada de quem está no mês 2. A linha do tempo mostra as seis etapas e o que já foi liberado.](images/mentorado-jornada.png)
+
 ---
 
 ## O copiloto
@@ -182,6 +188,8 @@ O botão redondo no canto inferior direito, em qualquer tela. Clicou, abre
 um painel de conversa. Se preferir tela cheia, há uma página dedicada.
 
 É a mesma conversa nos dois lugares — o mesmo histórico, o mesmo copiloto.
+
+![O copiloto aberto sobre a Jornada. O botão fica no canto inferior direito, em qualquer tela.](images/mentorado-copiloto-widget.png)
 
 ### Você não escolhe o copiloto
 
@@ -246,6 +254,8 @@ ou rejeita com motivo. Três estados possíveis:
 
 Uma versão nova **nunca apaga** a anterior. O histórico inteiro fica.
 
+<!-- FIGURA: ciclo-artefato -->
+
 A tela **Mapas** reúne todos os artefatos de todas as etapas, inclusive os
 de meses anteriores. É onde você encontra o Career Map do mês 1 quando
 estiver no mês 4.
@@ -270,6 +280,8 @@ stakeholders, e o custo de não mudar em 12 meses.
 
 Se o seu mentor pedir ajuste e uma versão nova for gerada, a anterior
 continua acessível. Um perfil nunca é sobrescrito.
+
+![O Perfil Executivo como você o vê, depois de validado.](images/mentorado-perfil.png)
 
 ---
 

@@ -48,10 +48,14 @@ depois de ação humana explícita.
 | **Mentorado** | Prospect aceito pelo mentor numa turma. | Jornada, copilotos, mapas, biblioteca, notas do mentor. |
 | **Mentor** | O consultor humano. Allowlist de e-mail. | Todos os mentorados, fila de validação, console da turma. |
 
+<!-- FIGURA: ciclo-de-vida -->
+
 A fronteira entre prospect e mentorado é a coluna `mentees.papel` e o ato
 de aceite (§6.3). A fronteira do mentor é a variável de ambiente
 `MENTOR_EMAILS`, não uma tabela de permissões — escopo mínimo deliberado
 para um programa com um único consultor.
+
+![A fila de validação do mentor, com o roster acima. Quem preencheu a identificação aparece com nome e cargo; quem entrou antes dela existir cai no e-mail.](images/mentor-roster.png)
 
 ---
 
@@ -327,6 +331,8 @@ mentor lê para conduzir a devolutiva.
 > decidida em seguida. O gate de validação preserva a devolutiva como
 > momento do mentor: ele decide quando a tela ganha conteúdo.
 
+![A tela `/perfil` do mentorado, com o perfil já validado. O bloco "Sinais para o mentor" não aparece aqui — é o único campo do schema que não atravessa.](images/mentorado-perfil.png)
+
 ### 6.5 O aceite no programa
 
 O ponto onde um prospect vira cliente. `POST /api/mentor/aceitar`:
@@ -355,6 +361,8 @@ Seis etapas, um mês cada, cada uma com seu copiloto e seus artefatos:
 | 4 | LEAD | Copiloto de Liderança | PEOPLE | Leadership Map |
 | 5 | INFLUENCE | Copiloto Executivo | COMMUNICATION | Executive Positioning Map |
 | 6 | MOVE | Copiloto Executivo | COMMUNICATION | Executive Movement Plan |
+
+<!-- FIGURA: jornada -->
 
 O avanço de etapa é ato do mentor (`POST /api/mentor/advance`). Não há
 avanço automático por tempo nem por conclusão de artefato.
@@ -394,6 +402,8 @@ classifica por etapa e não por copiloto.
     roda o **detector de sinais** (Haiku) e grava três linhas em
     `agent_runs` — roteador, conversa e sinais.
 
+<!-- FIGURA: turno-copiloto -->
+
 ### 6.8 Geração de artefato
 
 `POST /api/artifact`. Recusa prospect, recusa etapa não liberada, e evita
@@ -404,6 +414,8 @@ schema é registrada em `agent_runs` e dispara retry.
 Armadilha conhecida, já causou bug real: **campo enum sem `.nullable()`**.
 O modelo devolve `null` para o campo que não tem base na conversa, e um
 enum estrito rejeita a saída inteira.
+
+<!-- FIGURA: ciclo-artefato -->
 
 ### 6.9 Detecção de sinais
 
@@ -434,6 +446,8 @@ Na maioria dos turnos não há sinal nenhum. O sinal vai para
 | Sidebar | prospect vê Diagnóstico e Perfil Executivo, mais Conta no rodapé |
 | Widget do copiloto | não monta para prospect |
 | CTA da home com perfil validado | "seu mentor vai retomar contato", com link para `/perfil` e não para `/jornada` |
+
+![À esquerda do prospect, a navegação tem só Diagnóstico e Conta. Antes do bloco 1, a identificação.](images/prospect-onboarding.png)
 
 Páginas redirecionam, rotas de API devolvem 403: um redirect dentro de um
 `fetch()` entregaria HTML onde o cliente espera JSON.

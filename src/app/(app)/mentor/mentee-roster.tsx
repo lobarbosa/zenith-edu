@@ -18,6 +18,10 @@ export function MenteeRoster({ roster }: { roster: RosterEntry[] }) {
     <div>
       {roster.map(({ mentee, session, profile }) => {
         const status = menteeStatus(session, profile);
+        // Sem nome preenchido, menteeDisplayName já cai no e-mail — repetir
+        // o mesmo e-mail embaixo não informa nada.
+        const nome = menteeDisplayName(mentee);
+        const subtitulo = menteeSubtitle(mentee) ?? (nome === mentee.email ? null : mentee.email);
         return (
           <Link
             key={mentee.id}
@@ -25,12 +29,10 @@ export function MenteeRoster({ roster }: { roster: RosterEntry[] }) {
             className="flex items-center justify-between gap-4 border-b border-border px-6 py-3 outline-none last:border-b-0 hover:bg-secondary/50 focus-visible:ring-2 focus-visible:ring-ring/50"
           >
             <div className="min-w-0">
-              <p className="truncate text-sm font-medium text-foreground">
-                {menteeDisplayName(mentee)}
-              </p>
-              <p className="truncate text-xs text-muted-foreground">
-                {menteeSubtitle(mentee) ?? mentee.email}
-              </p>
+              <p className="truncate text-sm font-medium text-foreground">{nome}</p>
+              {subtitulo && (
+                <p className="truncate text-xs text-muted-foreground">{subtitulo}</p>
+              )}
             </div>
             <div className="flex flex-none items-center gap-3">
               {mentee.papel === "prospect" && <StatusPill tone="neutral">Prospect</StatusPill>}

@@ -1462,3 +1462,33 @@ deixou de ser só um aviso de espera e ganhou o link para a leitura.
 
 Versões anteriores ficam acessíveis em `<details>`, pelo mesmo motivo de
 sempre: perfil é versionado, nunca sobrescrito.
+
+## 20. Bug de fronteira server/client no onboarding (26/09)
+
+Achado ao capturar prints para a documentação, com uma conta prospect de
+verdade: `/diagnostico` quebrava com
+
+> Attempted to call toIdentityValues() from the server but
+> toIdentityValues is on the client.
+
+`toIdentityValues` morava em `mentee-identity-form.tsx`, que é
+`"use client"`. Um server component pode **renderizar** um componente
+client, mas não **chamar** função exportada de módulo client. Movida para
+`src/lib/mentee-identity.ts`, junto com o tipo; o formulário passa a
+importar o tipo de lá e reexportá-lo.
+
+**Por que `tsc`, `lint` e `build` passaram.** Os três passam porque o erro
+é de runtime na fronteira RSC, num caminho condicional: só executa para
+quem tem `nome` nulo **e** diagnóstico não concluído. Nenhuma das contas
+do banco estava nesse estado — todas as que tinham `nome` nulo já tinham
+sessão concluída, e o `return` anterior curto-circuitava antes da linha.
+
+Consequência: **o onboarding ficou quebrado desde o merge do PR #20**, e
+era a porta de entrada de todo cadastro novo. O que pegou foi criar uma
+conta prospect real e abrir a tela — exatamente o que a skill
+`validate-delivery` diz no fim ("não substitui teste ao vivo"), agora com
+um caso concreto para citar.
+
+Corrigido de quebra, no mesmo commit: a linha do roster repetia o e-mail
+duas vezes quando a pessoa não tinha nome, porque `menteeDisplayName` já
+cai no e-mail e o subtítulo mostrava o mesmo valor.
