@@ -1401,3 +1401,29 @@ em FIND.
 - Migrar o mentor pro papel `'mentor'` na tabela. `isMentor()` continua
   sendo a allowlist de e-mail (§6) — `papel` não decide acesso de mentor,
   só pertencimento ao programa.
+
+
+## 18. Documentação consolidada (26/09)
+
+`ARCHITECTURE.md` — este arquivo — é diário de decisões em ordem
+cronológica. Serve para responder "por que isso ficou assim", não para
+apresentar o sistema. Três documentos novos cobrem o que faltava:
+
+- `PLATFORM-ARCHITECTURE.md` — retrato consolidado da plataforma, técnico
+  e funcional: papéis, stack, modelo de dados com as cinco invariantes,
+  segurança, telas, fluxos passo a passo, e o roteiro de validação (§11).
+- `MANUAL-MENTEE.md` — manual para quem participa do programa.
+- `MANUAL-MENTOR.md` — manual operacional do consultor.
+
+**Achado ao escrever os manuais:** o mentorado nunca vê o conteúdo do
+próprio Perfil Executivo. `ProfileDetail` só é montado em
+`/mentor/[menteeId]`; a única tela do mentorado que toca
+`executive_profiles` é a home, e lê apenas `status`, `version` e
+`motivo_rejeicao`. O perfil circula como contexto dos copilotos
+(`summarizePerfil`) e como documento que o mentor lê para a devolutiva.
+
+Isso é coerente com "o agente diagnostica, o mentor prescreve" e com a
+devolutiva ser um momento humano — mas não está registrado em nenhuma spec
+como decisão deliberada, e ninguém decidiu isso explicitamente. Ou vira
+regra escrita, ou é uma tela que falta. Documentado nos três documentos
+como está hoje, sem mudar código.
