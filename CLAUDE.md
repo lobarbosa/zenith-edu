@@ -95,6 +95,21 @@ Executive advisory premium, nunca infoproduto.
 - Não refatore o que não foi pedido.
 - Quando a decisão for de produto e não de engenharia, pergunte.
 
+## Skills deste repositório
+
+Em `.claude/skills/`. Carregam sozinhas pela descrição, mas vale saber que
+existem:
+
+| Skill | Quando vale |
+| --- | --- |
+| `validate-delivery` | terminou uma alteração, vai commitar ou fechar entrega |
+| `test-as-user` | mexeu em tela ou rota; abrir logado como prospect, mentorado ou mentor |
+| `ship-migration` | a entrega inclui migration — a ordem errada quebra a produção |
+| `refresh-docs` | mudou uma tela ou um fluxo; regenerar prints e manuais |
+| `copilot-anatomy` | mexer em prompt, território de copiloto, roteador ou liberação de etapa |
+| `new-artifact` | criar ou alterar um tipo de artefato |
+| `ui-ux-pro-max` | desenhar ou corrigir interface |
+
 ## Processo de deploy
 
 A Vercel faz deploy de produção a partir da `main`. Todo o desenvolvimento
