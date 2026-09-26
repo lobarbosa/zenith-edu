@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ensureMentee } from "@/lib/mentees";
+import { isInProgram } from "@/lib/mentee-access";
 import { routeMessage } from "@/lib/agents/router";
 import { AGENT_PILAR, type AgentKey } from "@/lib/agents/router-prompt";
 import {
@@ -69,6 +70,13 @@ export async function POST(request: Request) {
   }
 
   const mentee = await ensureMentee(supabase, user);
+
+  // O copiloto é do programa, não do diagnóstico: prospect não fala com ele
+  // nem antes nem depois do perfil ficar pronto, só depois do aceite.
+  if (!isInProgram(mentee)) {
+    return new Response("Disponível depois do aceite no programa.", { status: 403 });
+  }
+
   const admin = createAdminClient();
 
   // RLS de messages combina (OR) a policy do caminho session_id (diagnóstico)

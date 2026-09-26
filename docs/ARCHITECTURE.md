@@ -1304,3 +1304,161 @@ conteúdo que ela resume.
 Resultado medido nas quatro abas: de 3700px para **863–1503px**, uma a
 1,7 telas. A aba de artefatos passou a esconder os tipos sem nenhuma
 versão gerada, em vez de listar oito "Ainda não gerado".
+
+## 17. Identificação do mentorado e o aceite no programa
+
+Duas correções que vieram juntas porque dependem da mesma migration
+(`0007_perfil_mentee_e_aceite.sql`).
+
+### 17.1 O mentor não sabia com quem falava
+
+`mentees` tinha `id`, `user_id`, `email`, `created_at`. Nada mais. Toda
+tela do mentor — roster, fila de validação, pulso da turma, custo,
+detalhe — mostrava um endereço de e-mail onde deveria estar o nome de uma
+pessoa. Num programa de 5 a 8 executivos, ler
+`lo.debarbosa+prospect1@gmail.com` antes de um encontro é o oposto do que
+o produto promete.
+
+A migration acrescenta `nome`, `sobrenome`, `data_nascimento`, `cargo`,
+`empresa`, `linkedin`, `telefone` e `carreira_inicio_ano`. Todas
+nullable: quem já estava no banco continua funcionando pelo fallback de
+e-mail (`menteeDisplayName` em `src/lib/mentees.ts`), sem linha órfã sem
+identidade.
+
+`carreira_inicio_ano` em vez de "anos de experiência" porque ano não
+envelhece sozinho — o número de anos é derivado na leitura.
+
+**Onde se coleta:** antes do bloco 1 do diagnóstico
+(`src/app/(app)/diagnostico/onboarding.tsx`). Obrigatórios: nome,
+sobrenome e cargo. O resto é opcional. Assim todo Perfil Executivo chega
+identificado ao mentor, e o agente não abre a conversa sem saber com quem
+fala. Quem já concluiu os oito blocos antes do formulário existir **não**
+é devolvido ao começo: a sessão concluída manda mais que o formulário, e
+o lugar de completar é `/conta`, que reusa o mesmo componente e a mesma
+rota.
+
+**Como se grava:** `POST /api/mentee/perfil`, com lista fechada de
+colunas. Não existe policy de UPDATE em `mentees` — de propósito. RLS não
+restringe coluna, então uma policy de UPDATE deixaria o mentorado
+escrever em `papel`, `cohort_id` e `aceito_em`, ou seja, se aceitar
+sozinho no programa. A escrita passa pelo route handler com admin e lista
+fechada, mesmo padrão do bootstrap de `journey_state`.
+
+### 17.2 O aceite não existia
+
+`mentees.papel` (`prospect | mentorado | mentor | admin`) existe desde
+`0004` e **nunca foi lido por nenhuma linha de código**. `cohort_id`
+idem, e `cohorts` estava vazia. Pior: o default da coluna era
+`'mentorado'`. Na prática qualquer pessoa que criasse conta nascia dentro
+do programa — `journey_state` em FIND, copiloto liberado, artefatos
+geráveis — sem nenhum ato do mentor. O `SPEC-SOFTWARE.md` §42 define
+Prospect como quem "conduz o Executive Diagnostic **antes de virar
+cliente**"; o código não implementava essa fronteira.
+
+O default passa a ser `'prospect'`. **As cinco linhas que já existiam
+ficam como estão** (`'mentorado'`): mudar o default não expulsa ninguém
+de uma turma em andamento.
+
+`POST /api/mentor/aceitar` exige perfil validado antes de aceitar — o
+aceite é consequência da validação, não um caminho paralelo. Ele grava
+`papel`, `aceito_em`, `aceito_por` e `cohort_id`, e cria o
+`journey_state`, que é o que libera FIND. A migration cria a Founding
+Cohort, que até então só existia como texto fixo nas telas.
+
+O botão "Aceitar no programa" ocupa o lugar de "Avançar etapa" no painel
+lateral de `/mentor/[menteeId]` enquanto a pessoa for prospect — a mesma
+coluna de operação, um só ato disponível por vez.
+
+### 17.3 Onde a fronteira é aplicada
+
+`src/lib/mentee-access.ts`. Duas funções, uma regra.
+
+| Superfície | Trava |
+| --- | --- |
+| `/jornada`, `/copiloto`, `/mapas`, `/biblioteca`, `/biblioteca/[id]` | `requireProgram` → redirect pra `/` |
+| `POST /api/chat`, `POST /api/artifact` | `isInProgram` → 403 |
+| Sidebar | prospect vê só Diagnóstico (e Conta no rodapé) |
+| Widget do copiloto | não monta para prospect |
+| CTA da home com perfil validado | "seu mentor vai retomar contato", não link pra `/jornada` |
+
+Páginas redirecionam, rotas de API devolvem 403: redirect dentro de um
+`fetch()` entregaria HTML onde o cliente espera JSON.
+
+`'mentor'` e `'admin'` contam como dentro do programa porque o mentor
+também tem linha em `mentees` (é assim que `validado_por` e
+`atualizado_por` o referenciam) e não pode cair no gate das próprias
+telas do mentorado.
+
+Abrir a tela de um prospect no console **não** cria mais o
+`journey_state` dele: `ensureJourneyState` só roda em `/mentor/[menteeId]`
+depois do aceite. Antes disso, abrir a ficha era o que colocava a pessoa
+em FIND.
+
+### 17.4 O que ficou de fora
+
+- UI de turmas. Existe uma turma, criada na migration, e o aceite aponta
+  pra turma ativa mais antiga. Gerenciar turmas é outra entrega.
+- Migrar o mentor pro papel `'mentor'` na tabela. `isMentor()` continua
+  sendo a allowlist de e-mail (§6) — `papel` não decide acesso de mentor,
+  só pertencimento ao programa.
+
+
+## 18. Documentação consolidada (26/09)
+
+`ARCHITECTURE.md` — este arquivo — é diário de decisões em ordem
+cronológica. Serve para responder "por que isso ficou assim", não para
+apresentar o sistema. Três documentos novos cobrem o que faltava:
+
+- `PLATFORM-ARCHITECTURE.md` — retrato consolidado da plataforma, técnico
+  e funcional: papéis, stack, modelo de dados com as cinco invariantes,
+  segurança, telas, fluxos passo a passo, e o roteiro de validação (§11).
+- `MANUAL-MENTEE.md` — manual para quem participa do programa.
+- `MANUAL-MENTOR.md` — manual operacional do consultor.
+
+**Achado ao escrever os manuais:** o mentorado nunca vê o conteúdo do
+próprio Perfil Executivo. `ProfileDetail` só é montado em
+`/mentor/[menteeId]`; a única tela do mentorado que toca
+`executive_profiles` é a home, e lê apenas `status`, `version` e
+`motivo_rejeicao`. O perfil circula como contexto dos copilotos
+(`summarizePerfil`) e como documento que o mentor lê para a devolutiva.
+
+Isso é coerente com "o agente diagnostica, o mentor prescreve" e com a
+devolutiva ser um momento humano — mas não está registrado em nenhuma spec
+como decisão deliberada, e ninguém decidiu isso explicitamente. Ou vira
+regra escrita, ou é uma tela que falta. Documentado nos três documentos
+como está hoje, sem mudar código.
+
+## 19. O Perfil Executivo chega ao mentorado (26/09)
+
+Correção do achado da §18. O mentorado passa a ler o próprio Perfil
+Executivo em `/perfil`.
+
+**A validação do mentor é o gate.** A tela lê só `status = 'validado'`.
+Rascunho e perfil rejeitado não aparecem — mostrar rascunho quebraria a
+regra de que nada é exibido como validado sem ação do mentor, e entregaria
+os três gaps antes da devolutiva. Como a validação é ato explícito do
+mentor, ele controla quando a tela ganha conteúdo: validar depois do
+encontro preserva a devolutiva como momento dele, e isso está escrito nos
+dois manuais.
+
+**`sinais_para_o_mentor` não atravessa, e não por disciplina.**
+`ProfileDetail` saiu de `(app)/mentor/` para `src/components/` — mesma
+pasta de `artifact-detail.tsx`, que já era compartilhado — e ganhou
+`audiencia: "mentor" | "mentorado"` como prop **obrigatória**. Uma prop
+opcional com default seguro ainda deixaria alguém montar o componente sem
+pensar; obrigatória, esquecer é erro de tipo. O bloco de sinais renderiza
+só para `"mentor"`.
+
+**Client comum, não admin.** `executive_profiles_select_own` (0001) já
+restringe ao próprio mentorado. Usar `createAdminClient()` aqui seria
+bypass de RLS onde a policy resolve — o admin continua reservado para o
+que a policy não cobre.
+
+**Prospect também vê.** Coerente com a decisão do aceite: antes de entrar
+no programa a pessoa enxerga o diagnóstico e o próprio perfil. O item de
+menu só aparece quando existe versão validada, então nunca há link para
+tela vazia. O CTA da home de quem tem perfil validado mas não foi aceito
+deixou de ser só um aviso de espera e ganhou o link para a leitura.
+
+Versões anteriores ficam acessíveis em `<details>`, pelo mesmo motivo de
+sempre: perfil é versionado, nunca sobrescrito.

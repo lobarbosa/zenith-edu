@@ -1,7 +1,16 @@
 import type { ExecutiveProfile } from "@/lib/agents/executive-profile-schema";
 import { Field } from "@/components/field";
 
-export function ProfileDetail({ perfil }: { perfil: ExecutiveProfile }) {
+// `audiencia` é obrigatória de propósito: `sinais_para_o_mentor` é o campo
+// que nunca pode chegar ao mentorado (SPEC-AGENTS.md §5). Como prop
+// obrigatória, esquecer dela é erro de tipo, não vazamento silencioso.
+export function ProfileDetail({
+  perfil,
+  audiencia,
+}: {
+  perfil: ExecutiveProfile;
+  audiencia: "mentor" | "mentorado";
+}) {
   return (
     <div className="space-y-4">
       <Field label="Trajetória">{perfil.trajetoria}</Field>
@@ -64,20 +73,22 @@ export function ProfileDetail({ perfil }: { perfil: ExecutiveProfile }) {
 
       <Field label="Confiança do diagnóstico">{perfil.confianca_do_diagnostico}</Field>
 
-      <div className="rounded-md bg-warning-soft p-3">
-        <p className="mb-2 text-xs font-medium uppercase tracking-wide text-warning">
-          Sinais para o mentor — nunca exibido ao mentorado
-        </p>
-        {perfil.sinais_para_o_mentor.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Nenhum sinal registrado.</p>
-        ) : (
-          <ul className="list-disc space-y-1 pl-4 text-sm">
-            {perfil.sinais_para_o_mentor.map((sinal, index) => (
-              <li key={index}>{sinal}</li>
-            ))}
-          </ul>
-        )}
-      </div>
+      {audiencia === "mentor" && (
+        <div className="rounded-md bg-warning-soft p-3">
+          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-warning">
+            Sinais para o mentor — nunca exibido ao mentorado
+          </p>
+          {perfil.sinais_para_o_mentor.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Nenhum sinal registrado.</p>
+          ) : (
+            <ul className="list-disc space-y-1 pl-4 text-sm">
+              {perfil.sinais_para_o_mentor.map((sinal, index) => (
+                <li key={index}>{sinal}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
     </div>
   );
 }

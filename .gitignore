@@ -44,3 +44,6 @@ next-env.d.ts
 # python (scripts vendorizados em .claude/skills/)
 __pycache__/
 *.pyc
+
+# Artefatos do CLI do Supabase
+supabase/.temp/

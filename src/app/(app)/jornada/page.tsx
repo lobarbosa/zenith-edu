@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { ensureMentee } from "@/lib/mentees";
+import { requireProgram } from "@/lib/mentee-access";
 import { ensureJourneyState, etapaAgent } from "@/lib/agents/journey";
 import { AGENT_LABELS } from "@/lib/agents/agent-labels";
 import { StatTile } from "@/components/stat-tile";
@@ -63,7 +63,7 @@ export default async function JornadaPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const mentee = await ensureMentee(supabase, user!);
+  const mentee = await requireProgram(supabase, user!);
   const admin = createAdminClient();
   const journey = await ensureJourneyState(admin, mentee.id);
 

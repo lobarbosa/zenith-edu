@@ -6,7 +6,7 @@ export type QueueItem = {
   kind: "perfil" | ArtifactTipo;
   id: string;
   menteeId: string;
-  menteeEmail: string;
+  menteeNome: string;
   version: number;
   createdAt: string;
 };
@@ -37,7 +37,7 @@ export function ValidationQueue({ items }: { items: QueueItem[] }) {
               {item.kind === "perfil" ? "Perfil Executivo" : ARTIFACT_LABELS[item.kind]}
               <span className="ml-2 font-normal text-muted-foreground">v{item.version}</span>
             </p>
-            <p className="truncate text-xs text-muted-foreground">{item.menteeEmail}</p>
+            <p className="truncate text-xs text-muted-foreground">{item.menteeNome}</p>
           </div>
           <div className="flex flex-none items-center gap-3">
             <span className="hidden text-xs text-muted-foreground sm:inline">

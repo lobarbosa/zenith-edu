@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { ensureMentee } from "@/lib/mentees";
+import { requireProgram } from "@/lib/mentee-access";
 import { CopilotoChat } from "./copiloto-chat";
 
 const HISTORY_LIMIT = 40;
@@ -10,7 +10,7 @@ export default async function CopilotoPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  await ensureMentee(supabase, user!);
+  await requireProgram(supabase, user!);
 
   // Mesmo filtro do histórico em /api/chat: RLS de messages combina (OR) o
   // caminho session_id (diagnóstico) com o de conversation_id (copiloto).
