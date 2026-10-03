@@ -1541,3 +1541,53 @@ nunca lê aquilo.
   Sentry está disponível como conector e não está instalado.
 - Prontos que valem: `supabase/agent-skills` (oficial, MIT — RLS, auth,
   migrations, security audit), Playwright MCP, context7.
+
+## 22. Conselho do LLM Council — três correções de UX (03/10)
+
+Conselho convocado para validar o estado do projeto. Cinco conselheiros,
+três revisões por pares. O veredito completo foi entregue ao usuário; aqui
+ficam só as três correções que eram minhas e já estão em código.
+
+**1. O botão do Google sumiu da tela de login.** O provider está desligado
+no Supabase, então todo clique falhava — na porta de entrada de um produto
+premium. A base da `ui-ux-pro-max` cobre estado desabilitado ("indique
+claramente o que não é interativo"), mas não cobre controle que falha em
+100% das vezes; a decisão de esconder em vez de desabilitar é de produto:
+caminho morto na primeira tela custa posicionamento, e desabilitado ainda
+ocupa o lugar de destaque. Nada foi removido — o botão volta ligando
+`NEXT_PUBLIC_GOOGLE_AUTH_ENABLED=true`.
+
+**2. Cada etapa ganhou uma linha dizendo o que se faz nela.** O conselheiro
+sem contexto não conseguiu distinguir FIND de CREATE: seis verbos em inglês
+num produto em português, sem explicação. `ETAPA_RESUMO` em `journey.ts`,
+renderizado dentro do `<details>` de cada etapa na Jornada — texto visível,
+nunca tooltip (a base é explícita contra divulgação só em hover).
+
+**3. Cada mapa ganhou a pergunta que responde.** Career Map, Competency Map
+e Next Chair Map nascem todos em FIND e, pelo nome, parecem o mesmo
+assunto. `ARTIFACT_RESUMO` em `artifact-schemas.ts`, exibido no detalhe de
+`/mapas`.
+
+### O que o conselho levantou e não é correção de código
+
+O essencial do veredito, para não se perder: a `SUPABASE_SERVICE_ROLE_KEY`
+vazada há três semanas é incidente aberto, não item de backlog — ela fura
+RLS nas catorze tabelas e há dado pessoal dentro. A revisão por pares
+acrescentou que girar a chave não encerra o incidente: falta expurgar os
+logs, auditar se a chave foi usada no período, invalidar sessões já
+emitidas (rotação não derruba JWT vivo) e avaliar o dever de notificação
+sob LGPD.
+
+E o ponto que três dos cinco convergiram sem combinar: quatro semanas de
+superfície com zero cliente pagante, e o núcleo — as conversas com os cinco
+copilotos — nunca rodou. Código que nunca rodou é hipótese, não entrega.
+
+### Nota de método
+
+As três correções passaram em `tsc`, `lint` e `build`, mas **não foram
+validadas ao vivo**: nesta sessão a política de saída do container passou a
+negar `vyoqtlkklmcdcjpivtgv.supabase.co`, então nem o banco nem o servidor
+de desenvolvimento ficaram alcançáveis. É exatamente o passo 2 da
+`validate-delivery` que ficou em aberto. As três alterações são de baixo
+risco (render condicional e strings estáticas, sem mexer na fronteira
+server/client), mas a verificação continua devida.

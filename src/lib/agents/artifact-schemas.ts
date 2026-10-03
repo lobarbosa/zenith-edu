@@ -241,6 +241,20 @@ export const ARTIFACT_LABELS: Record<ArtifactTipo, string> = {
   executive_movement_plan: "Executive Movement Plan",
 };
 
+// Uma linha por artefato dizendo que pergunta ele responde. Três deles
+// nascem na mesma etapa e, só pelo nome, parecem o mesmo assunto — sem
+// isso o mentorado não sabe qual abrir primeiro.
+export const ARTIFACT_RESUMO: Record<ArtifactTipo, string> = {
+  career_map: "Onde você chegou, como chegou e o que isso já prova.",
+  competency_map: "O que a próxima cadeira exige e o que falta demonstrar.",
+  next_chair_map: "Qual é a cadeira, com cargo, escopo e tipo de problema.",
+  business_map: "Como o negócio onde você está ganha e perde dinheiro.",
+  value_creation_map: "Onde você gera valor, e como provar isso com número.",
+  leadership_map: "Como seu time entrega sem você virar o gargalo.",
+  executive_positioning_map: "Como quem decide enxerga você hoje, e o que mudar.",
+  executive_movement_plan: "Os marcos verificáveis até a próxima cadeira.",
+};
+
 // Qual copiloto gera/usa cada artefato — filtra a conversa na geração
 // (artifact-generation.ts) e o território do chat (não a liberação —
 // ver ARTIFACT_ETAPA abaixo).

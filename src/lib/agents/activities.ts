@@ -1,5 +1,5 @@
 import { ARTIFACT_TIPOS, ARTIFACT_ETAPA, ARTIFACT_LABELS, type ArtifactTipo } from "./artifact-schemas";
-import { etapaAgent, ETAPA_ORDER, ETAPA_MES, type Etapa } from "./journey";
+import { etapaAgent, ETAPA_ORDER, ETAPA_MES, ETAPA_RESUMO, type Etapa } from "./journey";
 import { AGENT_LABELS } from "./agent-labels";
 
 export type AtividadeStatus = "concluida" | "em_andamento" | "pendente";
@@ -12,6 +12,7 @@ export type Atividade = {
 
 export type EtapaAtividades = {
   etapa: Etapa;
+  resumo: string;
   mes: number;
   copiloto: string;
   liberada: boolean;
@@ -67,6 +68,7 @@ export function buildEtapaAtividades({
 
     return {
       etapa,
+      resumo: ETAPA_RESUMO[etapa],
       mes: ETAPA_MES[etapa],
       copiloto,
       liberada,

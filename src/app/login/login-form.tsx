@@ -153,24 +153,35 @@ export function LoginForm() {
     setMessage({ tone: "info", text: `Enviamos um link de redefinição de senha para ${email}.` });
   }
 
+  // Controle que falha em 100% dos cliques não fica na tela. O provider
+  // Google está desligado no Supabase, então o botão some até a variável
+  // ser ligada — nada foi removido, só condicionado. Desabilitar não
+  // serviria: a porta de entrada de um produto premium não pode oferecer
+  // caminho morto.
+  const googleHabilitado = process.env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED === "true";
+
   return (
     <div className="space-y-6">
-      <Button
-        type="button"
-        variant="outline"
-        className="w-full gap-2"
-        onClick={handleGoogle}
-        disabled={status === "loading"}
-      >
-        <GoogleIcon />
-        Entrar com Google
-      </Button>
+      {googleHabilitado && (
+        <>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full gap-2"
+            onClick={handleGoogle}
+            disabled={status === "loading"}
+          >
+            <GoogleIcon />
+            Entrar com Google
+          </Button>
 
-      <div className="flex items-center gap-3">
-        <div className="h-px flex-1 bg-border" />
-        <span className="text-xs text-muted-foreground">ou</span>
-        <div className="h-px flex-1 bg-border" />
-      </div>
+          <div className="flex items-center gap-3">
+            <div className="h-px flex-1 bg-border" />
+            <span className="text-xs text-muted-foreground">ou</span>
+            <div className="h-px flex-1 bg-border" />
+          </div>
+        </>
+      )}
 
       <div className="flex gap-1 rounded-md bg-secondary p-1">
         <button

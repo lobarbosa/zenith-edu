@@ -14,6 +14,18 @@ export const ETAPA_MES: Record<string, number> = {
 
 export const ETAPA_ORDER = ["FIND", "UNDERSTAND", "CREATE", "LEAD", "INFLUENCE", "MOVE"] as const;
 
+// Os nomes das etapas são seis verbos em inglês num produto em português.
+// Para quem chega, FIND e CREATE não se distinguem — a linha abaixo diz o
+// que se trabalha em cada uma, em texto visível, nunca só em tooltip.
+export const ETAPA_RESUMO: Record<string, string> = {
+  FIND: "Transformar ambição difusa na próxima cadeira, com nitidez.",
+  UNDERSTAND: "Enxergar o negócio por dentro: receita, custo, margem, mercado.",
+  CREATE: "Gerar valor demonstrável e saber defendê-lo com número.",
+  LEAD: "Liderar por resultado: delegação, performance, time que escala.",
+  INFLUENCE: "Ser percebido pelo valor que já gera, por quem decide.",
+  MOVE: "Converter seis meses em plano de movimentação com marcos.",
+};
+
 export type Etapa = (typeof ETAPA_ORDER)[number];
 
 export function isEtapa(value: string): value is Etapa {
