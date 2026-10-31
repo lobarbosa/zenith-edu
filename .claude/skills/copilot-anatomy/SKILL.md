@@ -1,6 +1,6 @@
 ---
 name: copilot-anatomy
-description: "Mapa das camadas de um copiloto do T-Shaped Executive (Career, Business, Value, Leadership, Executive) e de como o roteamento entre eles funciona. Use quando a tarefa envolver alterar o prompt ou o território de um copiloto, mexer no roteador, na liberação de etapas da jornada, no filtro de RAG por pilar, ou entender por que um copiloto respondeu no lugar de outro. Carrega os seis arquivos que definem um copiloto e o que é regra travada da spec."
+description: "Mapa das camadas de um copiloto do T-Shaped Executive (Career, Business, Value, Leadership, Executive) e de como o roteamento entre eles funciona. Use quando a tarefa envolver alterar o prompt ou o território de um copiloto, mexer no roteador, na liberação de etapas da jornada, no filtro de RAG por pilar, ou entender por que um copiloto respondeu no lugar de outro. Carrega os sete arquivos que definem um copiloto e o que é regra travada da spec."
 ---
 
 # Anatomia de um copiloto
@@ -13,8 +13,9 @@ produto — pergunte antes de escrever código.
 
 | # | Arquivo | O que define |
 |---|---|---|
-| 1 | `src/lib/agents/copilot-prompt.ts` | `COPILOT_BASE_PROMPT` + o prompt do território → `X_SYSTEM_PROMPT` |
-| 2 | `src/lib/agents/router-prompt.ts` | Linha de território no `ROUTER_SYSTEM_PROMPT`, `AgentKey`, `AGENT_KEYS`, `AGENT_PILAR` |
+| 0 | `src/lib/agents/base-prompt.ts` | `buildBasePrompt` — tom, limites rígidos e regra de não revelar instruções, **compartilhado com o Diagnostic Agent** |
+| 1 | `src/lib/agents/copilot-prompt.ts` | o prompt do território → `X_SYSTEM_PROMPT`, composto sobre a base |
+| 2 | `src/lib/agents/router-prompt.ts` | Linha de território no `ROUTER_SYSTEM_PROMPT`, `AgentKey`, `AGENT_PILAR` |
 | 3 | `src/lib/agents/journey.ts` | `AGENT_ETAPAS` — em que etapa o território abre |
 | 4 | `src/app/api/chat/route.ts` | `SYSTEM_PROMPTS` |
 | 5 | `src/lib/agents/agent-labels.ts` | `AGENT_LABELS` — assinatura na UI |
@@ -24,8 +25,13 @@ produto — pergunte antes de escrever código.
 `AgentKey` novo quebra o type em vez de cair num fallback silencioso.
 
 **Só `agent-labels.ts` é seguro em client component** — é o único da
-lista sem prompt. Os outros cinco nunca podem ser importados do cliente;
-o prompt do sistema não pode ser recuperável pelo usuário.
+lista sem prompt. Os outros nunca podem ser importados do cliente; o
+prompt do sistema não pode ser recuperável pelo usuário.
+
+**Mexer em `base-prompt.ts` atinge os seis agentes de conversa**, não só
+um copiloto: o Diagnostic Agent compõe sobre a mesma base. Era duplicada
+em dois arquivos até 31/10 e divergia em silêncio; se precisar alterar,
+leia a skill `change-agent-prompt` antes.
 
 ## Como o roteamento decide
 

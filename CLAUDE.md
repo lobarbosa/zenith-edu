@@ -106,7 +106,9 @@ existem:
 | `test-as-user` | mexeu em tela ou rota; abrir logado como prospect, mentorado ou mentor |
 | `ship-migration` | a entrega inclui migration — a ordem errada quebra a produção |
 | `refresh-docs` | mudou uma tela ou um fluxo; regenerar prints e manuais |
-| `copilot-anatomy` | mexer em prompt, território de copiloto, roteador ou liberação de etapa |
+| `change-agent-prompt` | mexer em qualquer texto enviado a modelo — o que é travado e o que não é |
+| `copilot-anatomy` | território de copiloto, roteador ou liberação de etapa |
+| `review-system` | revisar o sistema, auditar, ou retomar o projeto depois de parado |
 | `new-artifact` | criar ou alterar um tipo de artefato |
 | `ui-ux-pro-max` | desenhar ou corrigir interface |
 
