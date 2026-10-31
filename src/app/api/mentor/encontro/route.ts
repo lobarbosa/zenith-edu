@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isMentor } from "@/lib/mentor";
 import { ensureJourneyState } from "@/lib/agents/journey";
+import { fetchIsInProgram } from "@/lib/mentee-access";
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -28,6 +29,12 @@ export async function POST(request: Request) {
   }
 
   const admin = createAdminClient();
+  if (!(await fetchIsInProgram(admin, menteeId))) {
+    return new Response("Aceite esta pessoa no programa antes de marcar encontro.", {
+      status: 400,
+    });
+  }
+
   const journey = await ensureJourneyState(admin, menteeId);
 
   const { error } = await admin

@@ -2,6 +2,7 @@ import { randomUUID } from "crypto";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ensureMentee } from "@/lib/mentees";
+import { isInProgram } from "@/lib/mentee-access";
 import { ensureJourneyState, etapaAgent } from "@/lib/agents/journey";
 import { ALLOWED_MIME_TYPES, ALLOWED_MIME_LABEL, MAX_FILE_SIZE_BYTES, ATTACHMENTS_BUCKET } from "@/lib/attachments/limits";
 
@@ -29,12 +30,25 @@ export async function POST(request: Request) {
   }
 
   const mentee = await ensureMentee(supabase, user);
+
+  // Mesmo gate de /api/chat e /api/artifact. Faltava aqui, e a rota chama
+  // ensureJourneyState logo abaixo — que CRIA a linha: um prospect se
+  // colocava em FIND sozinho só enviando um arquivo, sem passar pelo aceite.
+  if (!isInProgram(mentee)) {
+    return new Response("Disponível depois do aceite no programa.", { status: 403 });
+  }
+
   const admin = createAdminClient();
   const journey = await ensureJourneyState(admin, mentee.id);
   const conversationId = await resolveCurrentConversation(supabase, mentee.id, journey.etapa_atual);
 
   const bytes = Buffer.from(await file.arrayBuffer());
-  const storagePath = `${mentee.id}/${conversationId}/${randomUUID()}-${file.name}`;
+
+  // O nome vem do cliente e ia cru pra dentro da chave do Storage, onde
+  // "../" escaparia do prefixo do próprio mentorado. O nome original fica
+  // em `nome_arquivo` para exibição; a chave usa só o que é seguro.
+  const nomeSeguro = file.name.replace(/[^\w.\- ]+/g, "_").slice(-80) || "arquivo";
+  const storagePath = `${mentee.id}/${conversationId}/${randomUUID()}-${nomeSeguro}`;
 
   // Bucket privado (criado com service_role, nunca URL pública — SPEC-SOFTWARE.md
   // §12). Upload roda como admin porque não há policy de Storage pro

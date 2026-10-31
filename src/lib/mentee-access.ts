@@ -24,3 +24,17 @@ export async function requireProgram(supabase: SupabaseClient, user: User) {
   }
   return mentee;
 }
+
+// Para as rotas do mentor que conduzem a jornada. Elas recebem um menteeId
+// do corpo da requisição e chamam ensureJourneyState, que CRIA a linha se
+// não existir — então, sem esta checagem, avançar etapa no id de um
+// prospect criava a jornada dele e já pulava FIND, burlando o aceite. É o
+// mesmo buraco que a ficha do mentor teve e que a §17.3 fechou lá; aqui
+// faltava.
+export async function fetchIsInProgram(
+  admin: SupabaseClient,
+  menteeId: string
+): Promise<boolean> {
+  const { data } = await admin.from("mentees").select("papel").eq("id", menteeId).maybeSingle();
+  return data ? isInProgram(data) : false;
+}
