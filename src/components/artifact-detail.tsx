@@ -104,7 +104,10 @@ function CompetencyMapDetail({ conteudo }: { conteudo: CompetencyMap }) {
             {conteudo.competencias.map((item, index) => (
               <li key={index}>
                 <p className="font-medium">
-                  {item.nome} <span className="text-muted-foreground">· {item.pilar}</span>
+                  {item.nome}
+                  {item.pilar && (
+                    <span className="text-muted-foreground"> · {item.pilar}</span>
+                  )}
                 </p>
                 <p className="text-muted-foreground">
                   Nível atual: {nivelLabel(item.nivel_atual)} → exigido: {nivelLabel(item.nivel_exigido)}

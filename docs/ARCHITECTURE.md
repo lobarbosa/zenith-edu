@@ -1591,3 +1591,68 @@ de desenvolvimento ficaram alcançáveis. É exatamente o passo 2 da
 `validate-delivery` que ficou em aberto. As três alterações são de baixo
 risco (render condicional e strings estáticas, sem mexer na fronteira
 server/client), mas a verificação continua devida.
+
+## 23. Revisão de sistema ao retomar (31/10)
+
+Projeto retomado depois de um mês. `tsc`, `lint` e `build` limpos; o build
+compila sem `.env.local` porque toda rota é dinâmica. Varredura sem achados
+em: catch engolindo erro, rota de API sem auth, TODO/FIXME, segredo ou
+prompt alcançável pelo bundle do browser, e módulo `"use client"`
+exportando função solta (a correção da §20 segurou — hoje cada um exporta
+exatamente um componente).
+
+Dois achados reais.
+
+### 23.1 `/api/profile` era um laço aberto
+
+A síntese do Perfil Executivo dispara de dentro de `/api/diagnostic` quando
+o bloco 8 fecha — decisão deliberada, registrada antes, para que uma aba
+fechada no momento errado não deixe o perfil sem gerar. `POST /api/profile`
+existe como caminho de recuperação e **nenhum componente a chama**.
+
+Só que ela não tinha a guarda que `/api/artifact` tem contra empilhar
+rascunho. Qualquer usuário autenticado podia chamar em laço, e cada chamada
+relê a transcrição inteira dos oito blocos, roda Opus — o modelo mais caro
+do sistema — e empilha mais uma versão na fila do mentor. Com o cadastro
+aberto à internet, o amplificador é de graça para quem chama e caro para
+quem paga.
+
+Corrigido com a mesma guarda do artefato: existe perfil em
+`rascunho_agente` para aquele mentee, responde 409. O caminho de
+recuperação continua funcionando (se a síntese falhou, não há rascunho), e
+regenerar depois de rejeição também (o status aí é `rejeitado`).
+
+**Fica em aberto, e é decisão de produto:** regenerar sobre um perfil já
+`validado` ainda é permitido. Isso cria uma versão concorrente de um
+documento que o mentor já assinou. Bloquear seria defensável; não bloqueei
+porque a regra travada diz que perfil é versionado, e decidir que uma
+versão nova é indesejada é chamada do produto, não da engenharia.
+
+### 23.2 `pilar` era o único enum de artefato sem `.nullable()`
+
+`CompetencyMapSchema.competencias[].pilar` ficou de fora da correção que já
+tinha passado por `nivel_atual` e `nivel_exigido` — e o comentário logo
+acima do schema documenta exatamente esse modo de falha: a instrução global
+manda deixar vazio o campo sem base, o modelo emite vazio num enum estrito,
+o Zod rejeita e as três tentativas se esgotam.
+
+`competency_map` é artefato de FIND, mês 1 — o primeiro que todo mentorado
+gera. Era o único enum não-nullable entre treze no arquivo.
+
+Corrigido no schema e na tela: `artifact-detail` renderizava `· {pilar}`
+cru e deixaria um separador solto quando nulo.
+
+Os dois enums de `executive-profile-schema.ts` (`nitidez`,
+`confianca_do_diagnostico`) continuam não-nullable **de propósito** — o
+`CLAUDE.md` trava o schema do perfil contra a spec, e o modelo sempre tem
+base para julgá-los depois de ler oito blocos.
+
+### Limite desta revisão
+
+Nada foi validado ao vivo: o container foi recriado e `.env.local` é
+gitignored, então não há como alcançar o Supabase nem subir o servidor de
+desenvolvimento. O que dá para afirmar com evidência: `/login` prerenderiza
+como estático, ou seja, o Next renderizou a árvore do `LoginForm` com o
+botão condicional do Google (§22) no build, sem crashar. As correções de
+hoje só rejeitam (409) ou alargam schema — nenhuma pode quebrar caminho que
+já funcionava.

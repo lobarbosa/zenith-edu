@@ -29,7 +29,10 @@ export const CompetencyMapSchema = z.object({
   competencias: z.array(
     z.object({
       nome: z.string(),
-      pilar: z.enum(["BUSINESS", "VALUE", "PEOPLE", "COMMUNICATION"]),
+      // Nullable como todos os outros enums do arquivo: a instrução global
+      // manda deixar vazio o campo sem base, e uma competência que não cai
+      // limpo num dos quatro pilares derrubava a geração inteira.
+      pilar: z.enum(["BUSINESS", "VALUE", "PEOPLE", "COMMUNICATION"]).nullable(),
       nivel_atual: z.enum(["inicial", "em_desenvolvimento", "solido", "referencia"]).nullable(),
       nivel_exigido: z.enum(["inicial", "em_desenvolvimento", "solido", "referencia"]).nullable(),
       evidencia_atual: z.string(),
