@@ -1656,3 +1656,59 @@ como estático, ou seja, o Next renderizou a árvore do `LoginForm` com o
 botão condicional do Google (§22) no build, sem crashar. As correções de
 hoje só rejeitam (409) ou alargam schema — nenhuma pode quebrar caminho que
 já funcionava.
+
+## 24. Segunda rodada da revisão: o gate tinha três buracos (31/10)
+
+A §17.3 fechou a fronteira prospect/mentorado nas páginas e em duas rotas
+de API. Revisando rota por rota, faltava em três — e todas as três chamam
+`ensureJourneyState`, que **cria** a linha se não existir. O efeito é
+sempre o mesmo: a jornada nascia sem ninguém ter aceitado.
+
+| Rota | O que dava para fazer |
+| --- | --- |
+| `POST /api/attachments` | Um prospect se colocava em FIND sozinho, só enviando um arquivo |
+| `POST /api/mentor/advance` | Avançar no id de um prospect criava a jornada dele já em UNDERSTAND, pulando FIND |
+| `POST /api/mentor/encontro` | Marcar encontro criava a jornada de quem não foi aceito |
+
+As duas do mentor exigem mentor autenticado, então não são furo de
+segurança — são estado inconsistente que a UI esconde (os botões só
+aparecem para quem foi aceito) e a API permitia.
+
+`fetchIsInProgram` em `mentee-access.ts` lê o papel pelo `menteeId` que
+veio do corpo da requisição; `isInProgram` continua servindo onde o mentee
+já foi carregado. A matriz final está consistente: toda rota que cria
+jornada é gated, exceto `/api/mentor/aceitar`, que **é** o gate.
+
+### 24.1 Corrida no avanço de etapa
+
+`/api/mentor/advance` não tinha compare-and-swap, diferente de
+`/api/mentor/validate` e `/reject`, que já usavam. Dois requests
+concorrentes — duplo clique, retry — liam `etapa_atual = FIND`, ambos
+escreviam `UNDERSTAND`, e `etapas_liberadas` ficava com a entrada
+duplicada.
+
+Não é cosmético: a Jornada mostra `etapas_liberadas.length` como "N de 6".
+Uma duplicata vira etapa liberada a mais na tela do mentorado.
+
+Corrigido com `.eq("etapa_atual", journey.etapa_atual)` na escrita (o
+segundo request recebe 409 e a mensagem pede recarregar) e `Set` na
+montagem do array, que também normaliza duplicata herdada de corrida
+anterior.
+
+### 24.2 Nome de arquivo cru dentro da chave do Storage
+
+`/api/attachments` montava `${mentee.id}/${conversationId}/${uuid}-${file.name}`
+com o nome vindo do cliente. `../` ali escaparia do prefixo do próprio
+mentorado. O nome original continua em `nome_arquivo` para exibição; a
+chave agora usa só caracteres seguros.
+
+### 24.3 `pilar` chegava cru à tela
+
+`artifact-detail.tsx` tem oito mapas de rótulo traduzindo enum para
+português. `pilar` era o único sem — renderizava `BUSINESS`, `PEOPLE` e
+`COMMUNICATION` em caixa alta, em inglês, num produto em português. É a
+queixa do conselheiro sem contexto (§22) aparecendo concreta, e no mesmo
+campo que já tinha o problema do `.nullable()`.
+
+Vale o padrão: quando um campo escapa de uma convenção do arquivo, costuma
+escapar de mais de uma.

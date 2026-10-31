@@ -79,6 +79,15 @@ function CareerMapDetail({ conteudo }: { conteudo: CareerMap }) {
   );
 }
 
+// Único enum do arquivo que ainda chegava cru à tela: "BUSINESS", "PEOPLE"
+// e "COMMUNICATION" em caixa alta, em inglês, num produto em português.
+const PILAR_LABEL: Record<string, string> = {
+  BUSINESS: "Negócio",
+  VALUE: "Valor",
+  PEOPLE: "Pessoas",
+  COMMUNICATION: "Comunicação",
+};
+
 const NIVEL_LABEL: Record<string, string> = {
   inicial: "Inicial",
   em_desenvolvimento: "Em desenvolvimento",
@@ -106,7 +115,10 @@ function CompetencyMapDetail({ conteudo }: { conteudo: CompetencyMap }) {
                 <p className="font-medium">
                   {item.nome}
                   {item.pilar && (
-                    <span className="text-muted-foreground"> · {item.pilar}</span>
+                    <span className="text-muted-foreground">
+                      {" "}
+                      · {PILAR_LABEL[item.pilar] ?? item.pilar}
+                    </span>
                   )}
                 </p>
                 <p className="text-muted-foreground">
