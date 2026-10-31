@@ -1786,3 +1786,63 @@ Duas skills novas, ambas de lacuna real:
   guarda, segredo no bundle, corrida em escrita, prompt duplicado.
 
 São nove skills agora. O `CLAUDE.md` tem o mapa.
+
+## 26. As skills, auditadas (31/10)
+
+Depois de achar `copilot-anatomy` apontando para `AGENT_KEYS` — símbolo
+removido no refactor de roteamento — auditei as nove por inteiro. Skill
+não é documentação: é instrução que a sessão seguinte executa. Defasada ou
+quebrada, ela custa mais caro do que não existir.
+
+Quatro verificações, cada uma com o que achou.
+
+### 26.1 Caminhos e símbolos citados
+
+Todo caminho entre crases conferido contra o disco, todo símbolo contra
+`src/`. Nenhuma defasagem além da já corrigida. Os três "faltantes" que a
+busca apontou — `X_SYSTEM_PROMPT`, `ANTHROPIC_API_KEY`, `NEXT_PUBLIC_` —
+são placeholder, variável que o SDK lê sozinho do ambiente, e prefixo.
+
+Vale como varredura recorrente: código refatora, skill não acompanha.
+
+### 26.2 Os comandos rodam?
+
+Dezesseis blocos `bash` nas skills. Cinco mudam estado ou dependem de rede
+e segredo (dev server, `npm ci`, `curl`, build de docs) e ficaram de fora.
+Os onze restantes foram executados.
+
+**Um falhou, e era defeito meu de ontem.** O bloco de
+`change-agent-prompt` que confere se algum client component importa prompt
+usava `grep -l` dentro de um laço: quando **nada** é encontrado — ou seja,
+quando está tudo certo — ele não imprime nada e sai com código 1. Estado
+correto indistinguível de comando quebrado. Reescrito para sempre imprimir
+veredito.
+
+É o mesmo princípio das telas do produto: estado vazio precisa dizer que
+está vazio.
+
+### 26.3 Gatilhos em disputa
+
+`copilot-anatomy` dizia "Use quando a tarefa envolver **alterar o prompt**
+ou o território de um copiloto" — exatamente o gatilho de
+`change-agent-prompt`, criada no mesmo dia. Duas skills disputando o mesmo
+pedido significa que a errada pode carregar, e `copilot-anatomy` não leva a
+tabela do que é travado e do que é texto de engenharia.
+
+Descrição estreitada para o trabalho que só ela faz — território, roteador,
+liberação de etapa, filtro de RAG — com ponteiro explícito para a outra.
+
+### 26.4 Frontmatter
+
+`name` bate com o nome da pasta nas nove.
+
+### Por que não há uma décima
+
+Avaliei o que ainda falta e a resposta honesta é nada relevante. As nove
+cobrem processo (validar, testar como usuário, migration, docs), domínio
+(prompt, copiloto, artefato), auditoria (`review-system`) e design
+(`ui-ux-pro-max`, de terceiro). O que sobra — fluxo operacional do mentor,
+estado do projeto — já vive nos manuais e no `CLAUDE.md`, que é onde se
+procura.
+
+Skill que ninguém dispara é contexto gasto em toda sessão.
