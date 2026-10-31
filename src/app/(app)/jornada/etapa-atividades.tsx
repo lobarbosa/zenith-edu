@@ -46,6 +46,7 @@ export function EtapaAtividadesList({ etapas }: { etapas: EtapaAtividades[] }) {
             </div>
           </summary>
 
+          <p className="pb-4 pl-9 text-sm text-muted-foreground">{item.resumo}</p>
           <div className="pb-4 pl-9">
             {!item.liberada ? (
               <p className="text-sm text-muted-foreground">

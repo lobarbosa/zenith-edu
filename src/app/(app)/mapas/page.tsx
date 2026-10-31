@@ -1,7 +1,12 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { requireProgram } from "@/lib/mentee-access";
-import { ARTIFACT_LABELS, ARTIFACT_ETAPA, type ArtifactTipo } from "@/lib/agents/artifact-schemas";
+import {
+  ARTIFACT_LABELS,
+  ARTIFACT_ETAPA,
+  ARTIFACT_RESUMO,
+  type ArtifactTipo,
+} from "@/lib/agents/artifact-schemas";
 import { StatusPill } from "@/components/status-pill";
 import { ArtifactDetail } from "@/components/artifact-detail";
 import { Card, CardContent } from "@/components/ui/card";
@@ -115,6 +120,9 @@ export default async function MapasPage({
                     </h2>
                     <p className="mt-0.5 text-xs text-muted-foreground">
                       {ARTIFACT_ETAPA[selected.tipo]} · versão {selected.versao}
+                    </p>
+                    <p className="mt-2 max-w-[60ch] text-sm text-muted-foreground">
+                      {ARTIFACT_RESUMO[selected.tipo]}
                     </p>
                   </div>
                   <StatusPill tone={STATUS_TONE[selected.status]}>

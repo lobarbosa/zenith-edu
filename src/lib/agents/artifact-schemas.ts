@@ -29,7 +29,10 @@ export const CompetencyMapSchema = z.object({
   competencias: z.array(
     z.object({
       nome: z.string(),
-      pilar: z.enum(["BUSINESS", "VALUE", "PEOPLE", "COMMUNICATION"]),
+      // Nullable como todos os outros enums do arquivo: a instrução global
+      // manda deixar vazio o campo sem base, e uma competência que não cai
+      // limpo num dos quatro pilares derrubava a geração inteira.
+      pilar: z.enum(["BUSINESS", "VALUE", "PEOPLE", "COMMUNICATION"]).nullable(),
       nivel_atual: z.enum(["inicial", "em_desenvolvimento", "solido", "referencia"]).nullable(),
       nivel_exigido: z.enum(["inicial", "em_desenvolvimento", "solido", "referencia"]).nullable(),
       evidencia_atual: z.string(),
@@ -239,6 +242,20 @@ export const ARTIFACT_LABELS: Record<ArtifactTipo, string> = {
   leadership_map: "Leadership Map",
   executive_positioning_map: "Executive Positioning Map",
   executive_movement_plan: "Executive Movement Plan",
+};
+
+// Uma linha por artefato dizendo que pergunta ele responde. Três deles
+// nascem na mesma etapa e, só pelo nome, parecem o mesmo assunto — sem
+// isso o mentorado não sabe qual abrir primeiro.
+export const ARTIFACT_RESUMO: Record<ArtifactTipo, string> = {
+  career_map: "Onde você chegou, como chegou e o que isso já prova.",
+  competency_map: "O que a próxima cadeira exige e o que falta demonstrar.",
+  next_chair_map: "Qual é a cadeira, com cargo, escopo e tipo de problema.",
+  business_map: "Como o negócio onde você está ganha e perde dinheiro.",
+  value_creation_map: "Onde você gera valor, e como provar isso com número.",
+  leadership_map: "Como seu time entrega sem você virar o gargalo.",
+  executive_positioning_map: "Como quem decide enxerga você hoje, e o que mudar.",
+  executive_movement_plan: "Os marcos verificáveis até a próxima cadeira.",
 };
 
 // Qual copiloto gera/usa cada artefato — filtra a conversa na geração

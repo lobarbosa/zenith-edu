@@ -34,6 +34,22 @@ export async function POST(request: Request) {
     return new Response("O diagnóstico ainda não foi concluído.", { status: 400 });
   }
 
+  // Mesma guarda de /api/artifact. A síntese roda sozinha dentro de
+  // /api/diagnostic quando o bloco 8 fecha (ver ARCHITECTURE.md), então esta
+  // rota é o caminho de recuperação — e sem a guarda ela era um laço aberto:
+  // cada chamada relê a transcrição inteira, roda Opus (o modelo mais caro do
+  // sistema) e empilha mais uma versão na fila do mentor.
+  const { data: pendente } = await supabase
+    .from("executive_profiles")
+    .select("id")
+    .eq("mentee_id", session.mentee_id)
+    .eq("status", "rascunho_agente")
+    .maybeSingle();
+
+  if (pendente) {
+    return new Response("Já existe uma versão do perfil em revisão do mentor.", { status: 409 });
+  }
+
   const admin = createAdminClient();
   const profile = await synthesizeExecutiveProfile(supabase, admin, session);
 
