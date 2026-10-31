@@ -88,9 +88,9 @@ rótulo, sem prompt.
 Como conferir depois de mexer:
 
 ```bash
-for f in $(grep -rl '^"use client"' src/ --include=*.tsx --include=*.ts); do
-  grep -l "agents/.*prompt\|agents/signals" "$f"
-done
+achou=$(grep -rl '^"use client"' src/ --include=*.tsx --include=*.ts \
+  | xargs grep -l "agents/.*prompt\|agents/signals" 2>/dev/null)
+[ -z "$achou" ] && echo "ok: nenhum client importa prompt" || echo "⚠ $achou"
 ```
 
 ## Validar depois

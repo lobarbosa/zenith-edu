@@ -1,6 +1,6 @@
 ---
 name: copilot-anatomy
-description: "Mapa das camadas de um copiloto do T-Shaped Executive (Career, Business, Value, Leadership, Executive) e de como o roteamento entre eles funciona. Use quando a tarefa envolver alterar o prompt ou o território de um copiloto, mexer no roteador, na liberação de etapas da jornada, no filtro de RAG por pilar, ou entender por que um copiloto respondeu no lugar de outro. Carrega os sete arquivos que definem um copiloto e o que é regra travada da spec."
+description: "Mapa das camadas de um copiloto do T-Shaped Executive (Career, Business, Value, Leadership, Executive) e de como o roteamento entre eles funciona. Use quando a tarefa envolver o território de um copiloto, o roteador, a liberação de etapas da jornada, o filtro de RAG por pilar, ou entender por que um copiloto respondeu no lugar de outro. Para alterar o texto de um prompt, a skill é change-agent-prompt. Carrega os sete arquivos que definem um copiloto e o que é regra travada da spec."
 ---
 
 # Anatomia de um copiloto
