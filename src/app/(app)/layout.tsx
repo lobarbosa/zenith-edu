@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getAuthUser } from "@/lib/supabase/server";
 import { isMentor } from "@/lib/mentor";
 import { isInProgram } from "@/lib/mentee-access";
 import { AppShell } from "./app-shell";
@@ -79,9 +79,7 @@ async function menteeNav(supabase: Awaited<ReturnType<typeof createClient>>, use
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser();
 
   if (!user) {
     redirect("/login");

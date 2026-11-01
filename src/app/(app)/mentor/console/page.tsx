@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { getAuthUser } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isMentor } from "@/lib/mentor";
 import { StatusPill } from "@/components/status-pill";
@@ -27,10 +27,7 @@ const SINAL_TIPO_LABEL: Record<Sinal["tipo"], string> = {
 const SEVERIDADE_TONE = { alta: "bad", media: "warning", baixa: "neutral" } as const;
 
 export default async function MentorConsolePage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser();
 
   if (!user || !isMentor(user.email)) {
     redirect("/");

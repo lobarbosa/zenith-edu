@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getAuthUser } from "@/lib/supabase/server";
 import { ensureMentee } from "@/lib/mentees";
 import { ExecutiveProfileSchema } from "@/lib/agents/executive-profile-schema";
 import { ProfileDetail } from "@/components/profile-detail";
@@ -17,9 +17,7 @@ function formatDate(value: string | null) {
 
 export default async function PerfilPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser();
 
   const mentee = await ensureMentee(supabase, user!);
 

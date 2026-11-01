@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getAuthUser } from "@/lib/supabase/server";
 import { isMentor } from "@/lib/mentor";
 import { ensureMentee } from "@/lib/mentees";
 import { isInProgram } from "@/lib/mentee-access";
@@ -10,9 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 
 export default async function HomePage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser();
 
   const mentor = isMentor(user?.email);
   const cta = mentor ? null : await menteeCta(supabase, user!);

@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getAuthUser } from "@/lib/supabase/server";
 import { requireProgram } from "@/lib/mentee-access";
 import { CopilotoChat } from "./copiloto-chat";
 
@@ -6,9 +6,7 @@ const HISTORY_LIMIT = 40;
 
 export default async function CopilotoPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser();
 
   await requireProgram(supabase, user!);
 

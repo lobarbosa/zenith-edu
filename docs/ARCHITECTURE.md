@@ -1961,3 +1961,136 @@ registrado de todos os `agent_runs` daquele agente, e o teto de custo
 deixava de disparar — um bug que só apareceria na forma de "está muito
 barato". Agora registra `pricing_desconhecido` com o modelo no log e segue
 devolvendo 0, porque quem chama espera número.
+
+## 28. Limpeza do obsoleto e performance de carregamento (01/11)
+
+Pedido explícito de limpar o obsoleto e melhorar performance. O que segue é
+contado em **round-trips**, não em milissegundos: não há `.env.local` neste
+container, então não houve medição ao vivo. Round-trip eliminado é contável
+no código; latência economizada depende do salto Vercel↔Supabase e seria
+chute.
+
+### 28.1 Toda navegação verificava o JWT duas vezes
+
+O maior ganho, e o menos visível.
+
+`src/app/(app)/layout.tsx` envolve as treze telas do produto e precisa do
+usuário pra montar o menu. Cada página dentro dele chamava
+`supabase.auth.getUser()` de novo pra escopar as próprias consultas.
+
+`getUser()` não lê cookie: revalida o JWT contra o `/auth/v1/user` do
+Supabase. Eram **dois round-trips de autenticação em série em toda
+navegação**, em todas as telas.
+
+`createClient` e um novo `getAuthUser` passam a ser envolvidos em `cache()`
+do React, que memoiza por passe de render do servidor — layout e página
+rodam no mesmo passe. Duas idas viraram uma, e um cliente só por requisição
+em vez de dois.
+
+As rotas de API ficaram de fora de propósito: cada uma chama `getUser()`
+uma vez por requisição, então não há o que deduplicar e mexer ali só
+adicionaria diff.
+
+Efeito colateral útil: quatro páginas (`conta`, `mentor`, `mentor/console`,
+`mentor/[menteeId]`) criavam um cliente Supabase **só** pra autenticar e
+faziam todo o resto pelo client admin. O `createClient()` delas era código
+morto e saiu — o lint acusou assim que o `getUser()` saiu de cena.
+
+### 28.2 A Jornada transferia a conversa inteira pra contar cinco números
+
+O pior trecho de consulta do repositório.
+
+```ts
+const { data: msgRows } = await supabase
+  .from("messages")
+  .select("agent_key")
+  .not("conversation_id", "is", null);
+```
+
+Sem `limit`, sem janela. Puxava **toda** linha de mensagem de conversa do
+mentorado — numa jornada de seis meses, milhares — e contava em memória, pra
+produzir cinco inteiros que alimentam a atividade "Conversar com o X".
+
+Passa a usar `count: "exact", head: true` por copiloto: cinco contagens em
+paralelo, zero linha transferida. O Postgres conta; o Node recebe números.
+
+Na mesma tela, as consultas de `artifacts` e `mentor_notes` eram aguardadas
+em série embora dependam só de `mentee.id`. As três foram pra um
+`Promise.all`: três round-trips viraram um.
+
+### 28.3 A ficha do mentor era uma cascata de nove passos
+
+`mentor/[menteeId]` é a tela mais pesada do produto — a que o mentor abre
+antes de cada encontro. Carregava assim, cada passo esperando o anterior:
+
+`mentees` → `diagnostic_sessions` → `messages` → `journey_state` →
+`[preparação + notas]` → `executive_profiles` → `artifacts` →
+`attachments` → `[URLs assinadas]`
+
+Só duas dessas dependências são reais: a transcrição precisa do id da sessão,
+e a URL assinada precisa da linha do anexo. Todo o resto depende apenas de
+`menteeId`.
+
+Reorganizada em três ondas — `mentees`, depois sete consultas em paralelo,
+depois transcrição e URLs assinadas em paralelo. **Nove passos em série
+viraram três.**
+
+### 28.4 O alerta de falha de schema lia o histórico inteiro, pra sempre
+
+```ts
+admin.from("agent_runs").select("sucesso").like("agent_key", "artifact:%")
+```
+
+Sem filtro de mentorado, sem limite, sem recorte de tempo. Lia toda linha de
+geração de todos os mentorados desde o início do projeto pra calcular uma
+porcentagem — e piorava conforme o projeto crescesse.
+
+Pior que o custo: o alerta ficava **errado** ao crescer. Mil gerações boas no
+histórico diluem uma falha de 100% que começou hoje, que é exatamente o que
+o alerta existe pra pegar.
+
+Passa a olhar as 100 gerações mais recentes de cada tipo. Isso muda a
+semântica de "taxa histórica" para "taxa recente" — deliberado, e alinhado
+com o alerta de latência logo abaixo na mesma função, que já trabalhava numa
+janela recente (`limit(20)`).
+
+### 28.5 Obsoleto removido
+
+- **`lucide-react`**: declarado em `package.json`, zero import em `src/`.
+  Só sobrevivia como `"iconLibrary": "lucide"` no `components.json`, que é
+  configuração do shadcn e continua lá — se um componente novo precisar de
+  ícone, o `shadcn add` reinstala.
+- **Quatro `createClient()` mortos**, descritos em 28.1.
+
+### 28.6 O que varri e estava limpo
+
+Registrado pra não refazer: nenhum arquivo órfão em `src/lib` ou
+`src/components` (todos têm consumidor), nenhum `TODO`/`FIXME`/`@deprecated`
+no código, nenhuma dependência além do `lucide-react` sem uso, e os
+documentos não descrevem nenhum destes internos — então nada em `docs/`
+ficou desatualizado por estas mudanças.
+
+Os `await` em série de `mapas`, `biblioteca`, `perfil` e `copiloto` **não**
+foram tocados: ali a cadeia é real (`getAuthUser` → `requireProgram(user)` →
+consulta que precisa de `mentee.id`). Paralelizar exigiria mudar o gate de
+acesso, o que não é otimização, é mudança de segurança.
+
+### 28.7 Três coisas que não corrigi
+
+1. **`artifact-generation.ts` monta a transcrição sem limite.** Lê toda a
+   conversa do copiloto dono do artefato e manda pro Opus. A rota de chat
+   limita o histórico em 40 mensagens; esta não limita nada. Numa jornada
+   longa isso cresce linearmente em custo e, no limite, estoura o contexto —
+   é bug latente, não hipótese. Não mexi porque escolher *quais* mensagens
+   embasam um artefato muda a qualidade do artefato: é decisão de produto,
+   não de engenharia.
+2. **`getCustoPorMentee` transfere todas as linhas de custo da turma** pra
+   somar em memória. Aqui o total histórico é o número certo — não dá pra
+   recortar janela sem mudar o significado. A correção é `sum()` no Postgres,
+   que exige RPC, que exige migration.
+3. **Duas migrations com prefixo `0006`** (`0006_proximo_encontro.sql` e
+   `0006_rejeicao.sql`). Tocam tabelas diferentes, então a ordem entre elas
+   não importa hoje, e as duas já estão aplicadas em produção. Renomear
+   migration aplicada faz ela parecer pendente pra qualquer ferramenta de
+   migration — o risco de arrumar é maior que o de deixar. Fica registrado
+   como armadilha pra quem criar a `0008`.

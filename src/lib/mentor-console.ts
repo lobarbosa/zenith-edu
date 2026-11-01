@@ -164,6 +164,14 @@ const LATENCIA_ALERTA_MS = 3000;
 const FALHA_SCHEMA_LIMIAR = 0.1;
 // Evita alerta ruidoso de "100% de falha" com 1 ou 2 gerações no início da turma.
 const AMOSTRA_MINIMA_FALHA = 5;
+// Janela da taxa de falha. Antes a consulta era sem limite e sem recorte de
+// tempo: lia toda linha de `agent_runs` de geração, de todos os mentorados,
+// desde o início do projeto, pra calcular uma porcentagem. Isso cresce pra
+// sempre, e o alerta ficava pior conforme crescia — mil gerações boas no
+// histórico diluem uma falha de 100% que começou hoje, que é exatamente o
+// que o alerta deveria pegar. O alerta de latência logo abaixo já trabalha
+// numa janela recente (limit 20); este passa a fazer o mesmo.
+const AMOSTRA_RECENTE = 100;
 
 export async function getAlertas(
   admin: SupabaseClient,
@@ -172,8 +180,18 @@ export async function getAlertas(
   const alertas: Alerta[] = [];
 
   const [{ data: artifactRuns }, { data: perfilRuns }] = await Promise.all([
-    admin.from("agent_runs").select("sucesso").like("agent_key", "artifact:%"),
-    admin.from("agent_runs").select("sucesso").eq("agent_key", "perfil"),
+    admin
+      .from("agent_runs")
+      .select("sucesso")
+      .like("agent_key", "artifact:%")
+      .order("criado_em", { ascending: false })
+      .limit(AMOSTRA_RECENTE),
+    admin
+      .from("agent_runs")
+      .select("sucesso")
+      .eq("agent_key", "perfil")
+      .order("criado_em", { ascending: false })
+      .limit(AMOSTRA_RECENTE),
   ]);
   const geracoes = [...(artifactRuns ?? []), ...(perfilRuns ?? [])];
   const falhas = geracoes.filter((g) => g.sucesso === false).length;
