@@ -1982,14 +1982,21 @@ usuário pra montar o menu. Cada página dentro dele chamava
 Supabase. Eram **dois round-trips de autenticação em série em toda
 navegação**, em todas as telas.
 
-`createClient` e um novo `getAuthUser` passam a ser envolvidos em `cache()`
-do React, que memoiza por passe de render do servidor — layout e página
-rodam no mesmo passe. Duas idas viraram uma, e um cliente só por requisição
-em vez de dois.
+Um novo `getAuthUser` envolvido em `cache()` do React resolve: `cache()`
+memoiza por passe de render do servidor, e layout e página rodam no mesmo
+passe. Duas idas viraram uma.
 
-As rotas de API ficaram de fora de propósito: cada uma chama `getUser()`
-uma vez por requisição, então não há o que deduplicar e mexer ali só
-adicionaria diff.
+`createClient` ficou **deliberadamente fora** do `cache()`. A primeira
+versão desta mudança envolvia os dois, e isso estava errado por raio de
+alcance: `createClient` é importado pelas dezesseis rotas de API, e
+`cache()` só tem semântica garantida dentro de um passe de render de
+servidor — em route handler seria aposta, com toda rota de API no caminho se
+a aposta falhasse. E não havia o que ganhar: construir o cliente é
+`cookies()` e um objeto, não custa rede. O round-trip estava só no
+`getUser()`, e é ele que está memoizado.
+
+As rotas de API ficaram de fora por isso e porque cada uma chama `getUser()`
+uma vez por requisição — não há o que deduplicar.
 
 Efeito colateral útil: quatro páginas (`conta`, `mentor`, `mentor/console`,
 `mentor/[menteeId]`) criavam um cliente Supabase **só** pra autenticar e
