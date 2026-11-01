@@ -240,3 +240,34 @@ Minha recomendação: **não faça nada disso agora.** Sem turma rodando, o
 ganho é teórico, e a terceira opção fica mais barata de decidir depois de
 você ver custo real de uma turma inteira em `agent_runs`. Já há dado sendo
 coletado pra isso.
+
+## 7. Bloqueante pra mesclar — a performance precisa de uma passada ao vivo
+
+A branch `claude/mentoria-agentica-layer-5da4qv` tem a limpeza e a
+performance (ARCHITECTURE.md §28) **validadas por `tsc`, `lint` e `build`, e
+não validadas ao vivo.** Não mesclei de propósito.
+
+O motivo é o histórico deste projeto. A mudança toca o carregamento de dados
+das treze telas de `(app)` — inclusive o caminho de autenticação de todas
+elas. Foi exatamente essa classe de alteração que passou por `tsc`, `lint` e
+`build` três vezes e quebrou `/diagnostico` em produção por 24h (§4 aqui, e
+ARCHITECTURE.md §23): erro de runtime do App Router não aparece em nenhum dos
+três comandos. A skill `test-as-user` existe por causa disso e diz que é o
+único caminho que pega.
+
+Não há `.env.local` neste container, então não consigo subir o dev server.
+
+O que precisa ser aberto, logado, antes de mesclar:
+
+- [ ] `/` e `/jornada` como **mentorado** — a Jornada mudou mais (contagem de
+      mensagens por copiloto virou `count` do Postgres; confira que os
+      números do "Mapa geral de atividades" continuam batendo)
+- [ ] `/diagnostico` como **prospect** — é a tela que já quebrou assim
+- [ ] `/perfil`, `/mapas`, `/biblioteca`, `/copiloto` como mentorado
+- [ ] `/mentor/[menteeId]` como **mentor** — nove consultas em série viraram
+      três ondas; confira que transcrição, notas, perfis, artefatos e anexos
+      (com URL assinada funcionando) aparecem todos
+- [ ] `/mentor/console` — o alerta de falha de schema agora olha as 100
+      gerações mais recentes, não o histórico inteiro
+
+Se tudo abrir, mescla. Se alguma quebrar, o erro vai nomear o arquivo.
