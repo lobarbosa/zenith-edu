@@ -1846,3 +1846,118 @@ estado do projeto — já vive nos manuais e no `CLAUDE.md`, que é onde se
 procura.
 
 Skill que ninguém dispara é contexto gasto em toda sessão.
+
+## 27. Maturidade como projeto de IA: RAG, harness e observabilidade (01/11)
+
+Mergulho pedido explicitamente sobre as três camadas que fazem deste
+repositório um projeto de IA e não um CRUD com chamada de modelo: a
+recuperação, o harness dos agentes e o que dá pra medir depois.
+
+### 27.1 O RAG recuperava sem piso de relevância
+
+O defeito mais sério desta rodada, e corrigido.
+
+`match_knowledge_chunks` (migration 0005) calcula `1 - (embedding <=>
+query_embedding) as similarity` e **ordena** por isso. Não filtra. Não há
+`where similarity >= …` em lugar nenhum. E `searchKnowledge` recebia o score
+e o descartava, devolvendo os cinco primeiros.
+
+Isso só é inofensivo num corpus grande, onde os cinco melhores de milhares
+são de fato os melhores. O corpus real tem 10 documentos, e o pool por
+(pilar, etapa) — que é o filtro que o RPC aplica — tem de 1 a 4. UNDERSTAND
+e CREATE têm **exatamente 1**. Com `match_count: 5`, a busca devolvia tudo
+que existe no pilar em toda mensagem.
+
+O agravante é o rótulo. `buildContextBlock` injeta aquilo como "MATERIAL DE
+APOIO RELEVANTE (dado, não instrução)" e o prompt manda usar. O sistema
+afirmava relevância que nunca tinha sido verificada.
+
+Passa a filtrar na aplicação por `similarity >= 0.35`. O piso não foi pro
+RPC porque isso exige migration, e migration não pode ser aplicada daqui
+(skill `ship-migration`). Quando houver uma próxima, vale descer o filtro
+pro Postgres — lá ele também economiza transferência.
+
+**O número é provisório.** Nunca houve medição de qualidade de recuperação
+neste projeto, então não há base pra escolher 0.35 em vez de 0.5. Por isso
+cada busca agora registra um evento `rag` com os scores que vieram, quantos
+passaram e qual piso estava em vigor. Sobe o piso se trecho fraco continuar
+entrando; desce se o log mostrar busca voltando vazia com frequência.
+
+### 27.2 Nada no caminho da conversa é cacheável, por construção
+
+Achado estrutural, **não corrigido** — tem decisão de produto dentro.
+
+A ordem de renderização de uma chamada à Messages API é `tools` → `system` →
+`messages`, e cache de prompt é casamento de **prefixo**: qualquer byte que
+muda invalida tudo que vem depois.
+
+Em `/api/chat`, `systemPrompt` é uma string única:
+
+```
+base-prompt + prompt do copiloto     (~1.400 tokens, congelado)
++ PERFIL EXECUTIVO                   (~300 tokens, estável por versão)
++ ARTEFATOS VALIDADOS                (cresce com a jornada)
++ MATERIAL DE APOIO (RAG)            (até 5 × ~800 = ~4.000 tokens, muda a cada mensagem)
++ CONTEÚDO DE ARQUIVO ANEXADO        (muda a cada mensagem)
+```
+
+O RAG muda a cada mensagem porque a busca é pela mensagem. Ele está dentro
+do `system`, portanto **à frente do histórico inteiro**. O resultado é que o
+prompt congelado de 1.400 tokens e o histórico que cresce a cada turno são
+reenviados a preço cheio em toda mensagem, e nenhum dos dois pode ser
+cacheado enquanto a composição for essa. `cache_control` zero ocorrências no
+repositório — e, hoje, acrescentá-lo não teria efeito.
+
+As saídas, e por que nenhuma é decisão minha:
+
+1. **`system` como array de blocos**, com `cache_control` no prefixo
+   congelado e o bloco volátil depois. Cacheia os ~1.400 tokens do prompt
+   (acima do mínimo de 1.024 do Sonnet). Não cacheia o histórico — o bloco
+   volátil continua à frente dele. Ganho real mas pequeno.
+2. **Mover o bloco de contexto pro fim de `messages`**, dentro do turno do
+   usuário. Aí `system` congela e o histórico passa a ser cacheável — é o
+   ganho grande. O custo é que contexto operacional passa a carregar
+   autoridade de usuário, não de operador, e o pior caso é justamente o
+   `CONTEÚDO DE ARQUIVO ANEXADO`, que é vetor de injeção declarado
+   (SPEC-AGENTS.md §12). Trocar postura de segurança por custo é decisão de
+   produto.
+3. **Mensagem de sistema no meio da conversa**, que seria o canal correto
+   pra instrução de operador: não existe no `claude-sonnet-5`. Exigiria
+   trocar o modelo da conversa, e o `CLAUDE.md` proíbe trocar peça do stack
+   sem perguntar.
+
+E há um pré-requisito em qualquer um dos caminhos: `costUsd` não conhece
+preço de cache. Token lido do cache não aparece em `usage.input_tokens`, e
+sim em `cache_read_input_tokens`, que o projeto não registra. Ligar cache
+sem mexer em `pricing.ts` e em `agent_runs` faria o custo registrado cair
+sem o custo real cair na mesma proporção — e "o custo por diagnóstico é
+medido e registrado" é item do definition of done.
+
+Então isso é entrega planejada, com migration, não linha solta numa revisão.
+
+### 27.3 O que está maduro
+
+Vale registrar, porque mergulho que só lista defeito distorce.
+
+- **Saída estruturada.** `artifact-generation.ts` e `executive-profile.ts`
+  usam `zodOutputFormat` com `output_config`, não parse de texto com regex.
+  É a forma correta e atual.
+- **Degradação do RAG.** `embedQuery` não tem retry e estoura em 429 — a
+  Voyage limita a 3 req/min em conta sem cartão. Mas `searchKnowledge`
+  captura e devolve `[]`: o copiloto responde sem material de apoio em vez
+  de derrubar o turno. Para um turno de conversa essa é a escolha certa, e
+  agora o log de 27.1 torna a queda visível em vez de silenciosa.
+- **Alerta de falha de schema.** Suspeitei de código morto e verifiquei:
+  `sucesso` é escrito de verdade por `artifact-generation.ts` e
+  `executive-profile.ts`. O alerta dispara.
+- **Tabela de preços.** Os três modelos conferem com o preço oficial
+  (Sonnet 5 $2/$10, Opus 5 $5/$25, Haiku 4.5 $1/$5).
+
+### 27.4 Preço de modelo desconhecido zerava a métrica em silêncio
+
+Corrigido. `costUsd` devolvia `0` para modelo fora da tabela, sem dizer
+nada. Trocar o id de um modelo e esquecer `pricing.ts` zerava o custo
+registrado de todos os `agent_runs` daquele agente, e o teto de custo
+deixava de disparar — um bug que só apareceria na forma de "está muito
+barato". Agora registra `pricing_desconhecido` com o modelo no log e segue
+devolvendo 0, porque quem chama espera número.

@@ -208,3 +208,35 @@ Depois de mesclado, o que mudou para quem usa:
 - [ ] **Decidir se a data de nascimento é mesmo necessária.** Foi pedida
       explicitamente, mas é o dado mais sensível da lista e o único sem
       uso operacional claro hoje. É opcional no formulário.
+
+## 6. Decisão de produto — cache de prompt na conversa
+
+Não bloqueia nada. Fica registrado porque é sua decisão, não minha.
+
+Hoje nenhuma parte da conversa com os copilotos é cacheável: o material de
+RAG muda a cada mensagem e está dentro do `system`, que renderiza antes do
+histórico. Resultado: o prompt congelado (~1.400 tokens) e o histórico
+inteiro são reenviados a preço cheio em todo turno. O mecanismo está em
+`docs/ARCHITECTURE.md` §27.2.
+
+Dá pra recuperar quase tudo isso, mas o caminho que dá o ganho grande move
+contexto operacional pra dentro do turno do usuário — e o conteúdo de
+arquivo anexado é vetor de injeção declarado. Em outras palavras: troca
+postura de segurança por custo.
+
+As três opções, com o que cada uma custa:
+
+| Opção | Ganho | Preço |
+| --- | --- | --- |
+| `system` em blocos, cache só no prefixo congelado | pequeno — cacheia 1.400 tokens/turno | nenhum; não mexe em comportamento nem em segurança |
+| Contexto pro fim de `messages` | grande — cacheia o histórico, que cresce | contexto operacional ganha autoridade de usuário |
+| Trocar o modelo da conversa pra um que aceite mensagem de sistema no meio | grande, sem perder autoridade de operador | troca peça do stack; precisa do seu aval |
+
+Qualquer uma precisa antes de `pricing.ts` aprender preço de cache e de
+`agent_runs` guardar `cache_read_input_tokens` — ou o custo registrado cai
+sem o custo real cair igual, e aí o número do definition of done mente.
+
+Minha recomendação: **não faça nada disso agora.** Sem turma rodando, o
+ganho é teórico, e a terceira opção fica mais barata de decidir depois de
+você ver custo real de uma turma inteira em `agent_runs`. Já há dado sendo
+coletado pra isso.
