@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ATTACHMENTS_BUCKET } from "@/lib/attachments/limits";
+import { ownsStoragePath } from "@/lib/attachments/ownership";
 
 export async function POST() {
   const supabase = await createClient();
@@ -28,10 +29,18 @@ export async function POST() {
       .select("storage_path")
       .eq("mentee_id", mentee.id);
 
-    if (attachments && attachments.length > 0) {
+    // Só apaga o que está sob o prefixo da própria pessoa. O caminho vem de
+    // uma coluna que ela consegue gravar, e a remoção roda como admin — sem
+    // o filtro, uma linha apontando pro arquivo de outro mentorado levava o
+    // arquivo dele junto na exclusão desta conta (ver ownsStoragePath).
+    const paths = (attachments ?? [])
+      .map((a) => a.storage_path)
+      .filter((path) => ownsStoragePath(mentee.id, path));
+
+    if (paths.length > 0) {
       const { error: removeError } = await admin.storage
         .from(ATTACHMENTS_BUCKET)
-        .remove(attachments.map((a) => a.storage_path));
+        .remove(paths);
 
       if (removeError) {
         return new Response("Falha ao excluir os arquivos anexados. Tente de novo.", { status: 500 });

@@ -68,7 +68,11 @@ export function DiagnosticChat({
   }, [messages]);
 
   useEffect(() => {
-    if (started.current || initialMessages.length > 0) return;
+    // Abre a conversa enquanto o agente ainda não tiver respondido nada —
+    // não só quando o histórico está vazio. Uma abertura que falhou deixa a
+    // mensagem sintética de início gravada; olhar só pro tamanho fazia a tela
+    // voltar em branco, sem a primeira pergunta, e sem caminho pra refazer.
+    if (started.current || initialMessages.some((m) => m.role === "assistant")) return;
     started.current = true;
     void runTurn(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps

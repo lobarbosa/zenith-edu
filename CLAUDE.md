@@ -122,6 +122,18 @@ deixe trabalho validado parado numa branch sem mesclar — foi assim que
 `/mentor` ficou 20 commits atrás em produção e quebrou (ver
 `docs/HUMAN-CHECKLIST.md`, seção 4).
 
+Merge não é deploy. Depois de mesclar, confira o status que a Vercel grava
+no commit e abra a URL de produção antes de dar a entrega como fechada —
+cinco PRs já foram mesclados com a conta da Vercel bloqueada e a produção
+fora do ar, sem ninguém notar (`docs/ARCHITECTURE.md` §29).
+
+## Testes
+
+`npm test` roda as regras travadas deste arquivo e a lógica pura, com o
+runner embutido do Node — sem biblioteca. Roda junto de `tsc`, `lint` e
+`build` antes de qualquer commit. Teste de comportamento de agente não
+mora ali: gasta token e é feito ao vivo.
+
 ## Definition of done da Fase 0
 
 - Um prospect entra por magic link, completa os 8 blocos e a sessão fecha

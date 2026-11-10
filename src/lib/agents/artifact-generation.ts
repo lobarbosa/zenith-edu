@@ -5,6 +5,7 @@ import { ARTIFACT_SCHEMAS, ARTIFACT_AGENT, type ArtifactTipo } from "./artifact-
 import { artifactSystemPrompt } from "./artifact-prompt";
 import { summarizePerfil, summarizeArtifacts } from "./context";
 import { costUsd } from "./pricing";
+import { capTranscript } from "./history";
 
 const ARTIFACT_MODEL = "claude-opus-5";
 const MAX_ATTEMPTS = 3; // 1 tentativa + até 2 novas, SPEC-AGENTS.md §11
@@ -36,9 +37,14 @@ export async function generateArtifact(
     return { ok: false, reason: "sem_conversa" };
   }
 
-  const transcript = (messages as { role: string; content: string }[])
-    .map((m) => `${m.role === "user" ? "Mentorado" : "Copiloto"}: ${m.content}`)
-    .join("\n\n");
+  const { transcript, truncado } = capTranscript(
+    (messages as { role: string; content: string }[])
+      .map((m) => `${m.role === "user" ? "Mentorado" : "Copiloto"}: ${m.content}`)
+      .join("\n\n")
+  );
+  if (truncado) {
+    console.warn(JSON.stringify({ evento: "transcricao_truncada", agente: `artifact:${tipo}`, mentee: menteeId }));
+  }
 
   const [{ data: profileRow }, { data: existingArtifacts }] = await Promise.all([
     supabase
@@ -65,6 +71,7 @@ export async function generateArtifact(
   let totalInputTokens = 0;
   let totalOutputTokens = 0;
   let totalCostUsd = 0;
+  let parsed: unknown = null;
 
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     try {
@@ -86,15 +93,34 @@ export async function generateArtifact(
       totalCostUsd += costUsd(ARTIFACT_MODEL, response.usage.input_tokens, response.usage.output_tokens);
 
       if (!response.parsed_output) {
-        console.error(`generateArtifact(${tipo}): parse falhou na tentativa ${attempt}`);
+        console.error(
+          JSON.stringify({
+            evento: "geracao_sem_parse",
+            agente: `artifact:${tipo}`,
+            tentativa: attempt,
+            stop_reason: response.stop_reason,
+            output_tokens: response.usage.output_tokens,
+          })
+        );
         continue;
       }
 
-      const artifact = await persistArtifact(supabase, menteeId, tipo, response.parsed_output);
+      parsed = response.parsed_output;
+      break;
+    } catch (error) {
+      console.error(`generateArtifact(${tipo}): tentativa ${attempt} falhou`, error);
+    }
+  }
+
+  // Gravar fica fora do laço: falha de banco não pode disparar outra chamada
+  // ao Opus (ver o mesmo trecho em executive-profile.ts).
+  if (parsed) {
+    try {
+      const artifact = await persistArtifact(supabase, menteeId, tipo, parsed);
       await logRun(admin, menteeId, tipo, totalInputTokens, totalOutputTokens, totalCostUsd, true);
       return { ok: true, artifact };
     } catch (error) {
-      console.error(`generateArtifact(${tipo}): tentativa ${attempt} falhou`, error);
+      console.error(`generateArtifact(${tipo}): artefato gerado, mas falhou ao gravar`, error);
     }
   }
 

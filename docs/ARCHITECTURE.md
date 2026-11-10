@@ -2101,3 +2101,197 @@ acesso, o que não é otimização, é mudança de segurança.
    migration aplicada faz ela parecer pendente pra qualquer ferramenta de
    migration — o risco de arrumar é maior que o de deixar. Fica registrado
    como armadilha pra quem criar a `0008`.
+
+## 29. Avaliação completa: produção fora do ar, e o que a REST API aceitava (10/11)
+
+Pedido de avaliar tudo, com tudo que há disponível. Desta vez a revisão
+começou por fora do código — Vercel, GitHub, Supabase — e foi aí que estava
+o achado maior.
+
+### 29.1 A produção estava fora do ar havia pelo menos dez dias
+
+`/login` em produção responde `402 Payment Required — DEPLOYMENT_DISABLED`.
+A conta da Vercel está bloqueada. O último deployment é de 03/10; a
+produção era a do PR #22 (26/09). Desde 31/10 a Vercel grava em todo commit
+o status `failure — Account is blocked`.
+
+Os PRs #23 a #27 foram mesclados e reportados como entregues nesse
+intervalo. Nenhum foi publicado.
+
+Dois erros de leitura, ambos meus, registrados pra não repetir:
+
+- **Merge foi tratado como deploy.** O processo do `CLAUDE.md` terminava em
+  "mescle". Nada mandava conferir que o deploy saiu, e o status de falha
+  estava em cada PR, à vista.
+- **Ausência de erro foi lida como saúde.** Em 31/10, "zero erros de runtime
+  em 7 dias" entrou no relatório como evidência de que o projeto estava de
+  pé. Site que não serve requisição também não gera erro.
+
+Correção de processo: `validate-delivery` ganhou o passo de conferir o
+deployment e abrir a URL depois do merge; `review-system` passou a começar
+pela produção, antes do código; o `CLAUDE.md` diz "merge não é deploy".
+
+O desbloqueio é do dono da conta — `docs/HUMAN-CHECKLIST.md` §0.
+
+### 29.2 O gate de aceite podia ser pulado pela REST API
+
+O achado de segurança mais sério do projeto até aqui.
+
+A chave anon do Supabase é pública por desenho, e toda tabela é exposta por
+REST. O que protege o dado é a policy. E a policy de insert de `mentees`
+era só `user_id = auth.uid()`.
+
+Uma conta recém-criada ainda não tem linha em `mentees` — ela nasce na
+primeira tela, por `ensureMentee`. Nesse intervalo, um `POST` direto em
+`/rest/v1/mentees` com `papel: 'mentorado'` criava a linha já dentro do
+programa. Sem diagnóstico, sem perfil validado, sem aceite.
+
+Todas as rodadas anteriores fecharam buraco de gate em **rota** — três em
+31/10 (§24). Todas confiavam em `mentees.papel`. Nenhuma olhou quem podia
+escrever nessa coluna. O cadastro é aberto, então o caminho estava
+disponível pra qualquer pessoa na internet.
+
+A migration `0008` restringe o insert ao único formato legítimo: papel
+`prospect`, sem turma, sem aceite. `ensureMentee` manda só `user_id` e
+`email`, então nada no produto muda.
+
+O mesmo padrão — rota confere, tabela aceita — aparecia em mais dois
+lugares, fechados na mesma migration e no código:
+
+- **`attachments.storage_path`** é gravável pela pessoa, e o servidor usa o
+  caminho com a service role: baixa o arquivo e entrega ao modelo
+  (`/api/chat`), apaga na exclusão de conta. Uma linha apontando pro caminho
+  de outro mentorado fazia o servidor ler ou apagar o arquivo dele.
+  Explorar exige conhecer o caminho, que tem dois UUIDs aleatórios — difícil,
+  mas a barreira era sorte, não regra. `ownsStoragePath` confere o prefixo
+  no código; a policy impede a linha de existir.
+- **Tamanho de mensagem.** O limite de 4.000 caracteres vive na rota. Direto
+  no banco não havia limite, e a transcrição inteira vai pro Opus.
+
+A varredura que faltava — "o que a REST API aceita que a rota recusa" —
+entrou como item 9 da skill `review-system`.
+
+**Fica em aberto, de propósito:** o desenho em que a rota grava *como o
+usuário* (client anon) deixa a pessoa inserir direto mensagem com
+`role = 'assistant'`, rascunho de perfil e rascunho de artefato — conteúdo
+que a tela do mentor apresenta como saída do agente. Ela não consegue se
+autovalidar, e o mentor lê antes de validar. Fechar isso de vez significa
+mover toda escrita gerada pelo sistema pro client admin e tirar as policies
+de insert — mudança estrutural, com ordem delicada entre migration e
+deploy, que não faço sem teste ao vivo.
+
+### 29.3 A conversa quebrava em mensagens alternadas depois de uma aba fechada
+
+A mensagem do usuário é gravada antes do stream; a do agente, depois.
+Fechar a aba no meio da resposta deixa uma pergunta sem par.
+
+No copiloto o histórico é a janela das últimas 40 linhas. Com um órfão
+dentro dela a paridade vira, a janela passa a começar por `assistant`, e a
+Messages API recusa com 400. Cada falha grava outro órfão, que desvira a
+paridade — então o sintoma era a conversa falhar **uma mensagem sim, uma
+não**, pra quem tinha mais de vinte trocas. Sem nenhum erro que apontasse a
+causa.
+
+`normalizeHistory` apara o começo da janela até o primeiro `user` e tira
+mensagem vazia. As duas rotas de conversa também deixaram de gravar resposta
+vazia: no diagnóstico o histórico vai inteiro, e uma única mensagem vazia
+travaria o prospect de vez.
+
+No diagnóstico havia um caso irmão: se a **primeira** resposta falhasse, a
+mensagem sintética de abertura ficava gravada, a tela via "já tem mensagem"
+e não reabria, e a rota recusava reabrir pelo mesmo motivo. O prospect
+voltava a uma conversa em branco, sem a primeira pergunta. Agora tela e rota
+olham se o agente já respondeu, não se há mensagem.
+
+### 29.4 O alerta de latência estaria sempre aceso
+
+A spec pede alerta pra "latência de primeira resposta acima de 3 segundos".
+As duas rotas gravavam a duração do **turno inteiro** — que passa de 3s em
+praticamente toda resposta. E a síntese de perfil grava a duração da
+geração, dezenas de segundos, na mesma coluna que o alerta consultava sem
+filtrar agente.
+
+Passa a gravar o tempo até o primeiro token, contado da chegada da
+requisição — inclui roteador e RAG, porque é isso que a pessoa espera
+olhando pra tela. E o alerta olha só agentes de conversa.
+
+### 29.5 Falha de banco fazia o Opus rodar três vezes
+
+Nos dois geradores, gravar o resultado estava dentro do `try` do laço de
+tentativas. Uma falha de insert caía no mesmo `catch` da falha de modelo e
+disparava outra chamada — o modelo mais caro do sistema rodava até três
+vezes por um erro que ele não causou. A gravação saiu do laço.
+
+Na mesma passada:
+
+- Falha de parse registra o `stop_reason`. Antes, resposta cortada por
+  `max_tokens`, recusa e JSON fora do schema viravam a mesma linha de log.
+  O alerta de "falha de schema" não distinguia as três.
+- **Teto de transcrição** (`TRANSCRIPT_MAX_CHARS`, 400 mil caracteres). Era
+  o item 1 da §28.7, que deixei como decisão de produto. Mantenho que
+  escolher *quais* mensagens embasam um artefato é decisão de produto — e
+  por isso o teto fica muito acima do uso normal e só corta em conversa
+  extrema, preservando o trecho recente e registrando quando corta. É guarda
+  de custo e de estouro de contexto, não curadoria.
+
+### 29.6 Dois pontos sobre os modelos, medidos antes de mexidos
+
+`claude-sonnet-5` e `claude-opus-5` rodam com pensamento adaptativo quando
+`thinking` é omitido — e o código omite. O pensamento consome do mesmo
+`max_tokens` da resposta: 2.048 na conversa, 4.096 nas gerações. Resposta
+cortada no meio é possível, e chegaria ao mentorado como se estivesse
+completa.
+
+Não aumentei os tetos nem mexi em `thinking`: é parâmetro de comportamento
+do agente, e não há como validar ao vivo. O que entrou foi a medição que
+faltava — as rotas registram `turno_incompleto` com o `stop_reason` sempre
+que a resposta não termina em `end_turn`. Se aparecer `max_tokens` no log,
+a decisão de subir o teto passa a ter dado.
+
+### 29.7 Menores, da mesma passada
+
+- **Busca de embedding sem prazo.** Ela roda antes do primeiro token; uma
+  Voyage lenta segurava o copiloto até a função estourar. Prazo de 6s, e
+  `searchKnowledge` degrada pra "sem material de apoio" como já fazia no 429.
+- **Cabeçalhos de segurança.** `next.config.ts` estava vazio. Entraram
+  `frame-ancestors 'none'` (clickjacking, num produto com login e dado de
+  carreira), `nosniff`, `Referrer-Policy` e `Permissions-Policy`. CSP
+  completa não: exige nonce no App Router e quebraria sem teste ao vivo.
+- **`controller.close()` sem guarda no diagnóstico.** O copiloto já tinha a
+  correção; o diagnóstico lançava rejeição não tratada em toda falha da API.
+- **Histórico e jornada em paralelo** no `/api/chat` — um round-trip a
+  menos antes do primeiro token.
+
+### 29.8 Rede de testes, sem biblioteca nova
+
+"Zero teste" era a maior lacuna apontada na §27. `npm test` usa o runner
+embutido do Node com um resolvedor de vinte linhas pro alias `@/`.
+
+28 testes, de três tipos:
+
+- **Regras travadas** — os limites rígidos presentes nos seis prompts,
+  exatamente três gaps, limites num arquivo só, perfil que nunca nasce
+  validado.
+- **As varreduras da `review-system`, por máquina** — client component
+  alcançando prompt ou service role, enum sem `.nullable()`, rota sem
+  autenticação, rota que cria jornada sem gate.
+- **Lógica pura** — normalização de histórico, posse de caminho, custo,
+  chunking, mapas de etapa e artefato.
+
+Conferido por mutação: trocar "Nunca estime salário" por "Evite estimar" no
+prompt-base derruba seis testes.
+
+O que eles **não** cobrem, e é preciso dizer: comportamento de agente. Um
+teste garante que a frase do limite está no prompt, não que o modelo a
+obedece. O teste adversário dos quatro limites continua nunca tendo sido
+rodado.
+
+### 29.9 O que não pude fazer
+
+- **Validar ao vivo.** Sem `.env.local`, e agora sem produção nem preview.
+  Tudo desta rodada passou por `tsc`, `lint`, `build` e `npm test` — e por
+  nada além disso.
+- **Aplicar a `0008`**, rodar os advisors do Supabase, simular consulta: o
+  conector segue apontando pra outra conta.
+- **Medir custo, cache hit, frequência de `max_tokens`.** Não há chave de
+  API nem tráfego.

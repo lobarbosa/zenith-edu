@@ -6,12 +6,19 @@
 // VOYAGE_API_KEY nunca pode chegar a um client component.
 const VOYAGE_MODEL = "voyage-3.5";
 const BATCH_SIZE = 100;
+// A busca roda no caminho da conversa, antes do primeiro token: sem prazo,
+// uma Voyage lenta segurava a resposta do copiloto até a função estourar o
+// tempo. Com prazo, `searchKnowledge` cai no catch e o turno segue sem
+// material de apoio — a degradação que já existia pro 429. A ingestão manda
+// lotes grandes e não tem ninguém esperando na tela, então ganha mais folga.
+const QUERY_TIMEOUT_MS = 6_000;
+const INGEST_TIMEOUT_MS = 60_000;
 
 export async function embedChunks(chunks: string[]): Promise<number[][]> {
   const embeddings: number[][] = [];
   for (let i = 0; i < chunks.length; i += BATCH_SIZE) {
     const batch = chunks.slice(i, i + BATCH_SIZE);
-    embeddings.push(...(await embedBatch(batch, "document")));
+    embeddings.push(...(await embedBatch(batch, "document", INGEST_TIMEOUT_MS)));
   }
   return embeddings;
 }
@@ -20,13 +27,18 @@ export async function embedChunks(chunks: string[]): Promise<number[][]> {
 // pra otimizar a similaridade entre os dois — mesmo texto, `input_type`
 // diferente.
 export async function embedQuery(text: string): Promise<number[]> {
-  const [embedding] = await embedBatch([text], "query");
+  const [embedding] = await embedBatch([text], "query", QUERY_TIMEOUT_MS);
   return embedding;
 }
 
-async function embedBatch(batch: string[], inputType: "document" | "query"): Promise<number[][]> {
+async function embedBatch(
+  batch: string[],
+  inputType: "document" | "query",
+  timeoutMs: number
+): Promise<number[][]> {
   const response = await fetch("https://api.voyageai.com/v1/embeddings", {
     method: "POST",
+    signal: AbortSignal.timeout(timeoutMs),
     headers: {
       Authorization: `Bearer ${process.env.VOYAGE_API_KEY}`,
       "content-type": "application/json",

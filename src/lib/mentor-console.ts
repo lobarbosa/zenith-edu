@@ -161,6 +161,7 @@ export type Alerta = { tipo: "falha_schema" | "custo_teto" | "latencia"; descric
 // sem valor numérico — placeholder até virar decisão de produto explícita.
 const CUSTO_TETO_USD = 5;
 const LATENCIA_ALERTA_MS = 3000;
+const AGENTES_DE_CONVERSA = ["diagnostic", "career", "business", "value", "leadership", "executive"];
 const FALHA_SCHEMA_LIMIAR = 0.1;
 // Evita alerta ruidoso de "100% de falha" com 1 ou 2 gerações no início da turma.
 const AMOSTRA_MINIMA_FALHA = 5;
@@ -212,9 +213,13 @@ export async function getAlertas(
     }
   }
 
+  // Só os agentes de conversa: é neles que `latencia_ms` é tempo até o
+  // primeiro token. A síntese de perfil grava a duração da geração inteira
+  // (dezenas de segundos, por natureza) e acendia este alerta toda vez.
   const { data: lentos } = await admin
     .from("agent_runs")
     .select("mentee_id, mentees(email, nome, sobrenome)")
+    .in("agent_key", AGENTES_DE_CONVERSA)
     .gt("latencia_ms", LATENCIA_ALERTA_MS)
     .order("criado_em", { ascending: false })
     .limit(20);

@@ -7,13 +7,23 @@ description: "Checklist de validação antes de commitar, abrir PR ou dar uma en
 
 Rode nesta ordem. Cada passo só vale se o anterior passou.
 
-## 1. Os três comandos
+## 1. Os quatro comandos
 
 ```bash
 npx tsc --noEmit     # tipos
 npm run lint         # eslint
+npm test             # regras travadas e lógica pura
 npm run build        # build de produção
 ```
+
+`npm test` usa o runner embutido do Node, sem biblioteca. Ele confere por
+máquina o que antes era leitura: os limites rígidos presentes nos seis
+prompts, exatamente três gaps no perfil, nenhum client component
+alcançando prompt ou service role, enum de saída de modelo com
+`.nullable()`, toda rota autenticada, gate em toda rota que cria jornada.
+Se um desses falhar, a alteração quebrou uma regra travada — não ajuste o
+teste pra passar sem entender por quê. Ele **não** testa comportamento de
+agente; isso segue sendo ao vivo.
 
 **`npx next lint` não existe mais** nesta versão do Next — falha com
 `Invalid project directory provided`. O script do `package.json` é
@@ -98,7 +108,18 @@ produto que não existe mais.
 1. Commit na branch de trabalho, mensagem explicando o *porquê*.
 2. Push com `git push -u origin <branch>`.
 3. PR pra `main` e merge — **só quando o usuário pedir o PR**.
-4. Registrar decisão relevante em `docs/ARCHITECTURE.md`.
+4. **Conferir que o deploy aconteceu.** Merge não é deploy. Leia o status
+   que a Vercel grava no commit (`pull_request_read` com `get_status`, ou
+   `mcp__Vercel__list_deployments`) e confirme um deployment `READY` com o
+   SHA mesclado. Depois abra a URL de produção.
+5. Registrar decisão relevante em `docs/ARCHITECTURE.md`.
+
+O passo 4 existe porque já faltou. Entre 31/10 e 10/11 cinco PRs foram
+mesclados e dados como entregues enquanto a conta da Vercel estava
+bloqueada: todo commit tinha o status `failure — Account is blocked`,
+nenhum deploy saiu, e a produção respondia 402 pra qualquer pessoa. Ninguém
+olhou. "Zero erros de runtime nos últimos 7 dias" foi lido como saúde —
+era um site que não servia requisição nenhuma (`docs/ARCHITECTURE.md` §29).
 
 ## O que esta skill não faz
 
