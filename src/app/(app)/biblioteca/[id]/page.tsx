@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getAuthUser } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireProgram } from "@/lib/mentee-access";
 import { ensureJourneyState } from "@/lib/agents/journey";
@@ -9,9 +9,7 @@ export default async function BibliotecaDocumentPage(props: PageProps<"/bibliote
   const { id } = await props.params;
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser();
 
   const mentee = await requireProgram(supabase, user!);
   const admin = createAdminClient();

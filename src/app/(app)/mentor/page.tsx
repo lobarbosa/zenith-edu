@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { getAuthUser } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isMentor } from "@/lib/mentor";
 import { type ArtifactTipo } from "@/lib/agents/artifact-schemas";
@@ -18,10 +18,7 @@ function nomeDoMentee(mentees: EmbeddedMentee) {
 }
 
 export default async function MentorPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser();
 
   // O proxy.ts já faz essa checagem antes de chegar aqui — é só uma
   // camada de UX. Esta é a checagem que decide se o client admin é usado.

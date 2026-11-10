@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { getAuthUser } from "@/lib/supabase/server";
 import { Field } from "@/components/field";
 import { DeleteAccountButton } from "@/components/delete-account-button";
 import { ChangePasswordForm } from "@/components/change-password-form";
@@ -10,10 +10,7 @@ import { MenteeIdentityForm } from "@/components/mentee-identity-form";
 import { toIdentityValues } from "@/lib/mentee-identity";
 
 export default async function ContaPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser();
 
   // Mesmo formulário do início do diagnóstico: quem já preencheu corrige
   // aqui, e quem entrou antes do formulário existir tem onde se identificar.

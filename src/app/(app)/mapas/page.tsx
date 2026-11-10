@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getAuthUser } from "@/lib/supabase/server";
 import { requireProgram } from "@/lib/mentee-access";
 import {
   ARTIFACT_LABELS,
@@ -33,9 +33,7 @@ export default async function MapasPage({
 }) {
   const { tipo: tipoParam } = await searchParams;
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser();
 
   const mentee = await requireProgram(supabase, user!);
 

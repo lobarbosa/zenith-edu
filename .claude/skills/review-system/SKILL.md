@@ -8,7 +8,26 @@ description: "As varreduras de revisão do T-Shaped Executive, cada uma derivada
 Cada varredura aqui achou bug de verdade. Rode as que couberem no escopo —
 não é obrigatório rodar todas.
 
-## 0. O ambiente ainda está de pé?
+As varreduras 1, 2, 5, 6 e 8 também rodam por máquina em `npm test`
+(`tests/locked-rules.test.ts`). Os comandos abaixo continuam valendo pra
+investigar quando um teste falha, e pras que não foram automatizadas.
+
+## 0. A produção ainda está de pé?
+
+Antes de qualquer varredura de código. Em 10/11 a revisão começou por
+aqui e achou a produção fora do ar havia pelo menos dez dias — conta da
+Vercel bloqueada, HTTP 402 em toda rota.
+
+- `mcp__Vercel__list_deployments`: o deployment de produção mais recente
+  bate com o HEAD da `main`? Se a `main` está à frente, descubra por quê.
+- `mcp__Vercel__web_fetch_vercel_url` em `/login`: responde 200?
+- Status do último commit da `main` no GitHub: `success`, ou `failure`
+  com descrição?
+
+Ausência de erro de runtime **não** é sinal de saúde — site parado também
+não gera erro.
+
+## 0b. O ambiente local ainda está de pé?
 
 Container recriado perde `node_modules` e `.env.local` (gitignored, e isso
 está certo). Sem o `.env.local` não há Supabase nem dev server: dá para
@@ -137,6 +156,23 @@ grep -rc "LIMITES RÍGIDOS" src/lib/agents/*.ts
 
 Deve aparecer em **um** arquivo (`base-prompt.ts`). Para mexer ali, leia a
 skill `change-agent-prompt`.
+
+## 9. O que a REST API aceita que a rota recusa
+
+A chave anon é pública e o Supabase expõe toda tabela por REST. Uma regra
+que só a rota confere não é regra: qualquer conta escreve direto, dentro
+do que a policy de `insert`/`update` permitir. Foi assim que o gate de
+aceite inteiro podia ser pulado — `mentees_insert_own` aceitava
+`papel = 'mentorado'` — e que um `storage_path` alheio chegava ao client
+admin (migration `0008`).
+
+```bash
+grep -n "for insert\|for update" -A6 supabase/migrations/*.sql
+```
+
+Para cada policy de escrita, pergunte: **que colunas ela deixa a pessoa
+escolher, e alguma rota ou tela confia nessa coluna?** Coluna de papel,
+status, caminho de arquivo e custo são as suspeitas de sempre.
 
 ## Ao terminar
 

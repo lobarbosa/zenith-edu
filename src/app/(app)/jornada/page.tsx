@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getAuthUser } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireProgram } from "@/lib/mentee-access";
 import { ensureJourneyState, etapaAgent } from "@/lib/agents/journey";
@@ -59,47 +59,55 @@ function encontroLabel(dias: number): string {
 
 export default async function JornadaPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser();
 
   const mentee = await requireProgram(supabase, user!);
   const admin = createAdminClient();
   const journey = await ensureJourneyState(admin, mentee.id);
 
-  const { data: artifacts } = await supabase
-    .from("artifacts")
-    .select("id, tipo, versao, status, conteudo, motivo_rejeicao")
-    .eq("mentee_id", mentee.id)
-    .order("versao", { ascending: false });
+  // As três consultas abaixo só dependem de mentee.id, e eram aguardadas em
+  // série: três round-trips ao Postgres antes do primeiro byte da página.
+  const [{ data: artifacts }, { data: notes }, contagens] = await Promise.all([
+    supabase
+      .from("artifacts")
+      .select("id, tipo, versao, status, conteudo, motivo_rejeicao")
+      .eq("mentee_id", mentee.id)
+      .order("versao", { ascending: false }),
+    // RLS (mentor_notes_select_visible, 0004_fase1_schema.sql) já filtra pra
+    // visivel_ao_mentorado = true e pro próprio mentee — client comum, sem
+    // precisar de admin.
+    supabase
+      .from("mentor_notes")
+      .select("id, etapa, conteudo, criado_em")
+      .eq("mentee_id", mentee.id)
+      .order("criado_em", { ascending: false }),
+    // Quantas trocas o mentorado teve com cada copiloto — alimenta a
+    // atividade "Conversar com o X" do mapa geral. RLS já escopa.
+    //
+    // Isto puxava TODA linha de `messages` de conversa do mentorado, sem
+    // limite, só pra contar cinco números em memória. Numa jornada de seis
+    // meses são milhares de linhas transferidas em cada carregamento da
+    // Jornada, pra produzir cinco inteiros. `head: true` devolve só o total
+    // e nenhuma linha, e as cinco contagens vão juntas.
+    Promise.all(
+      Object.keys(AGENT_LABELS).map(async (agente) => {
+        const { count } = await supabase
+          .from("messages")
+          .select("id", { count: "exact", head: true })
+          .eq("agent_key", agente)
+          .not("conversation_id", "is", null);
+        return [agente, count ?? 0] as const;
+      })
+    ),
+  ]);
 
-  // RLS (mentor_notes_select_visible, 0004_fase1_schema.sql) já filtra pra
-  // visivel_ao_mentorado = true e pro próprio mentee — client comum, sem
-  // precisar de admin.
-  const { data: notes } = await supabase
-    .from("mentor_notes")
-    .select("id, etapa, conteudo, criado_em")
-    .eq("mentee_id", mentee.id)
-    .order("criado_em", { ascending: false });
+  const mensagensPorAgente = new Map<string, number>(contagens);
 
   const latestByTipo = new Map<ArtifactTipo, ArtifactRow>();
   for (const item of (artifacts ?? []) as ArtifactRow[]) {
     if (!latestByTipo.has(item.tipo)) {
       latestByTipo.set(item.tipo, item);
     }
-  }
-
-  // Quantas trocas o mentorado teve com cada copiloto — alimenta a
-  // atividade "Conversar com o X" do mapa geral. RLS já escopa.
-  const { data: msgRows } = await supabase
-    .from("messages")
-    .select("agent_key")
-    .not("conversation_id", "is", null);
-
-  const mensagensPorAgente = new Map<string, number>();
-  for (const row of (msgRows ?? []) as { agent_key: string | null }[]) {
-    if (!row.agent_key) continue;
-    mensagensPorAgente.set(row.agent_key, (mensagensPorAgente.get(row.agent_key) ?? 0) + 1);
   }
 
   const etapasAtividades = buildEtapaAtividades({

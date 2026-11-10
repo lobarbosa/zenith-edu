@@ -234,7 +234,7 @@ DOCS = [
         "h1": "Arquitetura da plataforma",
         "standfirst": "O que o T-Shaped Executive é, como está construído e por quê. Técnico e funcional, com o roteiro de validação no fim.",
         "audience": "Referência de engenharia e produto",
-        "stamp": "Fonte: docs/PLATFORM-ARCHITECTURE.md · estado do ambiente conferido em 26/09/2026",
+        "stamp": "Fonte: docs/PLATFORM-ARCHITECTURE.md · estado conferido em 10/11/2026 · prints de tela de 26/09/2026",
         "foot": "Gerado a partir de <code>docs/PLATFORM-ARCHITECTURE.md</code> no repositório <code>lobarbosa/zenith-edu</code>. O diário de decisões de engenharia, em ordem cronológica, fica em <code>docs/ARCHITECTURE.md</code>.",
     },
     {
@@ -244,7 +244,7 @@ DOCS = [
         "h1": "Manual da plataforma",
         "standfirst": "Como usar a plataforma que acompanha o programa: o que cada tela faz, o que esperar do copiloto, e o que a plataforma deliberadamente não faz.",
         "audience": "Para quem participa do programa",
-        "stamp": "Fonte: docs/MANUAL-MENTEE.md",
+        "stamp": "Fonte: docs/MANUAL-MENTEE.md · texto de 10/11/2026 · prints de tela de 26/09/2026",
         "foot": "Gerado a partir de <code>docs/MANUAL-MENTEE.md</code> no repositório <code>lobarbosa/zenith-edu</code>.",
     },
     {
@@ -254,7 +254,7 @@ DOCS = [
         "h1": "Manual da plataforma",
         "standfirst": "Como conduzir o programa pela plataforma: o que fazer, quando, e o que cada decisão sua provoca do outro lado.",
         "audience": "Para o consultor",
-        "stamp": "Fonte: docs/MANUAL-MENTOR.md",
+        "stamp": "Fonte: docs/MANUAL-MENTOR.md · texto de 10/11/2026 · prints de tela de 26/09/2026",
         "foot": "Gerado a partir de <code>docs/MANUAL-MENTOR.md</code> no repositório <code>lobarbosa/zenith-edu</code>. A arquitetura da plataforma fica em <code>docs/PLATFORM-ARCHITECTURE.md</code>.",
     },
 ]

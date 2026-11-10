@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { getAuthUser } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isMentor } from "@/lib/mentor";
 import { ExecutiveProfileSchema } from "@/lib/agents/executive-profile-schema";
@@ -88,10 +88,7 @@ export default async function MenteeDetailPage(props: PageProps<"/mentor/[mentee
     ? (tabParam as MenteeTab)
     : "perfil";
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser();
 
   // O proxy.ts já faz essa checagem antes de chegar aqui — é só uma
   // camada de UX. Esta é a checagem que decide se o client admin é usado.
@@ -126,71 +123,82 @@ export default async function MenteeDetailPage(props: PageProps<"/mentor/[mentee
     { label: "Telefone", value: mentee.telefone },
   ];
 
-  const { data: session } = await admin
-    .from("diagnostic_sessions")
-    .select(
-      "id, status, current_block, started_at, completed_at, input_tokens, output_tokens, custo_usd"
-    )
-    .eq("mentee_id", menteeId)
-    .order("started_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  const { data: messages } = session
-    ? await admin
-        .from("messages")
-        .select("role, content, block")
-        .eq("session_id", session.id)
-        .order("created_at", { ascending: true })
-    : { data: [] };
-
-  // Só cria o estado da jornada de quem já foi aceito: abrir a tela de um
-  // prospect não pode ser o que coloca ele em FIND.
-  const journey = aceito ? await ensureJourneyState(admin, menteeId) : null;
-  const journeyIndex = journey
-    ? ETAPA_ORDER.indexOf(journey.etapa_atual as (typeof ETAPA_ORDER)[number])
-    : -1;
-  const nextEtapa =
-    journey && journeyIndex < ETAPA_ORDER.length - 1 ? ETAPA_ORDER[journeyIndex + 1] : null;
-
-  const [preparacao, { data: notes }] = await Promise.all([
+  // Esta é a tela mais pesada do produto — a que o mentor abre antes de cada
+  // encontro — e as sete consultas abaixo eram aguardadas uma a uma, embora
+  // todas dependam só de menteeId (e de `aceito`, que já saiu da linha de
+  // mentees). Sete round-trips enfileirados viraram um.
+  const [
+    { data: session },
+    journey,
+    preparacao,
+    { data: notes },
+    { data: profiles },
+    { data: artifactRows },
+    { data: attachmentRows },
+  ] = await Promise.all([
+    admin
+      .from("diagnostic_sessions")
+      .select(
+        "id, status, current_block, started_at, completed_at, input_tokens, output_tokens, custo_usd"
+      )
+      .eq("mentee_id", menteeId)
+      .order("started_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    // Só cria o estado da jornada de quem já foi aceito: abrir a tela de um
+    // prospect não pode ser o que coloca ele em FIND.
+    aceito ? ensureJourneyState(admin, menteeId) : Promise.resolve(null),
     getPreparacaoEncontro(admin, menteeId),
     admin
       .from("mentor_notes")
       .select("id, etapa, conteudo, visivel_ao_mentorado, criado_em")
       .eq("mentee_id", menteeId)
       .order("criado_em", { ascending: false }),
+    admin
+      .from("executive_profiles")
+      .select("id, version, status, perfil, created_at, validated_at, motivo_rejeicao")
+      .eq("mentee_id", menteeId)
+      .order("version", { ascending: false }),
+    admin
+      .from("artifacts")
+      .select("id, tipo, versao, status, conteudo, criado_em, validado_em, motivo_rejeicao")
+      .eq("mentee_id", menteeId)
+      .order("versao", { ascending: false }),
+    // Anexos: privados ao mentorado, o mentor enxerga ao revisar aqui
+    // (SPEC-AGENTS.md §12, "Visibilidade").
+    admin
+      .from("attachments")
+      .select("id, nome_arquivo, tipo_mime, tamanho_bytes, storage_path, criado_em")
+      .eq("mentee_id", menteeId)
+      .order("criado_em", { ascending: false }),
   ]);
 
-  const { data: profiles } = await admin
-    .from("executive_profiles")
-    .select("id, version, status, perfil, created_at, validated_at, motivo_rejeicao")
-    .eq("mentee_id", menteeId)
-    .order("version", { ascending: false });
+  const journeyIndex = journey
+    ? ETAPA_ORDER.indexOf(journey.etapa_atual as (typeof ETAPA_ORDER)[number])
+    : -1;
+  const nextEtapa =
+    journey && journeyIndex < ETAPA_ORDER.length - 1 ? ETAPA_ORDER[journeyIndex + 1] : null;
 
-  const { data: artifactRows } = await admin
-    .from("artifacts")
-    .select("id, tipo, versao, status, conteudo, criado_em, validado_em, motivo_rejeicao")
-    .eq("mentee_id", menteeId)
-    .order("versao", { ascending: false });
-
-  // Anexos: privados ao mentorado, o mentor enxerga ao revisar aqui
-  // (SPEC-AGENTS.md §12, "Visibilidade"). URL assinada gerada agora — o
-  // bucket é privado, nunca URL pública.
-  const { data: attachmentRows } = await admin
-    .from("attachments")
-    .select("id, nome_arquivo, tipo_mime, tamanho_bytes, storage_path, criado_em")
-    .eq("mentee_id", menteeId)
-    .order("criado_em", { ascending: false });
-
-  const attachments = await Promise.all(
-    (attachmentRows ?? []).map(async (row) => {
-      const { data: signed } = await admin.storage
-        .from(ATTACHMENTS_BUCKET)
-        .createSignedUrl(row.storage_path, 3600);
-      return { ...row, signedUrl: signed?.signedUrl ?? null };
-    })
-  );
+  // Segunda onda, a que de fato depende da primeira: a transcrição precisa do
+  // id da sessão, e a URL assinada precisa da linha do anexo. A URL é gerada
+  // agora — o bucket é privado, nunca URL pública.
+  const [{ data: messages }, attachments] = await Promise.all([
+    session
+      ? admin
+          .from("messages")
+          .select("role, content, block")
+          .eq("session_id", session.id)
+          .order("created_at", { ascending: true })
+      : Promise.resolve({ data: [] }),
+    Promise.all(
+      (attachmentRows ?? []).map(async (row) => {
+        const { data: signed } = await admin.storage
+          .from(ATTACHMENTS_BUCKET)
+          .createSignedUrl(row.storage_path, 3600);
+        return { ...row, signedUrl: signed?.signedUrl ?? null };
+      })
+    ),
+  ]);
 
   const artifactsByTipo = new Map<ArtifactTipo, ArtifactRow[]>();
   for (const item of (artifactRows ?? []) as ArtifactRow[]) {

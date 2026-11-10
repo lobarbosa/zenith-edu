@@ -249,6 +249,15 @@ de 10% numa amostra de pelo menos 5 gerações. O segundo indica que o
 modelo está tendo dificuldade com o schema de algum artefato — é problema
 de engenharia, não de condução.
 
+Como ler os dois:
+
+- **Latência** é o tempo até a primeira palavra da resposta aparecer na
+  tela do mentorado, nas conversas — diagnóstico e copilotos. Geração de
+  perfil e de artefato não entram: demoram dezenas de segundos por
+  natureza.
+- **Falha de schema** olha as 100 gerações mais recentes de cada tipo, não
+  o histórico inteiro. Se o alerta acender, o problema é de agora.
+
 ---
 
 ## O que você controla, e o que não
@@ -347,6 +356,23 @@ o diagnóstico que custa. Decidir se fica assim (aquisição) ou se fecha
 
 **Contas de teste no roster.** Há usuários de teste no banco que vão
 aparecer misturados com gente real. Limpar antes de abrir.
+
+Em 10/11/2026, mais três, e a primeira vem antes de todas:
+
+**A plataforma está fora do ar.** A conta da Vercel está bloqueada e
+nenhuma tela abre — nem para você, nem para quem você convidar. Só o dono
+da conta desbloqueia, em Vercel → Billing. Enquanto isso, nada deste manual
+pode ser percorrido.
+
+**Uma correção de segurança espera para ser aplicada no banco.** Sem ela,
+uma conta nova conseguia se colocar no programa sem o seu aceite. A
+migration `0008` fecha isso e precisa entrar **antes** de a plataforma
+voltar ao ar.
+
+**A confirmação de e-mail precisa continuar ligada.** O seu acesso de
+mentor é decidido pelo e-mail da conta. Com a confirmação desligada no
+Supabase, alguém poderia cadastrar o e-mail de um mentor que ainda não tem
+conta e entrar como mentor.
 
 A lista completa de pendências, com o estado verificado de cada uma, está
 em `docs/HUMAN-CHECKLIST.md`. O roteiro de validação da plataforma está na

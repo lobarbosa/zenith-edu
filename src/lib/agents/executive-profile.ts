@@ -4,6 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { PROFILE_SYSTEM_PROMPT } from "./profile-prompt";
 import { ExecutiveProfileSchema } from "./executive-profile-schema";
 import { costUsd } from "./pricing";
+import { capTranscript } from "./history";
 
 const PROFILE_MODEL = "claude-opus-5";
 const MAX_ATTEMPTS = 3; // 1 tentativa + até 2 novas, per SPEC-SOFTWARE.md §11
@@ -37,16 +38,22 @@ export async function synthesizeExecutiveProfile(
 
   const latenciaMs = () => Date.now() - startedAt;
 
-  const transcript = messages
-    .map((m: { role: string; content: string }) =>
-      `${m.role === "user" ? "Mentorado" : "Agente"}: ${m.content}`
-    )
-    .join("\n\n");
+  const { transcript, truncado } = capTranscript(
+    messages
+      .map((m: { role: string; content: string }) =>
+        `${m.role === "user" ? "Mentorado" : "Agente"}: ${m.content}`
+      )
+      .join("\n\n")
+  );
+  if (truncado) {
+    console.warn(JSON.stringify({ evento: "transcricao_truncada", agente: "perfil", sessao: session.id }));
+  }
 
   const anthropic = new Anthropic();
   let totalInputTokens = 0;
   let totalOutputTokens = 0;
   let totalCostUsd = 0;
+  let parsed: unknown = null;
 
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     try {
@@ -63,16 +70,40 @@ export async function synthesizeExecutiveProfile(
       totalCostUsd += costUsd(PROFILE_MODEL, response.usage.input_tokens, response.usage.output_tokens);
 
       if (!response.parsed_output) {
-        console.error(`synthesizeExecutiveProfile: parse falhou na tentativa ${attempt}`);
+        // `stop_reason` separa as causas: "max_tokens" é resposta cortada
+        // antes de o JSON fechar, "refusal" é recusa, "end_turn" é JSON que
+        // não bateu com o schema. Sem ele as três viravam a mesma linha.
+        console.error(
+          JSON.stringify({
+            evento: "geracao_sem_parse",
+            agente: "perfil",
+            tentativa: attempt,
+            stop_reason: response.stop_reason,
+            output_tokens: response.usage.output_tokens,
+          })
+        );
         continue;
       }
 
-      const profile = await persistProfile(supabase, session, response.parsed_output);
+      parsed = response.parsed_output;
+      break;
+    } catch (error) {
+      console.error(`synthesizeExecutiveProfile: tentativa ${attempt} falhou`, error);
+    }
+  }
+
+  // Gravar fica FORA do laço de tentativas. Dentro dele, uma falha de banco
+  // caía no mesmo catch da falha de modelo e disparava outra chamada ao Opus
+  // — o modelo mais caro do sistema rodava até três vezes por um erro que
+  // ele não causou e que repetir não resolve.
+  if (parsed) {
+    try {
+      const profile = await persistProfile(supabase, session, parsed);
       await accumulateSessionCost(supabase, session.id, totalInputTokens, totalOutputTokens, totalCostUsd);
       await logRun(admin, session.mentee_id, totalInputTokens, totalOutputTokens, totalCostUsd, true, latenciaMs());
       return profile;
     } catch (error) {
-      console.error(`synthesizeExecutiveProfile: tentativa ${attempt} falhou`, error);
+      console.error("synthesizeExecutiveProfile: perfil gerado, mas falhou ao gravar", error);
     }
   }
 

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getAuthUser } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireProgram } from "@/lib/mentee-access";
 import { ensureJourneyState } from "@/lib/agents/journey";
@@ -15,9 +15,7 @@ const TIPO_LABEL: Record<string, string> = {
 
 export default async function BibliotecaPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser();
 
   const mentee = await requireProgram(supabase, user!);
   const admin = createAdminClient();

@@ -27,6 +27,8 @@ import { costUsd } from "@/lib/agents/pricing";
 import { CHAT_META_MARKER } from "@/lib/agents/chat-meta";
 import { extractAttachment, type NativeBlock } from "@/lib/attachments/extract";
 import { ATTACHMENTS_BUCKET, MAX_FILES_PER_MESSAGE } from "@/lib/attachments/limits";
+import { ownsStoragePath } from "@/lib/attachments/ownership";
+import { normalizeHistory } from "@/lib/agents/history";
 
 const anthropic = new Anthropic();
 const CONVERSATION_MODEL = "claude-sonnet-5";
@@ -47,6 +49,7 @@ const SYSTEM_PROMPTS: Record<AgentKey, string> = {
 };
 
 export async function POST(request: Request) {
+  const requestStartedAt = Date.now();
   const supabase = await createClient();
   const {
     data: { user },
@@ -82,23 +85,29 @@ export async function POST(request: Request) {
   // RLS de messages combina (OR) a policy do caminho session_id (diagnóstico)
   // com a do caminho conversation_id (copiloto) — filtra aqui pra não
   // misturar transcrição do Executive Diagnostic no histórico do copiloto.
-  const { data: recentRows } = await supabase
-    .from("messages")
-    .select("role, content")
-    .not("conversation_id", "is", null)
-    .order("created_at", { ascending: false })
-    .limit(HISTORY_LIMIT);
+  //
+  // A jornada vem antes do roteador: sem a etapa atual ele não tem destino
+  // seguro pra onde cair quando a classificação falha. As duas leituras não
+  // dependem uma da outra, então vão juntas.
+  const [{ data: recentRows }, journey] = await Promise.all([
+    supabase
+      .from("messages")
+      .select("role, content")
+      .not("conversation_id", "is", null)
+      .order("created_at", { ascending: false })
+      .limit(HISTORY_LIMIT),
+    ensureJourneyState(admin, mentee.id),
+  ]);
 
-  const history = (recentRows ?? []).slice().reverse() as { role: "user" | "assistant"; content: string }[];
+  const history = normalizeHistory(
+    (recentRows ?? []).slice().reverse() as { role: "user" | "assistant"; content: string }[]
+  );
 
   const routerHistoryText = history
     .slice(-ROUTER_HISTORY_LIMIT)
     .map((m) => `${m.role === "user" ? "Mentorado" : "Copiloto"}: ${m.content}`)
     .join("\n");
 
-  // A jornada vem antes do roteador: sem a etapa atual ele não tem destino
-  // seguro pra onde cair quando a classificação falha.
-  const journey = await ensureJourneyState(admin, mentee.id);
   const etapaAtual: Etapa = isEtapa(journey.etapa_atual) ? journey.etapa_atual : "FIND";
   const route = await routeMessage(anthropic, routerHistoryText, rawMessage, etapaAtual);
 
@@ -150,6 +159,13 @@ export async function POST(request: Request) {
       : [];
 
   if (attachmentIds.length > 0 && attachmentRows.length !== attachmentIds.length) {
+    return new Response("Um ou mais anexos não foram encontrados.", { status: 400 });
+  }
+
+  // O download abaixo roda como admin, sobre um caminho que a própria pessoa
+  // consegue gravar na linha — ver ownsStoragePath.
+  if (attachmentRows.some((row) => !ownsStoragePath(mentee.id, row.storage_path))) {
+    console.error("chat: anexo com storage_path fora do prefixo do mentorado", mentee.id);
     return new Response("Um ou mais anexos não foram encontrados.", { status: 400 });
   }
 
@@ -255,7 +271,6 @@ export async function POST(request: Request) {
     },
   ];
 
-  const turnStartedAt = Date.now();
   const stream = anthropic.messages.stream({
     model: CONVERSATION_MODEL,
     max_tokens: 2048,
@@ -265,23 +280,49 @@ export async function POST(request: Request) {
 
   const encoder = new TextEncoder();
   let fullText = "";
+  let firstTokenAt: number | null = null;
 
   async function finalizeTurn(controller: ReadableStreamDefaultController<Uint8Array>) {
     try {
       const finalMessage = await stream.finalMessage();
-      const latenciaMs = Date.now() - turnStartedAt;
+      // SPEC-SOFTWARE.md §13 alerta sobre "latência de primeira resposta":
+      // o tempo até o primeiro token, contado da chegada da requisição — é o
+      // que a pessoa espera olhando pra tela. Isto gravava a duração do turno
+      // inteiro, que passa de 3s em praticamente toda resposta: o alerta de
+      // latência do console estaria sempre aceso.
+      const latenciaMs = (firstTokenAt ?? Date.now()) - requestStartedAt;
       const conversationCost = costUsd(
         CONVERSATION_MODEL,
         finalMessage.usage.input_tokens,
         finalMessage.usage.output_tokens
       );
 
-      await supabase.from("messages").insert({
-        conversation_id: conversationId,
-        role: "assistant",
-        content: fullText,
-        agent_key: effectiveAgent,
-      });
+      if (finalMessage.stop_reason !== "end_turn") {
+        // Resposta cortada (max_tokens) ou recusada chega ao mentorado como
+        // se estivesse completa. Sem este registro não há como saber se
+        // acontece nem com que frequência.
+        console.warn(
+          JSON.stringify({
+            evento: "turno_incompleto",
+            rota: "chat",
+            agente: effectiveAgent,
+            stop_reason: finalMessage.stop_reason,
+            output_tokens: finalMessage.usage.output_tokens,
+          })
+        );
+      }
+
+      // Mensagem vazia nunca vai pro banco: ela voltaria no histórico do
+      // próximo turno, e a API recusa bloco de texto vazio — a conversa
+      // travaria ali pra sempre.
+      if (fullText.trim().length > 0) {
+        await supabase.from("messages").insert({
+          conversation_id: conversationId,
+          role: "assistant",
+          content: fullText,
+          agent_key: effectiveAgent,
+        });
+      }
 
       await supabase
         .from("conversations")
@@ -346,6 +387,7 @@ export async function POST(request: Request) {
   const readable = new ReadableStream({
     start(controller) {
       stream.on("text", (text) => {
+        firstTokenAt ??= Date.now();
         fullText += text;
         controller.enqueue(encoder.encode(text));
       });

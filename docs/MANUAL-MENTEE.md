@@ -39,8 +39,8 @@ redefinição.
 **Google.** Um clique.
 
 > **Atenção, hoje:** o acesso por Google ainda não está configurado neste
-> ambiente. O botão aparece, mas o clique falha. Use link mágico ou senha
-> até este aviso sair daqui.
+> ambiente, e por isso o botão não aparece na tela de entrada. Use link
+> mágico ou senha até este aviso sair daqui.
 
 Contas novas precisam confirmar o e-mail antes do primeiro acesso.
 
@@ -348,7 +348,9 @@ Provavelmente o assunto pertence a uma etapa ainda não liberada. Ele faz a
 ponte em vez de recusar. Se o tema for importante agora, leve ao encontro.
 
 **Perdi a resposta no meio do streaming.**
-Recarregue. Toda mensagem é salva quando termina.
+Recarregue. Toda mensagem é salva quando termina. Se a resposta foi
+interrompida antes do fim, ela não fica salva — envie a mensagem de novo e
+a conversa segue de onde estava.
 
 **Posso usar no celular?**
 Sim. Todas as telas funcionam em tela estreita, com menu recolhido.

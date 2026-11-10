@@ -6,12 +6,14 @@ import { DIAGNOSTIC_KICKOFF_MESSAGE, DIAGNOSTIC_META_MARKER } from "@/lib/agents
 import { classifyDiagnosticProgress } from "@/lib/agents/diagnostic-block-classifier";
 import { synthesizeExecutiveProfile } from "@/lib/agents/executive-profile";
 import { costUsd } from "@/lib/agents/pricing";
+import { normalizeHistory } from "@/lib/agents/history";
 
 const anthropic = new Anthropic();
 const CONVERSATION_MODEL = "claude-sonnet-5";
 const MAX_MESSAGE_LENGTH = 4000;
 
 export async function POST(request: Request) {
+  const requestStartedAt = Date.now();
   const supabase = await createClient();
   const {
     data: { user },
@@ -59,29 +61,41 @@ export async function POST(request: Request) {
     return new Response("Falha ao carregar o histórico.", { status: 500 });
   }
 
-  if (!hasMessage && (existingMessages?.length ?? 0) > 0) {
+  const history = normalizeHistory(
+    (existingMessages ?? []) as { role: "user" | "assistant"; content: string }[]
+  );
+  const agenteJaRespondeu = history.some((m) => m.role === "assistant");
+
+  if (!hasMessage && agenteJaRespondeu) {
     return new Response("Mensagem inválida.", { status: 400 });
   }
 
+  // Abertura que não fechou: a mensagem sintética de início foi gravada mas
+  // a primeira resposta nunca chegou (falha da API, aba fechada). Antes isso
+  // deixava o prospect numa conversa em branco pra sempre — a tela não
+  // reabria sozinha porque "já havia mensagem", e a rota recusava reabrir
+  // pelo mesmo motivo. Agora a abertura é refeita sobre a mensagem que já
+  // existe, sem gravar uma segunda.
+  const reabrindo = !hasMessage && history.length > 0;
   const userText = hasMessage ? rawMessage : DIAGNOSTIC_KICKOFF_MESSAGE;
 
-  const { error: insertUserError } = await supabase.from("messages").insert({
-    session_id: sessionId,
-    role: "user",
-    content: userText,
-    block: currentBlock,
-  });
+  if (!reabrindo) {
+    const { error: insertUserError } = await supabase.from("messages").insert({
+      session_id: sessionId,
+      role: "user",
+      content: userText,
+      block: currentBlock,
+    });
 
-  if (insertUserError) {
-    return new Response("Falha ao salvar a mensagem.", { status: 500 });
+    if (insertUserError) {
+      return new Response("Falha ao salvar a mensagem.", { status: 500 });
+    }
   }
 
-  const conversationMessages = [
-    ...(existingMessages ?? []),
-    { role: "user" as const, content: userText },
-  ];
+  const conversationMessages = reabrindo
+    ? history
+    : [...history, { role: "user" as const, content: userText }];
 
-  const turnStartedAt = Date.now();
   const stream = anthropic.messages.stream({
     model: CONVERSATION_MODEL,
     max_tokens: 2048,
@@ -91,29 +105,51 @@ export async function POST(request: Request) {
 
   const encoder = new TextEncoder();
   let fullText = "";
+  let firstTokenAt: number | null = null;
 
   async function finalizeTurn(controller: ReadableStreamDefaultController<Uint8Array>) {
     try {
       const finalMessage = await stream.finalMessage();
-      const latenciaMs = Date.now() - turnStartedAt;
+      // Tempo até o primeiro token, contado da chegada da requisição — a
+      // "latência de primeira resposta" de SPEC-SOFTWARE.md §13. Ver o mesmo
+      // trecho em /api/chat.
+      const latenciaMs = (firstTokenAt ?? Date.now()) - requestStartedAt;
       const conversationCost = costUsd(
         CONVERSATION_MODEL,
         finalMessage.usage.input_tokens,
         finalMessage.usage.output_tokens
       );
 
-      await supabase.from("messages").insert({
-        session_id: sessionId,
-        role: "assistant",
-        content: fullText,
-        block: currentBlock,
-      });
+      if (finalMessage.stop_reason !== "end_turn") {
+        console.warn(
+          JSON.stringify({
+            evento: "turno_incompleto",
+            rota: "diagnostic",
+            bloco: currentBlock,
+            stop_reason: finalMessage.stop_reason,
+            output_tokens: finalMessage.usage.output_tokens,
+          })
+        );
+      }
 
-      const classification = await classifyDiagnosticProgress(
-        anthropic,
-        currentBlock,
-        fullText
-      );
+      // Sem texto não há o que gravar nem o que classificar: uma mensagem
+      // vazia no histórico faria a API recusar todos os turnos seguintes, e
+      // aqui o histórico vai inteiro — o diagnóstico travaria de vez. O
+      // custo do turno é contabilizado do mesmo jeito: ele foi cobrado.
+      const temTexto = fullText.trim().length > 0;
+
+      if (temTexto) {
+        await supabase.from("messages").insert({
+          session_id: sessionId,
+          role: "assistant",
+          content: fullText,
+          block: currentBlock,
+        });
+      }
+
+      const classification = temTexto
+        ? await classifyDiagnosticProgress(anthropic, currentBlock, fullText)
+        : { bloco: currentBlock, concluido: false, inputTokens: 0, outputTokens: 0, custoUsd: 0 };
 
       const { data: current } = await supabase
         .from("diagnostic_sessions")
@@ -158,13 +194,21 @@ export async function POST(request: Request) {
     } catch (error) {
       console.error("diagnostic finalizeTurn falhou", error);
     } finally {
-      controller.close();
+      // Mesmo caso de /api/chat: se a chamada à Anthropic falha, o listener
+      // "error" já fechou o controller, e fechar de novo lança "Controller
+      // is already closed" como rejeição não tratada.
+      try {
+        controller.close();
+      } catch {
+        // já fechado por controller.error()
+      }
     }
   }
 
   const readable = new ReadableStream({
     start(controller) {
       stream.on("text", (text) => {
+        firstTokenAt ??= Date.now();
         fullText += text;
         controller.enqueue(encoder.encode(text));
       });

@@ -1,5 +1,88 @@
 # Checklist de construção humana
 
+## 0. URGENTE — a produção está fora do ar (achado em 10/11)
+
+Tudo abaixo desta seção é secundário enquanto isto não for resolvido.
+
+**O que está acontecendo.** `https://zenith-edu-kappa.vercel.app` responde
+`402 Payment Required — DEPLOYMENT_DISABLED` em qualquer rota. A conta da
+Vercel (time "Zenith") está bloqueada. O último deploy que saiu é de 03/10;
+a produção que existia era a do PR #22, de 26/09. Desde pelo menos 31/10
+todo commit recebe da Vercel o status `failure — Account is blocked`.
+
+**O que isso significa para o que eu disse antes.** Os PRs #23 a #27 foram
+mesclados e reportados como entregues. Nenhum deles foi publicado. E o
+"zero erros de runtime em 7 dias" que usei como sinal de saúde em 31/10 era
+um site que não servia requisição nenhuma. Leitura errada minha; a
+conferência de deploy que faltava agora está na skill `validate-delivery`.
+
+- [ ] **Desbloquear a conta da Vercel.** Só você faz: Vercel → time
+      "Zenith" → Billing. O motivo exato aparece lá (o status aponta pra
+      vercel.com/knowledge/why-is-my-account-deployment-blocked).
+- [ ] **Antes de religar: aplicar a migration `0008`** (abaixo). Com a
+      produção de volta e o cadastro aberto, o furo que ela fecha passa a
+      ser explorável de ponta a ponta.
+- [ ] **Depois de religar: redeploy da `main`** e a passada ao vivo da
+      seção 7 — que agora vale para tudo que nunca rodou em produção
+      (PRs #23–#27 e o PR aberto desta rodada), não só para a performance.
+
+### Migration `0008` — aplicar no SQL Editor do Supabase
+
+Arquivo: `supabase/migrations/0008_fecha_auto_aceite_e_caminho_de_anexo.sql`.
+O conector do Supabase desta sessão continua ligado a outra conta
+(`phvxhahignvsgnhozxrr`, não `vyoqtlkklmcdcjpivtgv`), então não consigo
+aplicar daqui. Dashboard → SQL Editor → colar o arquivo → Run.
+
+Ela não depende de ordem com o código — pode entrar antes ou depois do
+merge sem quebrar tela nenhuma. O que ela fecha:
+
+1. **Qualquer conta nova conseguia se colocar no programa sozinha.** A
+   policy de insert de `mentees` só conferia o dono da linha; pela REST API
+   do Supabase dava pra criar a própria linha já com `papel = 'mentorado'`,
+   sem diagnóstico, sem perfil validado, sem aceite. Todos os gates que
+   construímos desde a `0007` confiam nessa coluna.
+2. **Caminho de anexo apontando pro arquivo de outra pessoa.**
+3. **Mensagem de tamanho ilimitado** gravada direto no banco, que depois
+   vai inteira pro Opus — custo por conta de quem paga a API.
+
+- [ ] Aplicar a `0008`.
+- [ ] Conferir que pegou:
+      ```sql
+      select tablename, policyname, with_check
+      from pg_policies
+      where policyname in ('mentees_insert_own', 'attachments_insert_own');
+      ```
+      O `with_check` de `mentees_insert_own` tem que mencionar `papel`.
+- [ ] Conferir se alguém já usou o furo — quem está no programa sem
+      registro de aceite:
+      ```sql
+      select id, email, papel, created_at
+      from mentees
+      where papel <> 'prospect' and aceito_em is null
+      order by created_at;
+      ```
+      Quem entrou antes da `0007` aparece aqui legitimamente (o default era
+      `mentorado`). Linha criada **depois** de 26/09 nessa lista é suspeita.
+
+### Duas configurações do Supabase que viraram questão de segurança
+
+- [ ] **"Confirm email" precisa estar LIGADO** (Authentication → Providers
+      → Email). O acesso de mentor é decidido só pelo e-mail da conta
+      (`MENTOR_EMAILS`). Com a confirmação desligada, quem cadastrar o
+      e-mail de um mentor que ainda não tem conta entra como mentor — e o
+      mentor lê tudo de todos os mentorados. A seção de Google SSO acima
+      trata isso como detalhe de comportamento; é mais que isso.
+- [ ] **Fechar o cadastro aberto** continua na lista, e subiu de
+      prioridade: os três furos da `0008` só existem porque qualquer pessoa
+      na internet consegue uma conta.
+
+### Reconectar o conector do Supabase
+
+- [ ] Apontar o MCP do Supabase para o projeto `vyoqtlkklmcdcjpivtgv`. Com
+      ele no lugar eu aplico migration, rodo os advisors de segurança e
+      performance do próprio Supabase e simulo consulta — hoje nada disso
+      é possível, e foi por isso que a `0008` ficou para você.
+
 ## Auth — Google SSO — bloqueante, só você faz
 
 - [ ] **Criar credenciais OAuth no Google Cloud Console** e colar Client
@@ -240,3 +323,42 @@ Minha recomendação: **não faça nada disso agora.** Sem turma rodando, o
 ganho é teórico, e a terceira opção fica mais barata de decidir depois de
 você ver custo real de uma turma inteira em `agent_runs`. Já há dado sendo
 coletado pra isso.
+
+## 7. Bloqueante pra mesclar — a performance precisa de uma passada ao vivo
+
+> **Atualização de 10/11.** Com a produção fora do ar (seção 0), esta
+> passada passou a valer para **tudo** que nunca foi publicado: PRs #23 a
+> #27, já na `main`, e o PR aberto desta rodada. O caminho mais curto é o
+> preview que a Vercel gera pro PR assim que a conta for desbloqueada —
+> testa-se o preview, depois mescla. À lista abaixo somam-se: mandar uma
+> mensagem no `/copiloto` e uma no `/diagnostico` (as duas rotas de
+> conversa mudaram), anexar um arquivo, e gerar um artefato.
+
+A branch `claude/mentoria-agentica-layer-5da4qv` tem a limpeza e a
+performance (ARCHITECTURE.md §28) **validadas por `tsc`, `lint` e `build`, e
+não validadas ao vivo.** Não mesclei de propósito.
+
+O motivo é o histórico deste projeto. A mudança toca o carregamento de dados
+das treze telas de `(app)` — inclusive o caminho de autenticação de todas
+elas. Foi exatamente essa classe de alteração que passou por `tsc`, `lint` e
+`build` três vezes e quebrou `/diagnostico` em produção por 24h (§4 aqui, e
+ARCHITECTURE.md §23): erro de runtime do App Router não aparece em nenhum dos
+três comandos. A skill `test-as-user` existe por causa disso e diz que é o
+único caminho que pega.
+
+Não há `.env.local` neste container, então não consigo subir o dev server.
+
+O que precisa ser aberto, logado, antes de mesclar:
+
+- [ ] `/` e `/jornada` como **mentorado** — a Jornada mudou mais (contagem de
+      mensagens por copiloto virou `count` do Postgres; confira que os
+      números do "Mapa geral de atividades" continuam batendo)
+- [ ] `/diagnostico` como **prospect** — é a tela que já quebrou assim
+- [ ] `/perfil`, `/mapas`, `/biblioteca`, `/copiloto` como mentorado
+- [ ] `/mentor/[menteeId]` como **mentor** — nove consultas em série viraram
+      três ondas; confira que transcrição, notas, perfis, artefatos e anexos
+      (com URL assinada funcionando) aparecem todos
+- [ ] `/mentor/console` — o alerta de falha de schema agora olha as 100
+      gerações mais recentes, não o histórico inteiro
+
+Se tudo abrir, mescla. Se alguma quebrar, o erro vai nomear o arquivo.
