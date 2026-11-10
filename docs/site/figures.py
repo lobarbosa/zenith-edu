@@ -143,7 +143,7 @@ def turno_copiloto():
     itens = [
         "Perfil Executivo do mentorado",
         "Artefatos já validados",
-        "Corpus: top 5 por pilar + etapas liberadas",
+        "Corpus: até 5 trechos relevantes, por pilar",
         "Texto dos anexos desta mensagem",
     ]
     b.append(f'<rect x="{ex}" y="40" width="{ew}" height="94" rx="3" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.38" stroke-dasharray="4 3"/>')

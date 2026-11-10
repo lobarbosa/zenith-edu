@@ -5,7 +5,7 @@ está construída e por quê. Escrito para ser lido inteiro por quem chega
 agora, e consultado por seção por quem já conhece.
 
 Este documento **não substitui** `docs/ARCHITECTURE.md`, que é o diário de
-decisões de engenharia em ordem cronológica (§1 a §17) — lá está o
+decisões de engenharia em ordem cronológica (§1 a §29) — lá está o
 histórico de cada escolha e de cada bug encontrado. Aqui está o retrato
 consolidado do sistema como ele é hoje.
 
@@ -15,6 +15,14 @@ Manuais de uso: `docs/MANUAL-MENTEE.md` (cliente) e `docs/MANUAL-MENTOR.md`
 Estado do repositório na escrita: branch `claude/mentoria-agentica-layer-5da4qv`,
 2 commits à frente da `main`. Migration `0007` aplicada no banco em
 13/09/2026; o código que a consome ainda não foi mesclado para produção.
+
+> **Estado em 10/11/2026.** A produção está **fora do ar**: a conta da
+> Vercel está bloqueada e toda rota responde `402 DEPLOYMENT_DISABLED`. O
+> último deploy publicado é de 03/10; os PRs #23 a #27 estão na `main` e
+> nunca rodaram em produção. A branch de trabalho está 7 commits à frente
+> da `main`, validada por `tsc`, `lint`, `build` e `npm test`, e **não**
+> validada ao vivo. A migration `0008` está escrita e ainda não aplicada.
+> O que falta e em que ordem: `docs/HUMAN-CHECKLIST.md` §0.
 
 ---
 
@@ -69,6 +77,7 @@ para um programa com um único consultor.
 | Modelos | Anthropic — Sonnet 5, Opus 5, Haiku 4.5 | sempre via route handler |
 | Embeddings | Voyage AI `voyage-3.5`, 1024 dimensões | `src/lib/knowledge/embeddings.ts` |
 | Deploy | Vercel, produção a partir da `main` | projeto `zenith-edu` |
+| Testes | Runner embutido do Node, sem biblioteca | `tests/`, `npm test` |
 
 Não se introduz biblioteca nova sem pergunta, e nenhuma peça do stack é
 trocada sem pedido explícito. É regra do `CLAUDE.md`, não conservadorismo.
@@ -83,7 +92,15 @@ trocada sem pedido explícito. É regra do `CLAUDE.md`, não conservadorismo.
 
 Preços em `src/lib/agents/pricing.ts`, em USD por milhão de tokens. Toda
 chamada grava `agent_runs` com modelo, tokens, latência e custo — é o que
-alimenta a medição de custo por mentorado.
+alimenta a medição de custo por mentorado. Modelo fora da tabela de preços
+registra `pricing_desconhecido` no log em vez de custar zero em silêncio.
+
+Sonnet 5 e Opus 5 rodam com pensamento adaptativo quando o parâmetro
+`thinking` é omitido, e o código o omite. O pensamento consome do mesmo
+`max_tokens` da resposta — 2.048 na conversa, 4.096 nas gerações — então
+uma resposta pode ser cortada antes do fim. As rotas registram
+`turno_incompleto` com o `stop_reason` sempre que isso acontece; os tetos
+só mudam quando esse registro mostrar que é preciso.
 
 ---
 
@@ -117,6 +134,16 @@ knowledge_documents     playbooks, frameworks, casos — por pilar e etapa
 knowledge_chunks        trechos com embedding de 1024 dimensões
 ```
 
+A busca (`src/lib/knowledge/retrieval.ts`) filtra por pilar do copiloto e
+etapas liberadas, pede até cinco trechos e **descarta os que ficam abaixo
+de um piso de similaridade** (0,35, provisório). O piso existe porque o
+corpus é pequeno: o conjunto por pilar e etapa tem de um a quatro
+documentos, e pedir cinco devolvia o pilar inteiro em toda mensagem,
+rotulado como material relevante. Cada busca registra os scores que
+vieram e quantos passaram — é o dado para calibrar o piso. A chamada de
+embedding tem prazo de seis segundos; se a Voyage falhar ou demorar, o
+turno segue sem material de apoio.
+
 ### 3.4 Observação do mentor
 
 ```
@@ -143,6 +170,14 @@ Estas não são convenções; são invariantes do produto.
    coluna, então uma policy de UPDATE deixaria o mentorado escrever em
    `papel` e se aceitar sozinho no programa. Toda escrita passa por route
    handler com lista fechada de colunas (§6.2).
+6. **A policy de INSERT de `mentees` só aceita a linha de um prospect.**
+   O mesmo raciocínio do item 5 vale para a criação da linha, e ficou sem
+   cobertura até a migration `0008`: a policy conferia apenas o dono, e uma
+   conta nova podia criar a própria linha já com `papel = 'mentorado'` pela
+   REST API. Agora o insert exige papel `prospect`, sem turma e sem aceite.
+7. **O que a rota confere, a tabela também confere.** A chave anon é
+   pública e toda tabela é exposta por REST: uma regra que só existe no
+   route handler não é regra (§4.6).
 
 ---
 
@@ -186,6 +221,47 @@ hora, gerada na hora da leitura. Formatos aceitos: PDF, DOCX, CSV, PNG,
 JPG. Máximo 15 MB por arquivo, 3 por mensagem. XLSX ficou de fora
 deliberadamente: o pacote SheetJS tem vulnerabilidade alta sem correção no
 parser.
+
+O caminho do arquivo no Storage é sempre
+`<mentee_id>/<conversation_id>/<uuid>-<nome>`, e esse prefixo é a prova de
+posse. A coluna `storage_path` é gravável pelo próprio mentorado, e o
+servidor a usa com a service role — para baixar o arquivo e entregá-lo ao
+modelo, e para apagar na exclusão de conta. Por isso há duas travas: a
+policy de insert exige o prefixo (migration `0008`), e
+`ownsStoragePath` confere de novo no código antes de qualquer operação de
+Storage feita como admin.
+
+### 4.6 O que a REST API aceita
+
+O Supabase expõe toda tabela por REST, e a chave anon está no bundle do
+browser por desenho. Qualquer pessoa com uma conta escreve direto no
+banco, dentro do que as policies de `insert` e `update` permitirem — sem
+passar por rota nenhuma.
+
+A consequência prática é uma pergunta a fazer para cada policy de escrita:
+**que colunas ela deixa a pessoa escolher, e alguma rota ou tela confia
+nessa coluna?** Foi essa pergunta que achou os três buracos fechados pela
+migration `0008`: papel em `mentees`, caminho em `attachments` e tamanho
+de conteúdo em `messages`.
+
+Um ponto segue aberto, registrado e não resolvido: as rotas gravam *como o
+usuário*, então a pessoa consegue inserir direto uma mensagem com
+`role = 'assistant'`, um rascunho de perfil ou um rascunho de artefato —
+conteúdo que a tela do mentor apresenta como saída do agente. Ela não
+consegue se autovalidar, e o mentor lê antes de validar. Fechar de vez
+exige mover a escrita gerada pelo sistema para o client admin.
+
+### 4.7 Cabeçalhos e acesso de mentor
+
+`next.config.ts` envia `frame-ancestors 'none'` e `X-Frame-Options: DENY`
+(a aplicação não pode ser embutida em iframe), `nosniff`,
+`Referrer-Policy` e `Permissions-Policy`. Uma CSP completa de script e
+estilo não entrou: exige nonce no App Router.
+
+O acesso de mentor é decidido pelo e-mail da conta, contra a lista
+`MENTOR_EMAILS`. Isso só é seguro com a confirmação de e-mail **ligada**
+no Supabase — estava ligada na conferência de 26/09. Desligada, quem
+cadastrasse o e-mail de um mentor ainda sem conta entraria como mentor.
 
 ---
 
@@ -286,6 +362,18 @@ cercas de markdown (ver `ARCHITECTURE.md` §6).
 Custo medido em duas execuções reais de ponta a ponta: **US$ 0,21** e
 **US$ 0,53** por diagnóstico completo.
 
+Três cuidados com turno que não fecha. A mensagem do usuário é gravada
+antes do stream e a do agente depois, então uma falha no meio deixa uma
+pergunta sem resposta:
+
+- **Abertura que falhou.** Se a primeira resposta não chega, a conversa é
+  reaberta sobre a mensagem de início que já existe — tela e rota olham se
+  o agente já respondeu, não se há mensagem gravada.
+- **Resposta vazia nunca é gravada.** O histórico do diagnóstico vai
+  inteiro para o modelo, e a API recusa mensagem vazia: uma só travaria a
+  sessão.
+- **O custo do turno é contabilizado mesmo assim** — ele foi cobrado.
+
 ### 6.4 A síntese do Perfil Executivo
 
 Concluído o bloco 8, `POST /api/profile` lê a transcrição inteira e pede
@@ -306,6 +394,14 @@ confianca_do_diagnostico      alta|media|baixa
 ```
 
 Nasce em `rascunho_agente`, versão 1.
+
+A síntese roda sozinha quando o bloco 8 fecha; `POST /api/profile` é o
+caminho de recuperação, e recusa com 409 enquanto houver um rascunho em
+revisão. São até três tentativas de **geração** — gravar o resultado fica
+fora desse laço, para que uma falha de banco não dispare outra chamada ao
+Opus. Tentativa sem JSON válido registra o `stop_reason`, que separa
+resposta cortada, recusa e saída fora do schema. A transcrição tem um teto
+de segurança de 400 mil caracteres, muito acima de um diagnóstico real.
 
 **O mentorado lê o próprio Perfil Executivo em `/perfil`, mas só depois de
 validado.** A validação do mentor é o gate: enquanto o perfil for rascunho
@@ -380,11 +476,14 @@ classifica por etapa e não por copiloto.
 
 1. Autentica e resolve o mentee.
 2. **Recusa prospect com 403** — o copiloto é do programa.
-3. Lê o histórico recente, filtrando por `conversation_id` não-nulo para
-   não misturar a transcrição do diagnóstico.
+3. Lê o histórico recente — as últimas 40 mensagens — filtrando por
+   `conversation_id` não-nulo para não misturar a transcrição do
+   diagnóstico. A janela é normalizada: começa sempre por mensagem do
+   usuário e não carrega mensagem vazia. Sem isso, uma aba fechada no meio
+   de uma resposta fazia a conversa falhar em mensagens alternadas.
 4. Garante o `journey_state` **antes** do roteador: sem a etapa atual, o
    roteador não tem destino seguro para onde cair quando a classificação
-   falha.
+   falha. Histórico e jornada são lidos em paralelo.
 5. **Roteia** (Haiku): classifica a mensagem em uma das seis etapas, com
    confiança e sinal de intenção clara.
 6. Decide a etapa efetiva:
@@ -394,13 +493,15 @@ classifica por etapa e não por copiloto.
      atual, **fazendo a ponte** em vez de recusar seco.
 7. Extrai texto dos anexos, se houver.
 8. Monta o contexto: resumo do Perfil Executivo + artefatos validados +
-   top 5 trechos do corpus (filtrados por pilar do copiloto e etapas
-   liberadas) + conteúdo dos anexos. Tudo rotulado como dado.
+   até 5 trechos do corpus (filtrados por pilar do copiloto e etapas
+   liberadas, e acima do piso de relevância — §3.3) + conteúdo dos anexos.
+   Tudo rotulado como dado.
 9. Reaproveita a conversa contínua daquele `agent_key`, ou abre uma nova.
 10. Responde em streaming com Sonnet 5.
 11. Depois da resposta: grava a mensagem, atualiza `ultima_atividade`,
     roda o **detector de sinais** (Haiku) e grava três linhas em
-    `agent_runs` — roteador, conversa e sinais.
+    `agent_runs` — roteador, conversa e sinais. A latência gravada é o
+    tempo até o primeiro token, contado da chegada da requisição.
 
 <!-- FIGURA: turno-copiloto -->
 
@@ -409,7 +510,9 @@ classifica por etapa e não por copiloto.
 `POST /api/artifact`. Recusa prospect, recusa etapa não liberada, e evita
 empilhar rascunho sobre rascunho pendente. O Opus 5 lê a conversa daquele
 copiloto e devolve JSON validado contra o schema Zod do tipo. Falha de
-schema é registrada em `agent_runs` e dispara retry.
+schema é registrada em `agent_runs` e dispara retry. Valem as mesmas
+regras da síntese do perfil (§6.4): gravação fora do laço de tentativas,
+`stop_reason` registrado e teto de segurança na transcrição.
 
 Armadilha conhecida, já causou bug real: **campo enum sem `.nullable()`**.
 O modelo devolve `null` para o campo que não tem base na conversa, e um
@@ -442,7 +545,9 @@ Na maioria dos turnos não há sinal nenhum. O sinal vai para
 | Superfície | Trava |
 | --- | --- |
 | `/jornada`, `/copiloto`, `/mapas`, `/biblioteca`, `/biblioteca/[id]` | `requireProgram` → redirect para `/` |
-| `POST /api/chat`, `POST /api/artifact` | `isInProgram` → 403 |
+| `POST /api/chat`, `POST /api/artifact`, `POST /api/attachments` | `isInProgram` → 403 |
+| `POST /api/mentor/advance`, `POST /api/mentor/encontro` | `fetchIsInProgram` sobre o `menteeId` recebido → 403 |
+| Tabela `mentees` | policy de insert só aceita `papel = 'prospect'` (migration `0008`) |
 | Sidebar | prospect vê Diagnóstico e Perfil Executivo, mais Conta no rodapé |
 | Widget do copiloto | não monta para prospect |
 | CTA da home com perfil validado | "seu mentor vai retomar contato", com link para `/perfil` e não para `/jornada` |
@@ -488,12 +593,56 @@ Três alertas, em `src/lib/mentor-console.ts`:
 | Alerta | Limiar | Onde ajustar |
 | --- | --- | --- |
 | Custo por mentorado | US$ 5,00 — **placeholder**, a spec não definia valor | `CUSTO_TETO_USD` |
-| Latência | acima de 3000 ms | `LATENCIA_ALERTA_MS` |
-| Falha de schema | acima de 10%, com amostra mínima de 5 | `FALHA_SCHEMA_LIMIAR` |
+| Latência de primeira resposta | acima de 3000 ms até o primeiro token, só nos agentes de conversa | `LATENCIA_ALERTA_MS` |
+| Falha de geração | acima de 10% nas 100 gerações mais recentes, com amostra mínima de 5 | `FALHA_SCHEMA_LIMIAR`, `AMOSTRA_RECENTE` |
+
+A taxa de falha olha uma janela recente, não o histórico inteiro: mil
+gerações boas no passado diluiriam uma falha que começou hoje.
+
+Além de `agent_runs`, cinco eventos estruturados vão para o log da
+aplicação, todos em JSON de uma linha:
+
+| Evento | O que diz |
+| --- | --- |
+| `rag` | scores de cada busca no corpus e quantos trechos passaram do piso |
+| `turno_incompleto` | resposta de conversa que não terminou em `end_turn` |
+| `geracao_sem_parse` | tentativa de perfil ou artefato sem JSON válido, com o `stop_reason` |
+| `transcricao_truncada` | transcrição que bateu no teto de segurança |
+| `pricing_desconhecido` | modelo sem preço na tabela |
 
 **Langfuse ficou de fora**, decidido: os três alertas que a spec pede já
 saem de `agent_runs`, sem trazer serviço externo para o stack. Revisitar
 só se a necessidade de traces detalhados aparecer de verdade.
+
+### 9.1 Carregamento das telas
+
+Três decisões que reduzem idas ao banco por navegação:
+
+- **Uma verificação de sessão por navegação nas telas.** O layout e a
+  página precisam do usuário; `getAuthUser` é memoizado por passe de
+  render, então os dois compartilham a mesma ida ao servidor de auth.
+- **Consultas independentes em paralelo.** A ficha do mentor carregava em
+  nove passos em série e passou a três ondas; a Jornada, de três consultas
+  em série para uma.
+- **Contagem no banco.** A Jornada contava mensagens por copiloto
+  transferindo todas as linhas; agora pede só o total.
+
+### 9.2 Testes
+
+`npm test`, com o runner embutido do Node. Três grupos:
+
+- **Regras travadas** — os limites rígidos presentes nos prompts dos seis
+  agentes, o perfil com exatamente três gaps, o perfil que nunca nasce
+  validado.
+- **Varreduras de revisão, por máquina** — nenhum client component
+  alcança prompt ou service role, enum de saída de modelo é nullable, toda
+  rota autentica, toda rota que cria jornada tem gate.
+- **Lógica pura** — histórico, posse de caminho de anexo, custo, chunking,
+  mapas de etapa e artefato.
+
+O que não está coberto: comportamento de agente. O teste garante que a
+frase do limite está no prompt, não que o modelo a obedece (§11, "Os
+limites do agente").
 
 ---
 
@@ -510,6 +659,15 @@ Registrado para não ser confundido com bug.
   e-mail. `papel` decide pertencimento ao programa, não acesso de mentor.
 - **Frameworks, transcrições e casos no corpus.** Só os 10 playbooks
   foram ingeridos. `knowledge_documents` aceita os outros tipos.
+- **Cache de prompt.** Nada no caminho da conversa é cacheável hoje: o
+  material do corpus muda a cada mensagem e está dentro do `system`, à
+  frente do histórico. As opções e o preço de cada uma estão em
+  `docs/HUMAN-CHECKLIST.md` §6 — é decisão de produto.
+- **Teste de comportamento de agente.** O teste adversário dos limites
+  rígidos nunca foi rodado, e não há conjunto de avaliação automatizado.
+- **Monitoramento de erro.** Não há Sentry nem equivalente; falha em
+  produção só aparece no log da Vercel, para quem for olhar.
+- **Escrita gerada pelo sistema via client admin.** Ver §4.6.
 
 ---
 
@@ -517,6 +675,22 @@ Registrado para não ser confundido com bug.
 
 Esta seção é a recomendação de teste que complementa os manuais. A ordem
 importa: cada portão depende do anterior.
+
+### Portão 0 — estado conferido em 10/11/2026
+
+| Item | Estado |
+| --- | --- |
+| Produção | **fora do ar** — conta da Vercel bloqueada, `402` em toda rota |
+| Último deploy publicado | 03/10; produção era a do PR #22 (26/09) |
+| PRs #23 a #27 | na `main`, **nunca publicados** |
+| Branch de trabalho | 7 commits à frente da `main`, sem PR aberto |
+| Migration `0008` | **escrita, não aplicada** |
+| Banco (Supabase) | no ar |
+| Validação ao vivo desta branch | **nenhuma** — só `tsc`, `lint`, `build`, `npm test` |
+
+Nada dos portões abaixo pode ser percorrido enquanto a conta da Vercel
+não for desbloqueada. A ordem é: aplicar a `0008`, desbloquear, publicar,
+e então percorrer os portões — que agora cobrem tudo desde o PR #23.
 
 ### Portão 0 — estado conferido em 26/09/2026
 
